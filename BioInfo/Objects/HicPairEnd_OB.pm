@@ -32,6 +32,7 @@ my @functoion_list = qw/
                         get_rEndWholeSuppHaplo
                         isInValidPair
                         dEndSameHapJudge
+                        sEndSoloHapJudge
                         sEndInterHapJudge
                         dEndInterHapJudge
                         addHapIDtoReadsOptfd
@@ -117,6 +118,28 @@ sub dEndSameHapJudge{
     return 0;
 }
 
+#--- judgement on sEnd-hx PE-reads ----
+## 1)     the has-solo-hap rEnd cannot have two alignments supporting the same hapID
+## 2) OR, the two alignments supporting the same hapID are not close aligned
+## return 0, go to phMut-dEnd-hx
+## return 1, keep  phMut-sEnd-hx
+sub sEndSoloHapJudge{
+    my $pe_OB = shift;
+    my %parm = @_;
+    my $shEnd = $parm{shEnd}; # solo-haplo
+    my $minSplitReadGap = $parm{minSplitReadGap};
+
+    my @shEnd_HasHap_rOB = grep $_->has_SuppHaplo, @{$pe_OB->get_reads_OB(reads_end => $shEnd)};
+    if(      @shEnd_HasHap_rOB >= 2
+        && ! $shEnd_HasHap_rOB[0]->is_closeAlign(test_rOB => $shEnd_HasHap_rOB[-1], distance => $minSplitReadGap)
+    ){
+        return 0;
+    }
+    else{
+        return 1;
+    }
+}
+
 #--- judgement on sEnd-hInter PE-reads ---
 ##  1) have two alignments (i.e., SP) that interChr or large-distance 'heuristic';
 ##  2) one of two alignments is close to the other end's alignment
@@ -129,17 +152,17 @@ sub sEndInterHapJudge{
     my $uhEnd = $parm{uhEnd}; # unkonwn-haplo
     my $minSplitReadGap = $parm{minSplitReadGap};
 
-    my $mh_rOB_Aref = $pe_OB->get_reads_OB( reads_end => $mhEnd );
-    my $uh_rOB_Aref = $pe_OB->get_reads_OB( reads_end => $uhEnd ); # much likely to have only one alignment
+    my $mh_rOB_Aref = $pe_OB->get_reads_OB(reads_end => $mhEnd);
+    my $uh_rOB_Aref = $pe_OB->get_reads_OB(reads_end => $uhEnd); # much likely to have only one alignment
     my $doSelectBool = 0; # might select
     if(    scalar(@$mh_rOB_Aref) > 1 # have SP
         && $mh_rOB_Aref->[0]->has_SuppHaplo # both alignments have supported haplotype
         && $mh_rOB_Aref->[1]->has_SuppHaplo
     ){
         # pairwise alignments' distance
-        my %closeAlign  = ( u1m1 => $uh_rOB_Aref->[0]->is_closeAlign( test_rOB => $mh_rOB_Aref->[0], distance => $minSplitReadGap ),
-                            m1m2 => $mh_rOB_Aref->[0]->is_closeAlign( test_rOB => $mh_rOB_Aref->[1], distance => $minSplitReadGap ),
-                            u1m2 => $uh_rOB_Aref->[0]->is_closeAlign( test_rOB => $mh_rOB_Aref->[1], distance => $minSplitReadGap )  );
+        my %closeAlign  = ( u1m1 => $uh_rOB_Aref->[0]->is_closeAlign(test_rOB => $mh_rOB_Aref->[0], distance => $minSplitReadGap),
+                            m1m2 => $mh_rOB_Aref->[0]->is_closeAlign(test_rOB => $mh_rOB_Aref->[1], distance => $minSplitReadGap),
+                            u1m2 => $uh_rOB_Aref->[0]->is_closeAlign(test_rOB => $mh_rOB_Aref->[1], distance => $minSplitReadGap)  );
         if(    ! $closeAlign{m1m2} # mh: not close
             && ( $closeAlign{u1m1} || $closeAlign{u1m2} ) # mh-uh: either close
         ){
@@ -167,7 +190,7 @@ sub dEndInterHapJudge{
     # prepare hapID -> reads_OB
     my %hapID2rOB;
     for my $rEnd (1, 2){
-        my $rOB_Aref = $pe_OB->get_reads_OB( reads_end => $rEnd );
+        my $rOB_Aref = $pe_OB->get_reads_OB(reads_end => $rEnd);
         for my $rOB ( @$rOB_Aref ){
             for my $hapID (keys %{$rOB->get_SuppHaploHref}){ # auto-skip 'UK'
                 push @{ $hapID2rOB{$hapID} }, $rOB;
@@ -184,7 +207,7 @@ sub dEndInterHapJudge{
         for my $r_i ( 0 .. $rOB_iC-1 ){
             for my $r_j ( $r_i+1 .. $rOB_iC-1 ){
                 # not close !
-                unless( $rOB_iA->[$r_i]->is_closeAlign( test_rOB => $rOB_iA->[$r_j], distance => $minSplitReadGap ) ){
+                unless( $rOB_iA->[$r_i]->is_closeAlign(test_rOB => $rOB_iA->[$r_j], distance => $minSplitReadGap) ){
                     return 1;
                 }
             }
@@ -197,7 +220,7 @@ sub dEndInterHapJudge{
             for my $r_i ( 0 .. $rOB_iC-1 ){
                 for my $r_j ( 0 .. $rOB_jC-1 ){
                     # close !
-                    if( $rOB_iA->[$r_i]->is_closeAlign( test_rOB => $rOB_jA->[$r_j], distance => $minSplitReadGap ) ){
+                    if( $rOB_iA->[$r_i]->is_closeAlign(test_rOB => $rOB_jA->[$r_j], distance => $minSplitReadGap) ){
                         return 1;
                     }
                 }
