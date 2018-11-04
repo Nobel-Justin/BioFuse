@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Reads_OB';
 #----- version --------
-$VERSION = "0.10";
-$DATE = '2018-10-25';
+$VERSION = "0.11";
+$DATE = '2018-11-04';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -42,6 +42,7 @@ my @functoion_list = qw/
                         get_10x_barc
                         get_optfd_str
                         add_str_to_optfd
+                        optfd_has_regex
                         update_rgOB_maxRlen
                         is_fw_map
                         is_rv_map
@@ -279,6 +280,14 @@ sub add_str_to_optfd{
     my $reads_OB = shift;
     my %parm = @_;
     $reads_OB->{optfd} .= $parm{str};
+}
+
+#--- test whether optfd_str match given regex ---
+## generally, it is string
+sub optfd_has_regex{
+    my $reads_OB = shift;
+    my %parm = @_;
+    return ($reads_OB->{optfd} =~ /$parm{regex}/);
 }
 
 #--- update the maximum read length of its rg_OB ---

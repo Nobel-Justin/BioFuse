@@ -18,8 +18,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::HicReads_OB';
 #----- version --------
-$VERSION = "0.02";
-$DATE = '2018-10-31';
+$VERSION = "0.03";
+$DATE = '2018-11-04';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -36,6 +36,7 @@ my @functoion_list = qw/
                         get_SuppHaploHref
                         get_SuppHaploStr
                         has_SuppHaplo
+                        is_fromUnPhasedRegRand
                         addHapIDtoOptfd
                         recover_SuppHaploAttr
                      /;
@@ -119,6 +120,18 @@ sub get_SuppHaploStr{
 sub has_SuppHaplo{
     my $reads_OB = shift;
     return scalar( keys %{ $reads_OB->get_SuppHaploHref } );
+}
+
+#--- whether the hapID is set (i.e., h[x]Intra) as flanking region not phased ---
+## it and its paired end do not have phased contacts in flanking region
+## 'RegionNotPhased'
+##  see func 'get_rOBpair_HapLinkCount' in HaploHiC::PhasedHiC::phasedPEtoContact
+## 'XU:Z:'
+##  see func 'assign_sEndUKend_haplotype' in HaploHiC::PhasedHiC::sEndSoloHapConfirm
+##  and func 'assign_dEndUKend_haplotype' in HaploHiC::PhasedHiC::dEndUkHapConfirm
+sub is_fromUnPhasedRegRand{
+    my $reads_OB = shift;
+    return $reads_OB->optfd_has_regex(regex => 'XU:Z:RegionNotPhased');
 }
 
 #--- add OWN 'XH:Z:' haplo-id to optfd ---
