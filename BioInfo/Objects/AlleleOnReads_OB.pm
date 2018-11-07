@@ -17,8 +17,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::AlleleOnReads_OB';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2018-10-17';
+$VERSION = "0.02";
+$DATE = '2018-11-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -32,7 +32,7 @@ my @functoion_list = qw/
                         get_chr
                         get_pos
                         get_refBase
-                        get_readsOB
+                        get_rOBmLen
                         get_type
                         get_qual
                         get_rEdgeDist5
@@ -47,7 +47,7 @@ my @functoion_list = qw/
 # allele_OB -> chr = $chr
 # allele_OB -> pos = $pos
 # allele_OB -> refBase = $refBase, might have
-# allele_OB -> reads_OB = $reads_OB
+# allele_OB -> rOBmLen = $rOB->get_mReadLen
 # allele_OB -> type = $type (ref/snv/ins/del)
 # allele_OB -> allele = $allele
 # allele_OB -> baseQ = $baseQ
@@ -71,7 +71,7 @@ sub new{
     $allele_OB->{chr} = $parm{chr};
     $allele_OB->{pos} = $parm{pos};
     $allele_OB->{refBase} = $parm{refBase} || undef;
-    $allele_OB->{reads_OB} = $parm{reads_OB};
+    $allele_OB->{rOBmLen} = $parm{reads_OB}->get_mReadLen; # donot store rOB to avoid iterative reference
     $allele_OB->{type} = undef;
     $allele_OB->{allele} = undef;
 
@@ -111,10 +111,10 @@ sub get_refBase{
     return $allele_OB->{refBase};
 }
 
-#--- return reads_OB ---
-sub get_readsOB{
+#--- return rOB mapped length ---
+sub get_rOBmLen{
     my $allele_OB = shift;
-    return $allele_OB->{reads_OB};
+    return $allele_OB->{rOBmLen};
 }
 
 #--- return allele type ---
