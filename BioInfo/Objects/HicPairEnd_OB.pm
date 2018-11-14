@@ -5,6 +5,7 @@ use BioFuse::BioInfo::Objects::PairEnd_OB; # inheritance
 use strict;
 use warnings;
 use Data::Dumper;
+use BioFuse::Util::Array qw/ binarySearch /;
 
 require Exporter;
 
@@ -18,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::HicPairEnd_OB';
 #----- version --------
-$VERSION = "0.04";
-$DATE = '2018-11-01';
+$VERSION = "0.05";
+$DATE = '2018-11-13';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -76,14 +77,39 @@ sub get_rEndWholeSuppHaplo{
     return \%rWholeHap;
 }
 
-#--- test is the paired-ends are aligned too close, becoming invalid Hi-C PE ---
+#--- test is the paired-ends are invalid Hi-C PE ---
+## 1) aligned to same fragement
+## 2) aligned too close, if not set to skip
 sub isInValidPair{
     my $pe_OB = shift;
     my %parm = @_;
-    my $minSplitReadGap = $parm{minSplitReadGap};
+    my $chr2enzymePosHf = $parm{chr2enzymePosHf};
+    my $maxCloseAlignDist = $parm{maxCloseAlignDist} || 1E3;
+    my $skipCloseAlign  = $parm{skipCloseAlign} || 0;
 
     my $rOB_sortAref = $pe_OB->get_sorted_reads_OB(rEndAref => [1,2], onlyMap => 1);
-    return $rOB_sortAref->[0]->is_closeAlign( test_rOB => $rOB_sortAref->[-1], distance => $minSplitReadGap );
+    my $rOB_a = $rOB_sortAref->[0];
+    my $rOB_b = $rOB_sortAref->[-1];
+    if($rOB_a->get_mseg ne $rOB_b->get_mseg){
+        return 0;
+    }
+    else{
+        # check close alignment
+        if(    ! $skipCloseAlign
+            && $rOB_a->is_closeAlign(test_rOB => $rOB_b, distance => $maxCloseAlignDist)
+        ){
+            return 1;
+        }
+        # check fragment index
+        elsif( binarySearch(query => $rOB_a->get_mpos, array => $chr2enzymePosHf->{$rOB_a->get_mseg})
+            == binarySearch(query => $rOB_b->get_mpos, array => $chr2enzymePosHf->{$rOB_b->get_mseg})
+        ){
+            return 1;
+        }
+        else{
+            return 0;
+        }
+    }
 }
 
 #--- judgement on dEnd-hx PE-reads ---
@@ -93,7 +119,7 @@ sub isInValidPair{
 sub dEndSameHapJudge{
     my $pe_OB = shift;
     my %parm = @_;
-    my $minSplitReadGap = $parm{minSplitReadGap};
+    my $maxCloseAlignDist = $parm{maxCloseAlignDist};
 
     my $R1_rOB_Aref = $pe_OB->get_reads_OB( reads_end => 1 );
     my $R2_rOB_Aref = $pe_OB->get_reads_OB( reads_end => 2 );
@@ -108,7 +134,7 @@ sub dEndSameHapJudge{
     for my $r1_OB ( grep $_->has_SuppHaplo, @$R1_rOB_Aref ){ # skip 'UK'
         for my $r2_OB ( grep $_->has_SuppHaplo, @$R2_rOB_Aref ){ # skip 'UK'
             # close !
-            if( $r1_OB->is_closeAlign( test_rOB => $r2_OB, distance => $minSplitReadGap ) ){
+            if( $r1_OB->is_closeAlign(test_rOB => $r2_OB, distance => $maxCloseAlignDist) ){
                 return 1;
             }
         }
@@ -127,11 +153,11 @@ sub sEndSoloHapJudge{
     my $pe_OB = shift;
     my %parm = @_;
     my $shEnd = $parm{shEnd}; # solo-haplo
-    my $minSplitReadGap = $parm{minSplitReadGap};
+    my $maxCloseAlignDist = $parm{maxCloseAlignDist};
 
     my @shEnd_HasHap_rOB = grep $_->has_SuppHaplo, @{$pe_OB->get_reads_OB(reads_end => $shEnd)};
     if(      @shEnd_HasHap_rOB >= 2
-        && ! $shEnd_HasHap_rOB[0]->is_closeAlign(test_rOB => $shEnd_HasHap_rOB[-1], distance => $minSplitReadGap)
+        && ! $shEnd_HasHap_rOB[0]->is_closeAlign(test_rOB => $shEnd_HasHap_rOB[-1], distance => $maxCloseAlignDist)
     ){
         return 0;
     }
@@ -150,7 +176,7 @@ sub sEndInterHapJudge{
     my %parm = @_;
     my $mhEnd = $parm{mhEnd}; # multi-haplo
     my $uhEnd = $parm{uhEnd}; # unkonwn-haplo
-    my $minSplitReadGap = $parm{minSplitReadGap};
+    my $maxCloseAlignDist = $parm{maxCloseAlignDist};
 
     my $mh_rOB_Aref = $pe_OB->get_reads_OB(reads_end => $mhEnd);
     my $uh_rOB_Aref = $pe_OB->get_reads_OB(reads_end => $uhEnd); # much likely to have only one alignment
@@ -160,9 +186,9 @@ sub sEndInterHapJudge{
         && $mh_rOB_Aref->[1]->has_SuppHaplo
     ){
         # pairwise alignments' distance
-        my %closeAlign  = ( u1m1 => $uh_rOB_Aref->[0]->is_closeAlign(test_rOB => $mh_rOB_Aref->[0], distance => $minSplitReadGap),
-                            m1m2 => $mh_rOB_Aref->[0]->is_closeAlign(test_rOB => $mh_rOB_Aref->[1], distance => $minSplitReadGap),
-                            u1m2 => $uh_rOB_Aref->[0]->is_closeAlign(test_rOB => $mh_rOB_Aref->[1], distance => $minSplitReadGap)  );
+        my %closeAlign  = ( u1m1 => $uh_rOB_Aref->[0]->is_closeAlign(test_rOB => $mh_rOB_Aref->[0], distance => $maxCloseAlignDist),
+                            m1m2 => $mh_rOB_Aref->[0]->is_closeAlign(test_rOB => $mh_rOB_Aref->[1], distance => $maxCloseAlignDist),
+                            u1m2 => $uh_rOB_Aref->[0]->is_closeAlign(test_rOB => $mh_rOB_Aref->[1], distance => $maxCloseAlignDist)  );
         if(    ! $closeAlign{m1m2} # mh: not close
             && ( $closeAlign{u1m1} || $closeAlign{u1m2} ) # mh-uh: either close
         ){
@@ -185,7 +211,7 @@ sub sEndInterHapJudge{
 sub dEndInterHapJudge{
     my $pe_OB = shift;
     my %parm = @_;
-    my $minSplitReadGap = $parm{minSplitReadGap};
+    my $maxCloseAlignDist = $parm{maxCloseAlignDist};
 
     # prepare hapID -> reads_OB
     my %hapID2rOB;
@@ -207,7 +233,7 @@ sub dEndInterHapJudge{
         for my $r_i ( 0 .. $rOB_iC-1 ){
             for my $r_j ( $r_i+1 .. $rOB_iC-1 ){
                 # not close !
-                unless( $rOB_iA->[$r_i]->is_closeAlign(test_rOB => $rOB_iA->[$r_j], distance => $minSplitReadGap) ){
+                unless( $rOB_iA->[$r_i]->is_closeAlign(test_rOB => $rOB_iA->[$r_j], distance => $maxCloseAlignDist) ){
                     return 1;
                 }
             }
@@ -220,7 +246,7 @@ sub dEndInterHapJudge{
             for my $r_i ( 0 .. $rOB_iC-1 ){
                 for my $r_j ( 0 .. $rOB_jC-1 ){
                     # close !
-                    if( $rOB_iA->[$r_i]->is_closeAlign(test_rOB => $rOB_jA->[$r_j], distance => $minSplitReadGap) ){
+                    if( $rOB_iA->[$r_i]->is_closeAlign(test_rOB => $rOB_jA->[$r_j], distance => $maxCloseAlignDist) ){
                         return 1;
                     }
                 }

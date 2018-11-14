@@ -17,8 +17,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::AlleleOnReads_OB';
 #----- version --------
-$VERSION = "0.02";
-$DATE = '2018-11-07';
+$VERSION = "0.03";
+$DATE = '2018-11-14';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -41,13 +41,14 @@ my @functoion_list = qw/
                         get_nAltDist3
                         get_alleleSeq
                         get_deloffset
+                        get_score
                      /;
 
 #--- structure of object
 # allele_OB -> chr = $chr
 # allele_OB -> pos = $pos
 # allele_OB -> refBase = $refBase, might have
-# allele_OB -> rOBmLen = $rOB->get_mReadLen
+# allele_OB -> rOBmLen = $rOBmLen
 # allele_OB -> type = $type (ref/snv/ins/del)
 # allele_OB -> allele = $allele
 # allele_OB -> baseQ = $baseQ
@@ -71,7 +72,7 @@ sub new{
     $allele_OB->{chr} = $parm{chr};
     $allele_OB->{pos} = $parm{pos};
     $allele_OB->{refBase} = $parm{refBase} || undef;
-    $allele_OB->{rOBmLen} = $parm{reads_OB}->get_mReadLen; # donot store rOB to avoid iterative reference
+    $allele_OB->{rOBmLen} = $parm{rOBmLen};
     $allele_OB->{type} = undef;
     $allele_OB->{allele} = undef;
 
@@ -123,16 +124,34 @@ sub get_type{
     return $allele_OB->{type};
 }
 
+#--- return score of this allele ---
+## score = NORM_dist_score + NORM_qual_score
+## NORM_dist_score = sqrt( rEdgeDist_score * aNearDist_score ) / r_mReadLen
+## rEdgeDist_score = sqrt( rEdgeDist5 * rEdgeDist3 );
+## aNearDist_score = sqrt( nAltDist5 * nAltDist3 );
+## NORM_qual_score = get_qual / 40
+## PS. base-quality range approximates to 40
+sub get_score{
+    my $allele_OB = shift;
+    my %parm = @_;
+    my $Q_offset = $parm{Q_offset} || 33; # Sanger and Illumina 1.8+.
+
+    return sqrt(   sqrt( $allele_OB->get_rEdgeDist5 * $allele_OB->get_rEdgeDist3 )
+                 * sqrt( $allele_OB->get_nAltDist5  * $allele_OB->get_nAltDist3  )
+               ) / $allele_OB->get_rOBmLen
+           + $allele_OB->get_qual(Q_offset => $Q_offset) / 40;
+}
+
 #--- return allele quality ---
 sub get_qual{
     my $allele_OB = shift;
     my %parm = @_;
-    my $Q_offset = $parm{Q_offset};
+    my $Q_offset = $parm{Q_offset} || 33; # Sanger and Illumina 1.8+.
 
     if(    $allele_OB->{type} eq 'ref'
         || $allele_OB->{type} eq 'snv'
     ){
-        return baseQ_char2score( Q_char => $allele_OB->{baseQ}, Q_offset => $Q_offset );
+        return baseQ_char2score(Q_char => $allele_OB->{baseQ}, Q_offset => $Q_offset);
     }
     elsif(   $allele_OB->{type} eq 'ins'
           || $allele_OB->{type} eq 'del'

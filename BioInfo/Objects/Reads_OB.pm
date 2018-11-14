@@ -398,12 +398,39 @@ sub is_closeAlign{
 
 #--- return fore-clip length of given type ---
 ## default 'S'
+## memory debug: 1) avoid variable in regex is OK
+## 2018-11-13    2) avoid variable in '[]' in regex is BAD
 sub get_foreClipLen{
     my $reads_OB = shift;
     my %parm = @_;
     my $clipType = $parm{clipType} || 'S';
-    return ($reads_OB->{cigar} =~ /^(\d+)[$clipType]/i) ? $1 : 0;
+    # my $clipRegx = "[$clipType]";
+    # if($reads_OB->{cigar} =~ /^(\d+)$clipRegx/i){
+    #     return $1;
+    # }
+    # else{
+    #     return 0;
+    # }
+    if(   $clipType =~ /^s$/i
+       && $reads_OB->{cigar} =~ /^(\d+)S/i
+    ){
+        return $1;
+    }
+    if(   $clipType =~ /^h$/i
+       && $reads_OB->{cigar} =~ /^(\d+)H/i
+    ){
+        return $1;
+    }
+    if(   $clipType =~ /s/i
+       && $clipType =~ /h/i
+       && $reads_OB->{cigar} =~ /^(\d+)[SH]/i
+    ){
+        return $1;
+    }
+    # lack the required clip type
+    return 0;
 }
+
 
 #--- return hind-clip length of given type ---
 ## default 'S'
@@ -411,7 +438,31 @@ sub get_hindClipLen{
     my $reads_OB = shift;
     my %parm = @_;
     my $clipType = $parm{clipType} || 'S';
-    return ($reads_OB->{cigar} =~ /(\d+)[$clipType]$/i) ? $1 : 0;
+    # my $clipRegx = "[$clipType]";
+    # if($reads_OB->{cigar} =~ /(\d+)$clipRegx$/i){
+    #     return $1;
+    # }
+    # else{
+    #     return 0;
+    # }
+    if(   $clipType =~ /^s$/i
+       && $reads_OB->{cigar} =~ /(\d+)S$/i
+    ){
+        return $1;
+    }
+    if(   $clipType =~ /^h$/i
+       && $reads_OB->{cigar} =~ /(\d+)H$/i
+    ){
+        return $1;
+    }
+    if(   $clipType =~ /s/i 
+       && $clipType =~ /h/i
+       && $reads_OB->{cigar} =~ /(\d+)[SH]$/i
+    ){
+        return $1;
+    }
+    # lack the required clip type
+    return 0;
 }
 
 #--- get bi-clip length of given type ---
@@ -657,7 +708,7 @@ sub get_pos_allele{
     my $no_warn = $parm{no_warn};
 
     # initialize allele_OB
-    my $allele_OB = BioFuse::BioInfo::Objects::AlleleOnReads_OB->new( chr => $chr, pos => $pos, reads_OB => $reads_OB );
+    my $allele_OB = BioFuse::BioInfo::Objects::AlleleOnReads_OB->new( chr => $chr, pos => $pos, rOBmLen => $reads_OB->get_mReadLen );
        $allele_OB->loadInfo( refBase => $refBase ) if( defined $refBase );
 
     # unmap check

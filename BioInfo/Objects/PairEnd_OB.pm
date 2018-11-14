@@ -159,6 +159,7 @@ sub onlyKeep_need_RefSeg{
 }
 
 #--- discard abnormal supplementary alignment ---
+## memory debug: get_xxxxClipLen, variable in regex! 2018-11-13
 sub discardAbnormalSP{
     my $pe_OB = shift;
 
@@ -179,7 +180,9 @@ sub discardAbnormalSP{
         #------------------------#
         # filter sum of mReadLen #
         #------------------------#
-        my $mReadLenSum = $SP_rOB->get_mReadLen + $FA_rOB->get_mReadLen;
+        my $SP_mLen = $SP_rOB->get_mReadLen;
+        my $FA_mLen = $FA_rOB->get_mReadLen;
+        my $mReadLenSum = $SP_mLen + $FA_mLen;
         my $origReadlen = $FA_rOB->get_rlen;
         if(    $mReadLenSum < $origReadlen * 0.8
             || $mReadLenSum > $origReadlen * 1.2
@@ -191,10 +194,10 @@ sub discardAbnormalSP{
         #-------------------------------#
         # filter overlap of mapped part #
         #-------------------------------#
-        my $SP_fClipL = $SP_rOB->get_foreClipLen( clipType => 'SH' );
-        my $SP_hClipL = $SP_rOB->get_hindClipLen( clipType => 'SH' );
-        my $FA_fClipL = $FA_rOB->get_foreClipLen( clipType => 'SH' );
-        my $FA_hClipL = $FA_rOB->get_hindClipLen( clipType => 'SH' );
+        my $SP_fClipL = $SP_rOB->get_foreClipLen(clipType => 'SH');
+        my $SP_hClipL = $SP_rOB->get_hindClipLen(clipType => 'SH');
+        my $FA_fClipL = $FA_rOB->get_foreClipLen(clipType => 'SH');
+        my $FA_hClipL = $FA_rOB->get_hindClipLen(clipType => 'SH');
         my @SP_mRange = ( $SP_fClipL + 1, $origReadlen - $SP_hClipL );
         my @FA_mRange = ( $FA_fClipL + 1, $origReadlen - $FA_hClipL );
         # alignment orientation diff?
@@ -205,7 +208,7 @@ sub discardAbnormalSP{
         }
         # test overlp
         my $overlap_len = Get_Two_Seg_Olen( @FA_mRange[0,1] , @SP_mRange[0,1] );
-        my $minMpartLen = min( $SP_rOB->get_mReadLen, $FA_rOB->get_mReadLen );
+        my $minMpartLen = min($SP_mLen, $FA_mLen);
         if( $overlap_len > $minMpartLen * 0.33 ){
             splice(@$rOB_Aref, $SP_i, 1);
             $removeSPbool = 1;
