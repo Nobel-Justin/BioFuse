@@ -3,6 +3,8 @@ package BioFuse::Util::Array;
 use strict;
 use warnings;
 use List::Util qw/ min max /;
+use BioFuse::Util::Log qw/ warn_and_exit /;
+use Data::Dumper;
 require Exporter;
 
 #----- systemic variables -----
@@ -10,6 +12,7 @@ our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @ISA = qw(Exporter);
 @EXPORT = qw/
+              mergeOverlap
               Get_Two_Seg_Olen
               binarySearch
             /;
@@ -19,8 +22,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Array';
 #----- version --------
-$VERSION = "0.31";
-$DATE = '2018-10-30';
+$VERSION = "0.32";
+$DATE = '2018-11-15';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -29,6 +32,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
 my @functoion_list = qw/
+                        mergeOverlap
                         Get_Two_Seg_Olen
                         binarySearch
                      /;
@@ -67,6 +71,36 @@ sub binarySearch {
         }
     }
     return $L_i;
+}
+
+#--- merge overlapped region ---
+# default max_dist is 0, which means will not merge adjacent region, such as [10,19],[20,30]
+# when set mergeAdjacent, max_dist is set as at least one, then adjacent regions will be merged
+sub mergeOverlap{
+    shift if(@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $regionAref = $parm{regionAref}; # [ [st1,ed1],[st2,ed2],[st3,ed3],... ]
+    my $max_dist = $parm{max_dist} || 0;
+    my $mergeAdjacent = $parm{mergeAdjacent} || 0;
+
+    # set max_dist as at least one
+    $max_dist = max(1, $max_dist) if $mergeAdjacent;
+    # sort by end-pos
+    @$regionAref = sort {$a->[1] <=> $b->[1]} @$regionAref;
+    # merge overlap
+    for (my $i = scalar(@$regionAref)-1; $i > 0; $i--){
+        # check credible interval
+        if($regionAref->[$i]->[0] > $regionAref->[$i]->[1]){
+            warn_and_exit "<ERROR>\tindex $i has reversed interval: [@{$regionAref->[$i]}]\n";
+        }
+        # check overlap
+        if( $regionAref->[$i]->[0] <= $regionAref->[$i-1]->[1] + $max_dist ){
+            my $new_st = min($regionAref->[$i]->[0],$regionAref->[$i-1]->[0]);
+            splice(@$regionAref, $i-1, 2, [$new_st, $regionAref->[$i]->[1]]);
+        }
+    }
+    # sort by st-pos
+    @$regionAref = sort {$a->[0] <=> $b->[0]} @$regionAref;
 }
 
 1; ## tell the perl script the successful access of this module.

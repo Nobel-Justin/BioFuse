@@ -1,0 +1,26 @@
+{
+   "get_gpsl" : {
+      "mode_NO" : 1,
+      "descp" : "get the PSL file of genes based on GTF file",
+      "_group" : "-",
+      "_comments" : "get the PSL file of genes based on GTF file",
+      "module" : "BioFuse::BioInfo::GeneAnno::GTFtoGenePSL",
+      "main_func" : "GTFtoGenePSL"
+   },
+   "get_tpsl" : {
+      "mode_NO" : 2,
+      "descp" : "get the PSL file of transcripts based on GTF file",
+      "_group" : "-",
+      "_comments" : "get the PSL file of transcripts based on GTF file",
+      "module" : "BioFuse::BioInfo::GeneAnno::GTFtoTransPSL",
+      "main_func" : "GTFtoTransPSL"
+   },
+   "psl_seq" : {
+      "mode_NO" : 3,
+      "descp" : "get the FASTA file of transcripts (tpsl) or genes (gpsl)",
+      "_group" : "-",
+      "_comments" : "get the FASTA file of transcripts (tpsl) or genes (gpsl)",
+      "module" : "BioFuse::BioInfo::GeneAnno::PSLtoFASTA",
+      "main_func" : "PSLtoFASTA"
+   }
+}
