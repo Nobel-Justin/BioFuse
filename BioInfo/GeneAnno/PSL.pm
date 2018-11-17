@@ -115,9 +115,9 @@ sub output_exon_seq{
         my $exon_seq = join('', map {substr($$segSeq_Sref, $_->[0]-1, $_->[1]-$_->[0]+1)} @$exon_reg);
         # extend?
         if($extendLength){
-            $exon_seq = substr($$segSeq_Sref, $exon_reg->[ 0]->[0]-1, $exon_reg->[ 0]->[1]-$exon_reg->[ 0]->[0]+1)
+            $exon_seq = substr($$segSeq_Sref, $exon_reg->[ 0]->[0]-$extendLength-1, $extendLength)
                        .$exon_seq
-                       .substr($$segSeq_Sref, $exon_reg->[-1]->[0]-1, $exon_reg->[-1]->[1]-$exon_reg->[-1]->[0]+1);
+                       .substr($$segSeq_Sref, $exon_reg->[-1]->[1], $extendLength);
         }
         # capital letter
         $exon_seq = uc $exon_seq;
