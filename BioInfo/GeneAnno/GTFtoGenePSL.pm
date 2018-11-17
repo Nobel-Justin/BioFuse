@@ -6,8 +6,7 @@ use Getopt::Long;
 use BioFuse::Util::Log qw/ warn_and_exit /;
 use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::LoadOn;
-use BioFuse::BioInfo::GeneAnno::GTF qw/ read_GTF add_refseg_cytoband create_gene_PSL /;
-use BioFuse::BioInfo::CytoBand qw/ load_cytoband /;
+use BioFuse::BioInfo::GeneAnno::GTF qw/ read_GTF create_gene_PSL /;
 
 require Exporter;
 
@@ -46,22 +45,21 @@ sub return_HELP_INFO{
      Usage:   perl $V_Href->{MainName} get_gpsl <[Options]>
 
      Options:
-         -g   [s]  gtf database file. <required>
-         -o   [s]  output gene PSL file. <required>
+         -g   [s]  gtf file. <required>
+         -o   [s]  gene PSL file to output. <required>
          -rft [s]  list of refseg symbols relationship. [optional]
                     NOTE: Generaly, the ref_seg symbols in GTP file (normally, the first column) is different from 
-                    that in reference file (the '-f' parameter). So, you should specify the corresponding relationship
-                    of refseg symbols between GTF file and reference file.
-                    Format:  refseg_symbol_in_gtf  \\t  refseg_symbol_in_reference
-                    e.g.,  10 \\t chr10
+                          that in reference file (the '-f' parameter). So, you should specify the corresponding relationship
+                          of refseg symbols between GTF file and reference file.
+                          Format:  refseg_symbol_in_gtf  \\t  refseg_symbol_in_reference
+                          e.g.,  10 \\t chr10
          -sor [s]  select the source of gtf, can be used in multiple times. Default to accept all sources.
                     NOTE: From v75, ensembl provides the source_info stored by 'gene_source' tag.
                           It will accept the transcript whose gene_source tag contains your input.
                           For instance, once you input 'havana', it will accept both 'havana' and 'ensembl_havana'.
                                         if you input 'ensembl', it means both 'ensembl' and 'ensembl_havana' will be accepted.
-         -cbd [s]  the cytoBand database file. [optional]
+         -cbd [s]  the cytoBand file. [optional]
                     e.g., Download human file from UCSC:
-                       For hg18:  http://hgdownload.cse.ucsc.edu/goldenPath/hg18/database/cytoBand.txt.gz
                        For hg19:  http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/cytoBand.txt.gz
                        For hg38:  http://hgdownload.cse.ucsc.edu/goldenPath/hg38/database/cytoBand.txt.gz
          -h        show this help
@@ -87,19 +85,20 @@ sub Load_moduleVar_to_pubVarPool{
         }
         (
             # input/output
-            [ out => undef ],
-            [ gtf => undef ],
+            ## use 'psl' in BioFuse::LoadOn
+            ## use 'gtf' in BioFuse::LoadOn
+            ## use 'cytoBand_file' in BioFuse::LoadOn
             [ refseg_transform_list => undef ],
-            [ cytoBand_file => undef ],
             # option
             [ gtf_source => [] ],
 
             # intermediate variants
-            [ GTF_Info => {} ],
+            [ GTF_gene => {} ],
             [ cytoBand => {} ],
+            [ _refseg_transform => {} ],
 
             # list to abs-path
-            [ ToAbsPath_Aref => [ ['out'],
+            [ ToAbsPath_Aref => [ ['psl'],
                                   ['gtf']  ] ]
         );
 }
@@ -109,7 +108,7 @@ sub Get_Cmd_Options{
     # get options
     GetOptions(
         # input/output
-        "-o:s"  => \$V_Href->{out},
+        "-o:s"  => \$V_Href->{psl},
         "-g:s"  => \$V_Href->{gtf},
         "-rft:s"=> \$V_Href->{refseg_transform_list},
         "-cbd:s"=> \$V_Href->{cytoBand_file},
@@ -126,33 +125,16 @@ sub Get_Cmd_Options{
 sub para_alert{
     return  (   $V_Href->{HELP}
              || !file_exist(filePath=>$V_Href->{gtf})
-             || !defined $V_Href->{out}
+             || !defined $V_Href->{psl}
             );
 }
 
 #--- get gene PSL file from GTF file---
 sub GTFtoGenePSL{
-
     # read GTF
-    read_GTF( GTF_Info_Href => $V_Href->{GTF_Info},
-              gtf_file => $V_Href->{gtf},
-              refseg_transform_list => $V_Href->{refseg_transform_list},
-              gtf_gene_source_Aref => $V_Href->{gtf_source}
-            );
-    # read cytoBand
-    if( defined $V_Href->{cytoBand_file} ){
-        load_cytoband( cytoBand_Href => $V_Href->{cytoBand},
-                       cytoBand_file => $V_Href->{cytoBand_file}
-                     );
-        add_refseg_cytoband( GTF_Info_Href => $V_Href->{GTF_Info},
-                             cytoBand_Href => $V_Href->{cytoBand}
-                            );
-    }
+    read_GTF;
     # output gene psl
-    create_gene_PSL( GTF_Info_Href => $V_Href->{GTF_Info},
-                     PSL_file => $V_Href->{out}
-                    );
-    
+    create_gene_PSL;
 }
 
 #--- 

@@ -6,7 +6,7 @@ use Getopt::Long;
 use BioFuse::Util::Log qw/ warn_and_exit /;
 use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::LoadOn;
-use BioFuse::BioInfo::GeneAnno::PSL qw/ read_unit_region_from_PSL extract_exon_seq_from_genome_and_output /;
+use BioFuse::BioInfo::GeneAnno::PSL qw/ load_GeneOrTrans_from_PSL extract_GeneOrTrans_seq /;
 
 require Exporter;
 
@@ -23,8 +23,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::PSLtoFASTA';
 #----- version --------
-$VERSION = "0.82";
-$DATE = '2018-11-15';
+$VERSION = "0.83";
+$DATE = '2018-11-17';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -45,11 +45,13 @@ sub return_HELP_INFO{
      Usage:   perl $V_Href->{MainName} get_tpsl <[Options]>
 
      Options:
-         -p  [s]  PSL database file. <required>
+         -p  [s]  PSL file. <required>
          -f  [s]  whole genome ref fasta file. <required>
                   NOTE: please make sure that the ref_seg in the PSL file are all included in the 
                         whole genome ref fasta file.
          -o  [s]  output fa file. <required>
+         -t  [s]  type of PSL file, 'gene' or 'trans'. <required>
+         -ex [i]  extend length of gene/trans body. [0]
          -ab [s]  the refseg you want to avoid. [NULL]
                   NOTE: could input in mutilple times
          -h       show this help
@@ -75,17 +77,19 @@ sub Load_moduleVar_to_pubVarPool{
         }
         (
             # input/output
-            [ psl => undef ],
-            [ out => undef ],
-            [ whole_genome => undef ],
+            ## use 'psl' in BioFuse::LoadOn
+            ## use 'whole_genome' in BioFuse::LoadOn
+            [ seqFA => undef ],
             # option
+            [ psl_type => undef ],
             [ abandon_refseg => [] ],
+            [ extendLength => 0 ],
 
             # intermediate variants
-            [ Chr_Exon_Info => {} ],
+            [ GeneOrTransOB => {} ],
 
             # list to abs-path
-            [ ToAbsPath_Aref => [ ['out'],
+            [ ToAbsPath_Aref => [ ['seqFA'],
                                   ['psl'],
                                   ['whole_genome']  ] ]
         );
@@ -97,10 +101,12 @@ sub Get_Cmd_Options{
     GetOptions(
         # input/output
         "-p:s"  => \$V_Href->{psl},
-        "-o:s"  => \$V_Href->{out},
+        "-o:s"  => \$V_Href->{seqFA},
         "-f:s"  => \$V_Href->{whole_genome},
         # options
-        "-ab:s" => \$V_Href->{abandon_refseg},
+        "-t:s"  => \$V_Href->{psl_type},
+        "-ex:i" => \$V_Href->{extendLength},
+        "-ab:s" => \@{$V_Href->{abandon_refseg}},
         # help
         "-h|help"   => \$V_Href->{HELP},
         # for debug
@@ -113,7 +119,9 @@ sub para_alert{
     return  (   $V_Href->{HELP}
              || !file_exist(filePath=>$V_Href->{psl})
              || !file_exist(filePath=>$V_Href->{whole_genome})
-             || !defined $V_Href->{out}
+             || $V_Href->{extendLength} < 0
+             || !defined $V_Href->{seqFA}
+             || !defined $V_Href->{psl_type}
             );
 }
 
@@ -121,16 +129,17 @@ sub para_alert{
 sub PSLtoFASTA{
 
     # load psl file
-    my %Chr_Exon_Info;
-    read_unit_region_from_PSL( Refseg_Exon_Info_Href => $V_Href->{Chr_Exon_Info},
+    load_GeneOrTrans_from_PSL( ObjectPoolHref => $V_Href->{GeneOrTransOB},
                                psl_file => $V_Href->{psl},
-                               avoid_refseg_Aref => $V_Href->{abandon_refseg}
-                            );
+                               psl_type => $V_Href->{psl_type},
+                               skipRefSegHref => { map {($_,1)} @{$V_Href->{abandon_refseg}} }
+                             );
     # output fasta
-    extract_exon_seq_from_genome_and_output( Refseg_Exon_Info_Href => $V_Href->{Chr_Exon_Info},
-                                             out => $V_Href->{out},
-                                             whole_genome => $V_Href->{whole_genome}
-                                            );
+    extract_GeneOrTrans_seq( ObjectPoolHref => $V_Href->{GeneOrTransOB},
+                             outputFasta => $V_Href->{seqFA},
+                             whole_genome => $V_Href->{whole_genome},
+                             extendLength => $V_Href->{extendLength}
+                           );
 }
 
 #--- 

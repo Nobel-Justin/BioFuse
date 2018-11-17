@@ -2,10 +2,12 @@ package BioFuse::BioInfo::GeneAnno::PSL;
 
 use strict;
 use warnings;
+use Data::Dumper;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
-use BioFuse::Util::Array qw/ mergeOverlap /;
-use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
+use BioFuse::Util::Log qw/ stout_and_sterr /;
 use BioFuse::BioInfo::FASTA qw/ read_fasta_file /;
+use BioFuse::BioInfo::Objects::Gene_OB;
+use BioFuse::BioInfo::Objects::Trans_OB;
 
 require Exporter;
 
@@ -14,9 +16,8 @@ our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @ISA = qw(Exporter);
 @EXPORT = qw/
-              read_unit_region_from_PSL
-              modify_pos_info
-              extract_exon_seq_from_genome_and_output
+              load_GeneOrTrans_from_PSL
+              extract_GeneOrTrans_seq
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
@@ -24,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::PSL';
 #----- version --------
-$VERSION = "0.02";
-$DATE = '2018-11-15';
+$VERSION = "0.03";
+$DATE = '2018-11-17';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -34,86 +35,66 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
 my @functoion_list = qw/
-                        read_unit_region_from_PSL
-                        modify_pos_info
-                        extract_exon_seq_from_genome_and_output
+                        load_GeneOrTrans_from_PSL
+                        extract_GeneOrTrans_seq
                         output_exon_seq
                      /;
 
-#--- read GTF file ---
-sub read_unit_region_from_PSL{
+#--- read PSL file ---
+sub load_GeneOrTrans_from_PSL{
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
-    # my ($Refseg_Exon_Info_Href,$psl_file,$avoid_refseg_Aref) = @_;
     my %parm = @_;
-    my $Refseg_Exon_Info_Href = $parm{Refseg_Exon_Info_Href};
+    my $ObjectPoolHref = $parm{ObjectPoolHref};
     my $psl_file = $parm{psl_file};
-    my $avoid_refseg_Aref = $parm{avoid_refseg_Aref};
+    my $psl_type = $parm{psl_type} || 'gene'; # or trans
+    my $useExts = $parm{useExts} || 0; # load info specific for FuseSV virus meta-info
 
-    # refseg user want to avoid
-    my %avoid_refseg;
-    @avoid_refseg{@$avoid_refseg_Aref} = () if($avoid_refseg_Aref);
-
+    # gene or trans object
+    my $objModule = $psl_type eq 'gene' ? 'BioFuse::BioInfo::Objects::Gene_OB' : 'BioFuse::BioInfo::Objects::Trans_OB';
+    stout_and_sterr "[INFO]\tapply object module $objModule for $psl_type PSL file.\n";
+    # read PSL
     open (PSL, Try_GZ_Read($psl_file)) || die"fail $psl_file: $!\n";
     while(<PSL>){
-        my ($strand,$unit,$refseg,$length,$positive_st) = (split)[8,9,13,18,20];
-        next if(exists($avoid_refseg{$refseg})); # refseg ignored by user
-        #--- change the pos to non-overlapped regions ---
-        my @length = split /,/,$length;
-        my @positive_st = split /,/,$positive_st;
-        &modify_pos_info(exLen_Aref => \@length, stPos_Aref => \@positive_st);
-        #-------- record the trans pos info --------
-        @{$$Refseg_Exon_Info_Href{$refseg}{$unit}} = ($strand,\@length,\@positive_st);
+        next if /^#/;
+        # create object
+        my $object = $objModule->new(pslLine => $_, useExts => $useExts);
+        # filter
+        next if defined $parm{skipRefSegHref} && exists $parm{skipRefSegHref}->{$object->get_ref_seg};
+        next if defined $parm{requireObjHref} && exists $parm{requireObjHref}->{$object->get_ori_name};
+        # record
+        push @{$ObjectPoolHref->{$object->get_ref_seg}}, $object;
     }
     close PSL;
-
-    stout_and_sterr "[INFO]\tRead exon region from PSL ok.\n";
-}
-
-#--- modify the psl pos info ---
-sub modify_pos_info{
-    # options
-    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
-    # my ($length_array,$positive_st_array) = @_;
-    my %parm = @_;
-    my $exLen_Aref = $parm{exLen_Aref};
-    my $stPos_Aref = $parm{stPos_Aref};
-
-    my @exonItv = map { [ $stPos_Aref->[$_] + 1,
-                          $stPos_Aref->[$_] + $exLen_Aref->[$_] ]
-                      } (0 .. scalar(@$exLen_Aref)-1);
-    # merge overlap
-    mergeOverlap(regionAref => \@exonItv, mergeAdjacent => 1);
-    # update
-    @$stPos_Aref = map { $_->[0] - 1 } @exonItv;
-    @$exLen_Aref = map { $_->[1] - $_->[0] + 1 } @exonItv;
+    # inform
+    stout_and_sterr "[INFO]\tread exon region from $psl_type PSL ok.\n"
+                         ."\t$psl_file\n";
 }
 
 #--- output base ---
-sub extract_exon_seq_from_genome_and_output{
+sub extract_GeneOrTrans_seq{
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
-    # my ($Refseg_Exon_Info_Href,$out,$whole_genome) = @_;
     my %parm = @_;
-    my $Refseg_Exon_Info_Href = $parm{Refseg_Exon_Info_Href};
-    my $out = $parm{out};
+    my $ObjectPoolHref = $parm{ObjectPoolHref};
+    my $outputFasta = $parm{outputFasta};
     my $whole_genome = $parm{whole_genome};
+    my $extendLength = $parm{extendLength} || 0;
 
-    open (my $outfh, Try_GZ_Write($out)) || die "fail $out: $!\n";
-    read_fasta_file( FaFile => $whole_genome, needSeg_Href => $Refseg_Exon_Info_Href,
+    # read fasta file
+    open (my $outfh, Try_GZ_Write($outputFasta)) || die "fail write output Fasta: $!\n";
+    read_fasta_file( FaFile => $whole_genome, needSeg_Href => $ObjectPoolHref,
                      subrtRef => \&output_exon_seq,
-                     subrtParmAref => [fh => $outfh, Refseg_Exon_Info_Href => $Refseg_Exon_Info_Href] );
-
+                     subrtParmAref => [fh => $outfh, ObjectPoolHref => $ObjectPoolHref, extendLength => $extendLength] );
     close $outfh;
 
     # check the remained unit
-    for my $refseg (keys %$Refseg_Exon_Info_Href){
-        for my $unit (sort keys %{$$Refseg_Exon_Info_Href{$refseg}}){
-            stout_and_sterr "<WARN>\tUnit $unit from Refseg $refseg remains undetected.\n";
-        }
+    for my $ref_seg (sort keys %$ObjectPoolHref){
+        stout_and_sterr "<WARN>\tseqeuence of ".$_->get_use_name." from Refseg $ref_seg remains undetected.\n" for grep !$_->get_find_seq_mark, @{$ObjectPoolHref->{$ref_seg}};
     }
-
-    stout_and_sterr "[INFO]\tCreate Exon_Seq file $out ok!\n";
+    # inform
+    stout_and_sterr "[INFO]\tcreate Exon_Seq file ok!\n"
+                         ."\t$outputFasta\n";
 }
 
 #--- extract exon region from given chr-seq ---
@@ -124,28 +105,29 @@ sub output_exon_seq{
     my $segName = $parm{segName};
     my $segSeq_Sref = $parm{segSeq_Sref};
     my $fh = $parm{fh};
-    my $Refseg_Exon_Info_Href = $parm{Refseg_Exon_Info_Href};
+    my $ObjectPoolHref = $parm{ObjectPoolHref};
+    my $extendLength = $parm{extendLength} || 0;
 
     my $line_base = 50;
-    foreach my $unit (sort keys %{$$Refseg_Exon_Info_Href{$segName}}) {
-        my ($strand,$exon_len_Aref,$exon_plus_st_Aref) = @{$$Refseg_Exon_Info_Href{$segName}{$unit}};
-        my $unit_seq = '';
-        for my $i (1 .. scalar(@$exon_len_Aref)){
-            my $exon_len = $$exon_len_Aref[$i-1];
-            my $exon_plus_st = $$exon_plus_st_Aref[$i-1] + 1;
-            my $exon_seq = uc(substr($$segSeq_Sref,$exon_plus_st-1,$exon_len));
-            if($strand eq '-'){ # reversed complementary
-                ($exon_seq = reverse $exon_seq) =~ tr/ACGT/TGCA/;
-                $unit_seq = $exon_seq.$unit_seq;
-            }
-            else{
-                $unit_seq .= $exon_seq;
-            }
+    for my $object (sort {$a->get_use_name cmp $b->get_use_name} @{$ObjectPoolHref->{$segName}}){
+        # get exon sequence along plus strand orientation
+        my $exon_reg = $object->get_exon_region;
+        my $exon_seq = join('', map {substr($$segSeq_Sref, $_->[0]-1, $_->[1]-$_->[0]+1)} @$exon_reg);
+        # extend?
+        if($extendLength){
+            $exon_seq = substr($$segSeq_Sref, $exon_reg->[ 0]->[0]-1, $exon_reg->[ 0]->[1]-$exon_reg->[ 0]->[0]+1)
+                       .$exon_seq
+                       .substr($$segSeq_Sref, $exon_reg->[-1]->[0]-1, $exon_reg->[-1]->[1]-$exon_reg->[-1]->[0]+1);
         }
-        print {$fh} ">$unit\n";
-        print {$fh} substr($unit_seq,$_*$line_base,$line_base)."\n" for (0 .. int((length($unit_seq)-1)/$line_base));
+        # capital letter
+        $exon_seq = uc $exon_seq;
+        # reversed complementary?
+        ($exon_seq = reverse $exon_seq) =~ tr/ACGT/TGCA/ if $object->get_strand eq '-';
+        # output
+        print {$fh} ">".$object->get_use_name."\n";
+        print {$fh} substr($exon_seq,$_*$line_base,$line_base)."\n" for (0 .. int((length($exon_seq)-1)/$line_base));
         # once ok delete the unit
-        delete $$Refseg_Exon_Info_Href{$segName}{$unit};
+        $object->mark_find_seq;
     }
 }
 

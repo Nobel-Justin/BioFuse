@@ -57,7 +57,13 @@ our $V_Href = {
     # settings #
     #++++++++++#
 
-    # global setting
+    # genome reference
+    whole_genome => undef,
+    cytoBand_file => undef,
+
+    # gene annotation
+    gtf => undef,
+    psl => undef,
     Start_codon => ['ATG'],
 
     #++++++++++#
