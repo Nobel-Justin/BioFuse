@@ -25,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::PSL';
 #----- version --------
-$VERSION = "0.03";
-$DATE = '2018-11-17';
+$VERSION = "0.04";
+$DATE = '2018-11-29';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -49,6 +49,15 @@ sub load_GeneOrTrans_from_PSL{
     my $psl_file = $parm{psl_file};
     my $psl_type = $parm{psl_type} || 'gene'; # or trans
     my $useExts = $parm{useExts} || 0; # load info specific for FuseSV virus meta-info
+    my $recordKey = $parm{recordKey} || 'refseg'; # genename
+    # filter
+    my $skipRefSegHref = $parm{skipRefSegHref}; # refseg
+    my $requireObjHref = $parm{requireObjHref}; # original name
+    my $requireBtyHref = $parm{requireBtyHref}; # biotype
+    # reset
+    $skipRefSegHref = undef if defined $skipRefSegHref && ! scalar keys %$skipRefSegHref;
+    $requireObjHref = undef if defined $requireObjHref && ! scalar keys %$requireObjHref;
+    $requireBtyHref = undef if defined $requireBtyHref && ! scalar keys %$requireBtyHref;
 
     # gene or trans object
     my $objModule = $psl_type eq 'gene' ? 'BioFuse::BioInfo::Objects::Gene_OB' : 'BioFuse::BioInfo::Objects::Trans_OB';
@@ -60,14 +69,22 @@ sub load_GeneOrTrans_from_PSL{
         # create object
         my $object = $objModule->new(pslLine => $_, useExts => $useExts);
         # filter
-        next if defined $parm{skipRefSegHref} && exists $parm{skipRefSegHref}->{$object->get_ref_seg};
-        next if defined $parm{requireObjHref} && exists $parm{requireObjHref}->{$object->get_ori_name};
+        next if defined $skipRefSegHref &&  exists $skipRefSegHref->{$object->get_ref_seg};
+        next if defined $requireObjHref && !exists $requireObjHref->{$object->get_ori_name};
+        next if defined $requireBtyHref && !exists $requireBtyHref->{$object->get_biotype};
         # record
-        push @{$ObjectPoolHref->{$object->get_ref_seg}}, $object;
+        my $key;
+        if($recordKey eq 'refseg'){
+            $key = $object->get_ref_seg;
+        }
+        elsif($recordKey eq 'genename'){
+            $key = $psl_type eq 'gene' ? $object->get_use_name : $object->get_gene_use_name;
+        }
+        push @{$ObjectPoolHref->{$key}}, $object;
     }
     close PSL;
     # inform
-    stout_and_sterr "[INFO]\tread exon region from $psl_type PSL ok.\n"
+    stout_and_sterr "[INFO]\tload information from $psl_type PSL OK.\n"
                          ."\t$psl_file\n";
 }
 
@@ -93,7 +110,7 @@ sub extract_GeneOrTrans_seq{
         stout_and_sterr "<WARN>\tseqeuence of ".$_->get_use_name." from Refseg $ref_seg remains undetected.\n" for grep !$_->get_find_seq_mark, @{$ObjectPoolHref->{$ref_seg}};
     }
     # inform
-    stout_and_sterr "[INFO]\tcreate Exon_Seq file ok!\n"
+    stout_and_sterr "[INFO]\tcreate Exon_Seq file OK!\n"
                          ."\t$outputFasta\n";
 }
 

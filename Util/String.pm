@@ -12,6 +12,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT = qw/
               getStrRepUnit
               getStrUnitRepeatTime
+              getRegexRegion
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
@@ -19,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::String';
 #----- version --------
-$VERSION = "0.31";
-$DATE = '2018-10-18';
+$VERSION = "0.33";
+$DATE = '2018-11-28';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -30,6 +31,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 my @functoion_list = qw/
                         getStrRepUnit
                         getStrUnitRepeatTime
+                        getRegexRegion
                      /;
 
 #--- find given string's given-mode tandem-repeat unit and repeat-time ---
@@ -68,7 +70,7 @@ sub getStrRepUnit{
     }
 }
 
-#-------- calculate StrTest has how many StrUnit exact-match (allow partial) ---------#
+#--- calculate StrTest has how many StrUnit exact-match (allow partial) ---
 ## note that StrTest must wholely digested by StrUnit
 sub getStrUnitRepeatTime{
     shift @_ if(@_ && $_[0] =~ /$MODULE_NAME/);
@@ -144,6 +146,43 @@ sub getStrUnitRepeatTime{
             return 0;
         }
     }
+}
+
+#--- get array ref of region that [dis]match given regex in given string ---
+## note the regex should be processed by 'quotemeta'
+## default to get one-start interval. IF want zero-start(BED), use 'zerobase=>1'.
+sub getRegexRegion{
+    shift @_ if(@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $StrTest = $parm{StrTest};
+    my $regex = $parm{regex} || 'N';
+    my $dismatch = $parm{dismatch} || 0;
+    my $ignore_case = $parm{ignore_case} || 0;
+    my $zerobase = $parm{zerobase} || 0; # bed
+
+    my $RegionAref = [];
+    my $lastIdx = 0;
+    my $offset = $zerobase ? 0 : 1;
+    while(   ( $ignore_case && $StrTest =~ /$regex+/i)
+          || (!$ignore_case && $StrTest =~ /$regex+/ )
+    ){
+        my $match_st = $-[0];
+        my $match_ed = $+[0];
+        if($dismatch){
+            push $RegionAref, [$lastIdx+$offset, $lastIdx+$match_st] if $match_st;
+        }
+        else{
+            push $RegionAref, [$lastIdx+$match_st+$offset, $lastIdx+$match_ed];
+        }
+        # update
+        $lastIdx += $match_ed;
+        $StrTest = substr($StrTest, $match_ed);
+    }
+    # last part?
+    if($dismatch && length($StrTest)){
+        push $RegionAref, [$lastIdx+$offset, $lastIdx+length($StrTest)];
+    }
+    return $RegionAref;
 }
 
 1; ## tell the perl script the successful access of this module.

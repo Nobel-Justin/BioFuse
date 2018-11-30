@@ -16,8 +16,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Gene_OB';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2018-11-17';
+$VERSION = "0.02";
+$DATE = '2018-11-29';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -31,6 +31,7 @@ my @functoion_list = qw/
                         get_strand
                         get_use_name
                         get_ori_name
+                        get_biotype
                         get_exon_region
                         get_find_seq_mark
                         mark_find_seq
@@ -117,6 +118,12 @@ sub get_use_name{
 sub get_ori_name{
     my $gene = shift;
     return $gene->{ori_name};
+}
+
+#--- return trans biotype ---
+sub get_biotype{
+    my $trans = shift;
+    return $trans->{biotype};
 }
 
 #--- return Aref of exon region ---

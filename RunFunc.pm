@@ -125,6 +125,10 @@ sub return_HELP_INFO{
      
      Commands:
 
+     -- File Operation
+        get_nonN       $V_Href->{func}->{get_nonN}->{descp}
+        pslToBed       $V_Href->{func}->{pslToBed}->{descp}
+
      -- Gene Annotation
         get_tpsl       $V_Href->{func}->{get_tpsl}->{descp}
         get_gpsl       $V_Href->{func}->{get_gpsl}->{descp}

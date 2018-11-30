@@ -23,8 +23,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::PSLtoFASTA';
 #----- version --------
-$VERSION = "0.83";
-$DATE = '2018-11-17';
+$VERSION = "0.84";
+$DATE = '2018-11-29';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -45,16 +45,22 @@ sub return_HELP_INFO{
      Usage:   perl $V_Href->{MainName} get_tpsl <[Options]>
 
      Options:
-         -p  [s]  PSL file. <required>
-         -f  [s]  whole genome ref fasta file. <required>
-                  NOTE: please make sure that the ref_seg in the PSL file are all included in the 
-                        whole genome ref fasta file.
-         -o  [s]  output fa file. <required>
-         -t  [s]  type of PSL file, 'gene' or 'trans'. <required>
-         -ex [i]  extend length of gene/trans body. [0]
-         -ab [s]  the refseg you want to avoid. [NULL]
-                  NOTE: could input in mutilple times
-         -h       show this help
+
+        # Input and Output #
+         -p   [s]  PSL file. <required>
+         -f   [s]  whole genome ref fasta file. <required>
+                   NOTE: please make sure that the ref_seg in the PSL file are all included in the 
+                         whole genome ref fasta file.
+         -o   [s]  output fa file. <required>
+
+        # Options #
+         -t   [s]  type of PSL file, 'gene' or 'trans'. <required>
+         -ex  [i]  extend length of gene/trans body. [0]
+         -ab  [s]  the refseg you want to avoid, allow mutilple input. [NULL]
+         -nm  [s]  the gene/trans name you want to keep only, allow mutilple input. [NULL]
+         -bt  [s]  the biotype you want to keep only, allow mutilple input. [NULL]
+
+         -h        show this help
 
      Version:
         $VERSION at $DATE
@@ -82,8 +88,10 @@ sub Load_moduleVar_to_pubVarPool{
             [ seqFA => undef ],
             # option
             [ psl_type => undef ],
-            [ abandon_refseg => [] ],
             [ extendLength => 0 ],
+            [ abandon_refseg => [] ],
+            [ require_objname => [] ],
+            [ require_biotype => [] ],
 
             # intermediate variants
             [ GeneOrTransOB => {} ],
@@ -107,6 +115,8 @@ sub Get_Cmd_Options{
         "-t:s"  => \$V_Href->{psl_type},
         "-ex:i" => \$V_Href->{extendLength},
         "-ab:s" => \@{$V_Href->{abandon_refseg}},
+        "-nm:s" => \@{$V_Href->{require_objname}},
+        "-bt:s" => \@{$V_Href->{require_biotype}},
         # help
         "-h|help"   => \$V_Href->{HELP},
         # for debug
@@ -132,7 +142,9 @@ sub PSLtoFASTA{
     load_GeneOrTrans_from_PSL( ObjectPoolHref => $V_Href->{GeneOrTransOB},
                                psl_file => $V_Href->{psl},
                                psl_type => $V_Href->{psl_type},
-                               skipRefSegHref => { map {($_,1)} @{$V_Href->{abandon_refseg}} }
+                               skipRefSegHref => { map {($_,1)} @{$V_Href->{abandon_refseg}} },
+                               requireObjHref => { map {($_,1)} @{$V_Href->{require_objname}} },
+                               requireBtyHref => { map {($_,1)} @{$V_Href->{require_biotype}} }
                              );
     # output fasta
     extract_GeneOrTrans_seq( ObjectPoolHref => $V_Href->{GeneOrTransOB},
