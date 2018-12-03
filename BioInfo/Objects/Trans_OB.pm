@@ -195,14 +195,14 @@ sub get_UTR_region{
         my $CDS_mlfPos = $trans->{CDS}->[0]->[0]; # most left pos of CDS
         for my $exonAf (@{$trans->{exon}}){
             last if $exonAf->[0] >= $CDS_mlfPos;
-            push @UTR, $exonAf->[-1] < $CDS_mlfPos ? [@$exonAf] : [$exonAf->[0], $CDS_mlfPos-1];
+            push @UTR, $exonAf->[1] < $CDS_mlfPos ? [@$exonAf] : [$exonAf->[0], $CDS_mlfPos-1];
         }
     }
     else{
-        my $CDS_mrtPos = $trans->{CDS}->[-1]->[-1]; # most right pos of CDS
+        my $CDS_mrtPos = $trans->{CDS}->[-1]->[1]; # most right pos of CDS
         for my $exonAf (reverse @{$trans->{exon}}){
-            last if $exonAf->[-1] <= $CDS_mrtPos;
-            unshift @UTR, $exonAf->[0] > $CDS_mrtPos ? [@$exonAf] : [$CDS_mrtPos+1, $exonAf->[-1]];
+            last if $exonAf->[1] <= $CDS_mrtPos;
+            unshift @UTR, $exonAf->[0] > $CDS_mrtPos ? [@$exonAf] : [$CDS_mrtPos+1, $exonAf->[1]];
         }
     }
     return \@UTR;

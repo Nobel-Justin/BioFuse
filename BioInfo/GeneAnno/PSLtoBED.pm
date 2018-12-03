@@ -9,7 +9,7 @@ use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Write /;
 use BioFuse::LoadOn;
 use BioFuse::BioInfo::GeneAnno::PSL qw/ load_GeneOrTrans_from_PSL /;
-use BioFuse::Util::Array qw/ mergeOverlap /;
+use BioFuse::Util::Array qw/ merge /;
 
 require Exporter;
 
@@ -198,10 +198,11 @@ sub output_region_of_transOB{
     my $offset = $V_Href->{oneBase} ? 0 : 1;
     open (BED, Try_GZ_Write($V_Href->{bed_file})) || die "fail write output region file: $!\n";
     for my $region_type (sort keys %{$V_Href->{Regions_Hf}}){
-        for my $refseg (sort keys %{$V_Href->{Regions_Hf}->{$region_type}}){
+        my $regType_Hf = $V_Href->{Regions_Hf}->{$region_type};
+        for my $refseg (sort keys %$regType_Hf){
             # merge
-            mergeOverlap(regionAref => $V_Href->{Regions_Hf}->{$region_type}->{$refseg}, mergeAdjacent => 1);
-            print BED join("\t", $refseg, $_->[0]-$offset, $_->[-1], $region_type)."\n" for @{$V_Href->{Regions_Hf}->{$region_type}->{$refseg}};
+            $regType_Hf->{$refseg} = merge(itvAfListAf => [$regType_Hf->{$refseg}], mergeAdjacent => 1);
+            print BED join("\t", $refseg, $_->[0]-$offset, $_->[1], $region_type)."\n" for @{$regType_Hf->{$refseg}};
             # inform
             stout_and_sterr "[INFO]\toutput $region_type $refseg region OK.\n";
         }
@@ -269,20 +270,20 @@ sub record_exon_regions{
     }
     ## merge exon regions (for the 'merge' mode)
     ## after this, regions are sorted in ascending order
-    mergeOverlap(regionAref => \@EXON, mergeAdjacent => 1);
+    @EXON = @{ merge(itvAfListAf => [\@EXON], mergeAdjacent => 1) };
 
     my $refseg = $transOB_Af->[0]->get_ref_seg;
     # record EXON
     push @{$V_Href->{Regions_Hf}->{EXON}->{$refseg}},  [ @$_ ] for @EXON;
     # record INTRON
-    push @{$V_Href->{Regions_Hf}->{INTRON}->{$refseg}}, [ $EXON[$_]->[-1]+1, $EXON[$_+1]->[0]-1 ] for (0 .. $#EXON-1);
+    push @{$V_Href->{Regions_Hf}->{INTRON}->{$refseg}}, [ $EXON[$_]->[1]+1, $EXON[$_+1]->[0]-1 ] for (0 .. $#EXON-1);
     # record PROMOTER and TERMINATOR
     if($transOB_Af->[0]->get_strand eq '+'){
         push @{$V_Href->{Regions_Hf}->{PROMOTER}->{$refseg}},   [ max($EXON[0]->[0]-$V_Href->{promoter_size}, 1), max($EXON[0]->[0]-1, 1) ];
-        push @{$V_Href->{Regions_Hf}->{TERMINATOR}->{$refseg}}, [ $EXON[-1]->[-1]+1, $EXON[-1]->[-1]+$V_Href->{terminator_size} ];
+        push @{$V_Href->{Regions_Hf}->{TERMINATOR}->{$refseg}}, [ $EXON[-1]->[1]+1, $EXON[-1]->[1]+$V_Href->{terminator_size} ];
     }
     else{
-        push @{$V_Href->{Regions_Hf}->{PROMOTER}->{$refseg}},   [ $EXON[-1]->[-1]+1, $EXON[-1]->[-1]+$V_Href->{promoter_size} ];
+        push @{$V_Href->{Regions_Hf}->{PROMOTER}->{$refseg}},   [ $EXON[-1]->[1]+1, $EXON[-1]->[1]+$V_Href->{promoter_size} ];
         push @{$V_Href->{Regions_Hf}->{TERMINATOR}->{$refseg}}, [ max($EXON[0]->[0]-$V_Href->{terminator_size}, 1), max($EXON[0]->[0]-1, 1) ];
     }
 }

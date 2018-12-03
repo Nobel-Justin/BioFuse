@@ -22,7 +22,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Position';
 #----- version --------
 $VERSION = "0.01";
-$DATE = '2018-11-25';
+$DATE = '2018-12-01';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -46,12 +46,11 @@ sub load_region_for_randPos{
     my $winSize = $parm{winSize} || 1000;
 
     # as bed file with one-base
-    my $ItvHref = {};
-    read_bed_file( BedFile => $ItvFile,
-                   ItvHref => $ItvHref,
-                   nonName => 1,
-                   oneBase => $oneBase
-                 );
+    my $ItvHref = read_bed_file( bedFile => $ItvFile,
+                                 nonName => 1,
+                                 oneBase => $oneBase,
+                                 loadAsBED => 0
+                               );
     # convert to index region array for next random selection equally
     for my $refseg (keys %$ItvHref){
         for my $itvAf (@{$ItvHref->{$refseg}}){

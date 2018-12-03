@@ -5,7 +5,7 @@ use warnings;
 use List::Util qw/ min max /;
 use BioFuse::BioInfo::GeneAnno::GTF_transOB;
 use BioFuse::BioInfo::CytoBand qw/ get_cytoband /;
-use BioFuse::Util::Array qw/ mergeOverlap /;
+use BioFuse::Util::Array qw/ merge /;
 
 require Exporter;
 
@@ -206,8 +206,7 @@ sub get_gene_psl_line{
     # exon count
     my $exon_number = scalar(@exon_small_edge);
     # merged exon region
-    mergeOverlap(regionAref => \@all_exon, mergeAdjacent => 1);
-    my @merged_exon = map {($_->[0]-1).'('.($_->[1]-$_->[0]+1).')'} @all_exon;
+    my @merged_exon = map {($_->[0]-1).'('.($_->[1]-$_->[0]+1).')'} @{ merge(itvAfListAf => [\@all_exon], mergeAdjacent => 1) };
 
     #------- Format defination of gene PSL file ------------#
     #------- customized by SOAPfuse ------------------------#

@@ -5,7 +5,7 @@ use warnings;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Util::Log qw/ stout_and_sterr warn_and_exit /;
 use BioFuse::Util::Sys qw/ file_exist /;
-use BioFuse::Util::Array qw/ mergeOverlap /;
+use BioFuse::Util::Array qw/ merge /;
 
 require Exporter;
 
@@ -23,7 +23,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::BED';
 #----- version --------
 $VERSION = "0.02";
-$DATE = '2018-11-29';
+$DATE = '2018-12-01';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -36,27 +36,32 @@ my @functoion_list = qw/
                      /;
 
 #--- read bed file ---
+## load and convert to one-start interval
 sub read_bed_file{
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $BedFile = $parm{BedFile};
-    my $ItvHref = $parm{ItvHref};
+    my $bedFile = $parm{bedFile};
     my $nonName = $parm{nonName} || 0;
     my $oneBase = $parm{oneBase} || 0; # not bed, but start from one
+    my $loadAsBED = $parm{loadAsBED} || 0; # record interval in zero-start format
     my $skipMerge = $parm{skipMerge} || 0;
 
     # check bed file existence
-    file_exist(filePath => $BedFile, alert => 1);
+    file_exist(filePath => $bedFile, alert => 1);
 
-    # read bed file and record region
-    my $offset = $oneBase ? 0 : 1;
-    open (BED, Try_GZ_Read($BedFile)) || die "fail to read bed file: $!\n";
+    my $ItvHref = {};
+    # offset to record interval
+    my $offset = 0;
+    $offset = -1 if  $oneBase &&  $loadAsBED;
+    $offset =  1 if !$oneBase && !$loadAsBED;
+    # read bed file and record intervals
+    open (BED, Try_GZ_Read($bedFile)) || die "fail to read bed file: $!\n";
     while(<BED>){
         next if /^#/;
         my @ele = split;
         my ($refseg, $stpos, $edpos) = @ele[0,1,2];
-        # record
+        # record as one-start interval
         if($nonName){
             push @{$ItvHref->{$refseg}}, [$stpos+$offset, $edpos+0];
         }
@@ -67,15 +72,17 @@ sub read_bed_file{
     }
     close BED;
 
-    return if $skipMerge;
-    # prepare
-    my @ArefToMerge =   $nonName
-                      ? values %$ItvHref
-                      : map {values %$_} values %$ItvHref;
-    # sort and merge
-    ## bed format cannot merge adjacent interval, such as (0,4) and (5,6).
-    ## (0,4): pos 0 to 3; while (5,6): pos 5 to 5
-    mergeOverlap(regionAref => $_, mergeAdjacent => $oneBase) for @ArefToMerge;
+    # merge interval
+    unless($skipMerge){
+        # prepare
+        my @ArefToMerge =   $nonName
+                          ? values %$ItvHref
+                          : map {values %$_} values %$ItvHref;
+        # sort and merge
+        @{$_} = @{merge(itvAfListAf => [$_], mergeAdjacent => !$loadAsBED)} for @ArefToMerge;
+    }
+
+    return $ItvHref;
 }
 
 1; ## tell the perl script the successful access of this module.
