@@ -22,8 +22,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::GZfile';
 #----- version --------
-$VERSION = "0.07";
-$DATE = '2018-10-30';
+$VERSION = "0.08";
+$DATE = '2018-12-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -39,7 +39,7 @@ my @functoion_list = qw/
 #--- based on the postfix, to read gz file ---
 sub Try_GZ_Read{
     # options
-    shift if ($_[0] =~ /$MODULE_NAME/);
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my $file = shift @_;
     my %parm = @_;
     # attributes
@@ -82,7 +82,7 @@ sub Try_GZ_Read{
 #--- judgement on indexed .[bt]gz file ---
 sub is_idx_bgz{
     # options
-    shift if ($_[0] =~ /$MODULE_NAME/);
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
     my $file = $parm{file};
     my $check_tbi = $parm{check_tbi} || 0;
@@ -100,7 +100,7 @@ sub is_idx_bgz{
 #--- based on the postfix, to write gz file ---
 sub Try_GZ_Write{
     # options
-    shift if ($_[0] =~ /$MODULE_NAME/);
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my $file = shift @_;
     my %parm = @_;
     # attributes

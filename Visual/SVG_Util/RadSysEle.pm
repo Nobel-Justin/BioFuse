@@ -23,8 +23,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Visual::SVG_Util::RadSysEle';
 #----- version --------
-$VERSION = "0.27";
-$DATE = '2018-11-17';
+$VERSION = "0.28";
+$DATE = '2018-12-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -68,7 +68,7 @@ sub draw_circle_seg{
                                               o (centre)
 
 
-        Use as subroutine(svg_obj=>$SVG_object, key1=>value1, key2=>value2, ...);
+        Use as subroutine(svg_obj=>$svg_obj, key1=>value1, key2=>value2, ...);
 
         # Options key, enclosed by [ ] means default
         --- basic structure ---
@@ -124,7 +124,7 @@ sub draw_circle_seg{
         # usage_print, [0]
 
         Use options in anonymous hash, like
-           subroutine( svg_obj=>$SVG_object, cx=>120, cy=>120 );
+           subroutine( svg_obj=>$svg_obj, cx=>120, cy=>120 );
 
         Note: It can also draw an arc when inner_radius equals to outer_radius.
 
@@ -133,9 +133,9 @@ sub draw_circle_seg{
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $SVG_object = $parm{svg_obj};
+    my $svg_obj = $parm{svg_obj};
 
-    if(!defined($SVG_object) || $parm{usage_print}){
+    if(!defined($svg_obj) || $parm{usage_print}){
         warn "\nThe Usage of $sub_routine_name:\n";
         warn "$Usage";
         warn "\n";
@@ -190,14 +190,13 @@ sub draw_circle_seg{
     if($inner_radius == $outer_radius){
         # path
         my $path = "$x2,$y2,A$outer_radius,$outer_radius,0,$flag_1,1,$x3,$y3";
-        $$SVG_object->path(
-                            d=>$path,
-                            stroke=>$seg_boud_color,
-                            'stroke-width'=>$seg_boud_width,
-                            'stroke-linecap'=>$seg_boud_linecap,
-                            fill=>'none',
-                            opacity=>$seg_opacity
-                          ) if($draw_bool);
+        $svg_obj->path( d=>$path,
+                        stroke=>$seg_boud_color,
+                        'stroke-width'=>$seg_boud_width,
+                        'stroke-linecap'=>$seg_boud_linecap,
+                        fill=>'none',
+                        opacity=>$seg_opacity
+                      ) if $draw_bool;
         return;
     }
 
@@ -210,13 +209,12 @@ sub draw_circle_seg{
         $seg_boud_width = $seg_bolds_width;
         $seg_bold_side = '0'; # pretend no need to be bold again.
     }
-    $$SVG_object->path(
-                        d=>$path,
-                        stroke=>$seg_boud_color,
-                        'stroke-width'=>$seg_boud_width,
-                        fill=>$seg_fill_col,
-                        opacity=>$seg_opacity
-                      ) if($draw_bool && !$arrow_draw_only);
+    $svg_obj->path( d=>$path,
+                    stroke=>$seg_boud_color,
+                    'stroke-width'=>$seg_boud_width,
+                    fill=>$seg_fill_col,
+                    opacity=>$seg_opacity
+                  ) if($draw_bool && !$arrow_draw_only);
     # bold sides
     if($seg_bold_side !~ /^0$/){
         # sharing style
@@ -234,20 +232,12 @@ sub draw_circle_seg{
             my ($x_1,$y_1) = @{$pos_pool[$single_bold_side-2]};
             my ($x_2,$y_2) = @{$pos_pool[$single_bold_side-1]};
             if($single_bold_side =~ /1|3/){ # line
-                $$SVG_object->line(
-                                    x1=>$x_1,y1=>$y_1,
-                                    x2=>$x_2,y2=>$y_2,
-                                    style=>$style_Href
-                                  ) if($draw_bool);
+                $svg_obj->line(x1=>$x_1, y1=>$y_1, x2=>$x_2, y2=>$y_2, style=>$style_Href) if $draw_bool;
             }
             elsif($single_bold_side =~ /2|4/){ # arc
                 my ($radius,$flag_2) = ($single_bold_side==2) ? ($outer_radius,1) : ($inner_radius,0); # clockwise or anti-clockwise
                 my $path = "M$x_1,$y_1,A$radius,$radius,0,$flag_1,$flag_2,$x_2,$y_2";
-                $$SVG_object->path(
-                                    d=>$path,
-                                    fill=>'none',
-                                    style=>$style_Href
-                                  ) if($draw_bool);
+                $svg_obj->path(d=>$path, fill=>'none', style=>$style_Href) if $draw_bool;
             }
         }
     }
@@ -278,18 +268,14 @@ sub draw_circle_seg{
             my ($x7,$y7) = get_coordinate_on_circle(cx=>$cx, cy=>$cy, rad=>$radian_p7,  radius=>$radius_p78); # middle
             my ($x8,$y8) = get_coordinate_on_circle(cx=>$cx, cy=>$cy, rad=>$radian_p8,  radius=>$radius_p78); # middle
             my $path = "M$x5,$y5,L$x8,$y8,L$x6,$y6,L$x7,${y7}Z";
-            $$SVG_object->path(
-                                d=>$path,
-                                stroke=>'none',
-                                fill=>$arrow_color
-                              ) if($draw_bool); # stroke-width'=>1
+            $svg_obj->path(d=>$path, stroke=>'none', fill=>$arrow_color) if $draw_bool; # stroke-width'=>1
         }
     }
 
     # text
     if(length($text) != 0){
         show_text_on_arc(
-                            svg_obj=>$SVG_object,
+                            svg_obj=>$svg_obj,
                             cx=>$cx,
                             cy=>$cy,
                             radius=>($inner_radius + $outer_radius) / 2,
@@ -333,7 +319,7 @@ sub draw_a_sector{
                       (centre)
 
 
-        Use as subroutine(svg_obj=>$SVG_object, key1=>value1, key2=>value2, ...);
+        Use as subroutine(svg_obj=>$svg_obj, key1=>value1, key2=>value2, ...);
 
         # Options key, enclosed by [ ] means default
         --- basic structure ---
@@ -361,16 +347,16 @@ sub draw_a_sector{
         # usage_print, [0]
 
         Use options in anonymous hash, like
-           subroutine( svg_obj=>$SVG_object, cx=>120, cy=>120 );
+           subroutine( svg_obj=>$svg_obj, cx=>120, cy=>120 );
 
     ';
 
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $SVG_object = $parm{svg_obj};
+    my $svg_obj = $parm{svg_obj};
 
-    if(!defined($SVG_object) || $parm{usage_print}){
+    if(!defined($svg_obj) || $parm{usage_print}){
         warn "\nThe Usage of $sub_routine_name:\n";
         warn "$Usage";
         warn "\n";
@@ -411,13 +397,12 @@ sub draw_a_sector{
         $seg_bold_side = '0'; # pretend no need to be bold again.
     }
     # draw sector
-    $$SVG_object->path(
-                        d=>$path,
-                        stroke=>$seg_boud_color,
-                        'stroke-width'=>$seg_boud_width,
-                        fill=>$seg_fill_col,
-                        opacity=>$seg_opacity
-                      ) if($draw_bool);
+    $svg_obj->path( d=>$path,
+                    stroke=>$seg_boud_color,
+                    'stroke-width'=>$seg_boud_width,
+                    fill=>$seg_fill_col,
+                    opacity=>$seg_opacity
+                  ) if $draw_bool;
     # bold sides
     if($seg_bold_side !~ /^0$/){
 
@@ -435,19 +420,11 @@ sub draw_a_sector{
             my ($x_1,$y_1) = @{$pos_pool[$single_bold_side-2]};
             my ($x_2,$y_2) = @{$pos_pool[$single_bold_side-1]};
             if($single_bold_side =~ /1|3/){ # line
-                $$SVG_object->line(
-                                    x1=>$x_1,y1=>$y_1,
-                                    x2=>$x_2,y2=>$y_2,
-                                    style=>$style_Href
-                                  ) if($draw_bool);
+                $svg_obj->line(x1=>$x_1, y1=>$y_1, x2=>$x_2, y2=>$y_2, style=>$style_Href) if $draw_bool;
             }
             elsif($single_bold_side =~ /2/){ # arc
                 my $path = "M$x_1,$y_1,A$radius,$radius,0,$flag_1,$flag_2,$x_2,$y_2";
-                $$SVG_object->path(
-                                    d=>$path,
-                                    fill=>'none',
-                                    style=>$style_Href
-                                  ) if($draw_bool);
+                $svg_obj->path(d=>$path, fill=>'none', style=>$style_Href) if $draw_bool;
             }
         }
     }

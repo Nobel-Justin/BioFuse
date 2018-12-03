@@ -24,8 +24,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Visual::SVG_Util::RectSysEle';
 #----- version --------
-$VERSION = "0.35";
-$DATE = '2018-11-17';
+$VERSION = "0.36";
+$DATE = '2018-12-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -63,7 +63,7 @@ sub draw_a_parallelogram{
             (x4,y4) o----------------------o (x3,y3)
                             #4 side
 
-        Use as subroutine(svg_obj=>$SVG_object, key1=>value1, key2=>value2, ...);
+        Use as subroutine(svg_obj=>$svg_obj, key1=>value1, key2=>value2, ...);
 
         # Options key, enclosed by [ ] means default
         --- basic structure ---
@@ -121,16 +121,16 @@ sub draw_a_parallelogram{
         # usage_print, [0]
 
         Use options in anonymous hash, like
-           subroutine( svg_obj=>$SVG_object, x=>120, y=>120 );
+           subroutine( svg_obj=>$svg_obj, x=>120, y=>120 );
 
         ';
 
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $SVG_object = $parm{svg_obj};
+    my $svg_obj = $parm{svg_obj};
 
-    if(!defined($SVG_object) || $parm{usage_print}){
+    if(!defined($svg_obj) || $parm{usage_print}){
         warn "\nThe Usage of $sub_routine_name:\n";
         warn "$Usage";
         warn "\n";
@@ -203,7 +203,7 @@ sub draw_a_parallelogram{
                                   ? ('0%', '0%', '100%', '0%')
                                   : ('0%', '0%', '0%', '100%');
         # create pattern
-        my $color_pattern = $$SVG_object->pattern();
+        my $color_pattern = $svg_obj->pattern();
         my $color_grad = $color_pattern->gradient( id=>'color_grad', x1=>$x1, y1=>$y1, x2=>$x2, y2=>$y2 );
         $color_grad->stop( offset=>'0%',   style=>{'stop-color'=>$colorGradStColor,'stop-opacity'=>$colorGradStOpacity} );
         $color_grad->stop( offset=>'100%', style=>{'stop-color'=>$colorGradEdColor,'stop-opacity'=>$colorGradEdOpacity} );
@@ -212,15 +212,14 @@ sub draw_a_parallelogram{
     }
 
     # square
-    $$SVG_object->path(
-                        d => $path,
-                        stroke => $boud_color,
-                        'stroke-width' => $boud_width,
-                        'stroke-dasharray' => $boud_dasharray,
-                        fill => $fill_col,
-                        opacity => $opacity,
-                        transform => "rotate($rotate_degree,$rotate_center_x,$rotate_center_y)"
-                      ) if($draw_bool);
+    $svg_obj->path( d => $path,
+                    stroke => $boud_color,
+                    'stroke-width' => $boud_width,
+                    'stroke-dasharray' => $boud_dasharray,
+                    fill => $fill_col,
+                    opacity => $opacity,
+                    transform => "rotate($rotate_degree,$rotate_center_x,$rotate_center_y)"
+                  ) if $draw_bool;
 
     # inner mark line
     if( defined $inner_line_ori ){
@@ -240,16 +239,15 @@ sub draw_a_parallelogram{
                 $inLine_y2 = ($y4 + $y3) / 2;
             }
             # show inner mark line
-            $$SVG_object->line(
-                                x1 => $inLine_x1,
-                                y1 => $inLine_y1,
-                                x2 => $inLine_x2,
-                                y2 => $inLine_y2,
-                                stroke => $inner_line_col,
-                                'stroke-width' => $inner_line_wid,
-                                opacity => $opacity,
-                                transform => "rotate($rotate_degree,$rotate_center_x,$rotate_center_y)"
-                              ) if($draw_bool);
+            $svg_obj->line( x1 => $inLine_x1,
+                            y1 => $inLine_y1,
+                            x2 => $inLine_x2,
+                            y2 => $inLine_y2,
+                            stroke => $inner_line_col,
+                            'stroke-width' => $inner_line_wid,
+                            opacity => $opacity,
+                            transform => "rotate($rotate_degree,$rotate_center_x,$rotate_center_y)"
+                          ) if $draw_bool;
         }
     }
 
@@ -270,13 +268,7 @@ sub draw_a_parallelogram{
             next if($single_bold_side !~ /^[1234]$/); # only one digital number, allow 1,2,3,4
             my ($x_1,$y_1) = @{$pos_pool[$single_bold_side-2]};
             my ($x_2,$y_2) = @{$pos_pool[$single_bold_side-1]};
-            $$SVG_object->line(
-                                x1 => $x_1,
-                                y1 => $y_1,
-                                x2 => $x_2,
-                                y2 => $y_2,
-                                style => $style_Href
-                              ) if($draw_bool);
+            $svg_obj->line(x1 => $x_1, y1 => $y_1, x2 => $x_2, y2 => $y_2, style => $style_Href) if $draw_bool;
         }
     }
 
@@ -288,7 +280,7 @@ sub draw_a_parallelogram{
         my $hight_ceiling = $fz_auto_adjust ? sin($up_left_radian)*$lt_rt_side_len*$fz_auto_adjust_hRatio : 0;
         my $width_ceiling = $fz_auto_adjust ? min(abs($x4-$x2), abs($x1-$x3))*$fz_auto_adjust_wRatio : 0;
         show_text_in_line(
-                            svg_obj=>$SVG_object,
+                            svg_obj => $svg_obj,
                             text_x => $text_x,
                             text_y => $text_y,
                             text => $text_fill,
@@ -333,7 +325,7 @@ sub draw_a_triangle{
            (x1,y1) o-------------------o (x3,y3)
                          #3 side
 
-        Use as subroutine(svg_obj=>$SVG_object, key1=>value1, key2=>value2, ...);
+        Use as subroutine(svg_obj=>$svg_obj, key1=>value1, key2=>value2, ...);
 
         # Options key, enclosed by [ ] means default
         --- basic structure ---
@@ -374,16 +366,16 @@ sub draw_a_triangle{
         # usage_print, [0]
 
         Use options in anonymous hash, like
-           subroutine( svg_obj=>$SVG_object, x=>120, y=>120 );
+           subroutine( svg_obj=>$svg_obj, x=>120, y=>120 );
 
         ';
 
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $SVG_object = $parm{svg_obj};
+    my $svg_obj = $parm{svg_obj};
 
-    if(!defined($SVG_object) || $parm{usage_print}){
+    if(!defined($svg_obj) || $parm{usage_print}){
         warn "\nThe Usage of $sub_routine_name:\n";
         warn "$Usage";
         warn "\n";
@@ -435,15 +427,14 @@ sub draw_a_triangle{
         $bold_side = '0'; # pretend no need to be bold again.
     }
     # draw triangle
-    $$SVG_object->path(
-                        d=>$path,
-                        stroke=>$boud_color,
-                        'stroke-width'=>$boud_width,
-                        'stroke-dasharray'=>$boud_dasharray,
-                        fill=>$fill_col,
-                        opacity=>$opacity,
-                        transform=>"rotate($rotate_degree,$rotate_center_x,$rotate_center_y)"
-                      ) if($draw_bool);
+    $svg_obj->path( d=>$path,
+                    stroke=>$boud_color,
+                    'stroke-width'=>$boud_width,
+                    'stroke-dasharray'=>$boud_dasharray,
+                    fill=>$fill_col,
+                    opacity=>$opacity,
+                    transform=>"rotate($rotate_degree,$rotate_center_x,$rotate_center_y)"
+                  ) if $draw_bool;
 
     # bold sides
     if($bold_side !~ /^0$/){
@@ -462,11 +453,7 @@ sub draw_a_triangle{
             next if($single_bold_side !~ /^[123]$/); # only one digital number, allow 1,2,3
             my ($x_1,$y_1) = @{$pos_pool[$single_bold_side-2]};
             my ($x_2,$y_2) = @{$pos_pool[$single_bold_side-1]};
-            $$SVG_object->line(
-                                x1=>$x_1,y1=>$y_1,
-                                x2=>$x_2,y2=>$y_2,
-                                style=>$style_Href
-                              ) if($draw_bool);
+            $svg_obj->line(x1=>$x_1, y1=>$y_1, x2=>$x_2, y2=>$y_2, style=>$style_Href) if $draw_bool;
         }
     }
 
@@ -478,8 +465,7 @@ sub draw_a_triangle{
         my $text_rotate_degree = ($text_free_rotate)?0:$rotate_degree;
         my $hight_ceiling = $fz_auto_adjust ? $height : 0;
         my $width_ceiling = $fz_auto_adjust ? $half_bot_side : 0;
-        show_text_in_line(
-                            svg_obj=>$SVG_object,
+        show_text_in_line(  svg_obj=>$svg_obj,
                             text_x=>$text_x,
                             text_y=>$text_y,
                             text=>$text_fill,
@@ -522,7 +508,7 @@ sub draw_a_arrow{
                      /   /       \   \
             (x1,y1) o----         ----o (x3,y3)
 
-        Use as subroutine(svg_obj=>$SVG_object, key1=>value1, key2=>value2, ...);
+        Use as subroutine(svg_obj=>$svg_obj, key1=>value1, key2=>value2, ...);
 
         # Options key, enclosed by [ ] means default
         --- basic structure ---
@@ -549,16 +535,16 @@ sub draw_a_arrow{
         # usage_print, [0]
 
         Use options in anonymous hash, like 
-           subroutine( svg_obj=>$SVG_object, x=>120, y=>120 );
+           subroutine( svg_obj=>$svg_obj, x=>120, y=>120 );
 
         ';
 
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $SVG_object = $parm{svg_obj};
+    my $svg_obj = $parm{svg_obj};
 
-    if(!defined($SVG_object) || $parm{usage_print}){
+    if(!defined($svg_obj) || $parm{usage_print}){
         warn "\nThe Usage of $sub_routine_name:\n";
         warn "$Usage";
         warn "\n";
@@ -594,15 +580,14 @@ sub draw_a_arrow{
     my ($x3,$y3) = ($x+$half_bot_side, $y+$half_height);
     my $path = "M$x1,$y1,L$x2,$y2,L$x3,$y3,L$x,${y}Z";
     # draw arrow
-    $$SVG_object->path(
-                        d=>$path,
-                        stroke=>$boud_color,
-                        'stroke-width'=>$boud_width,
-                        'stroke-dasharray'=>$boud_dasharray,
-                        fill=>$fill_col,
-                        opacity=>$opacity,
-                        transform=>"rotate($rotate_degree,$rotate_center_x,$rotate_center_y)"
-                      ) if($draw_bool);
+    $svg_obj->path( d=>$path,
+                    stroke=>$boud_color,
+                    'stroke-width'=>$boud_width,
+                    'stroke-dasharray'=>$boud_dasharray,
+                    fill=>$fill_col,
+                    opacity=>$opacity,
+                    transform=>"rotate($rotate_degree,$rotate_center_x,$rotate_center_y)"
+                  ) if $draw_bool;
 
     # return the height and width
     return [abs($y3-$y2), abs($x3-$x1)];
@@ -616,7 +601,7 @@ sub draw_a_ellipse{
 
     my $Usage = '
 
-        Use as subroutine(svg_obj=>$SVG_object, key1=>value1, key2=>value2, ...);
+        Use as subroutine(svg_obj=>$svg_obj, key1=>value1, key2=>value2, ...);
 
         # Options key, enclosed by [ ] means default
         --- basic structure ---
@@ -652,16 +637,16 @@ sub draw_a_ellipse{
         # usage_print, [0]
 
         Use options in anonymous hash, like 
-           subroutine( svg_obj=>$SVG_object, cx=>120, cy=>120 );
+           subroutine( svg_obj=>$svg_obj, cx=>120, cy=>120 );
 
         ';
 
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $SVG_object = $parm{svg_obj};
+    my $svg_obj = $parm{svg_obj};
 
-    if(!defined($SVG_object) || $parm{usage_print}){
+    if(!defined($svg_obj) || $parm{usage_print}){
         warn "\nThe Usage of $sub_routine_name:\n";
         warn "$Usage";
         warn "\n";
@@ -702,22 +687,11 @@ sub draw_a_ellipse{
 
     if($radius == $radius_b){
         # draw circle
-        $$SVG_object->circle(
-                             cx=>$cx,
-                             cy=>$cy,
-                             r=>$radius,
-                             style=>$style_Href
-                            ) if($draw_bool);
+        $svg_obj->circle(cx=>$cx, cy=>$cy, r=>$radius, style=>$style_Href) if $draw_bool;
     }
     else{
         # draw ellipse
-        $$SVG_object->ellipse(
-                             cx=>$cx,
-                             cy=>$cy,
-                             rx=>$radius,
-                             ry=>$radius_b,
-                             style=>$style_Href
-                            ) if($draw_bool);
+        $svg_obj->ellipse(cx=>$cx, cy=>$cy, rx=>$radius, ry=>$radius_b, style=>$style_Href) if $draw_bool;
     }
 
     # text
@@ -727,7 +701,7 @@ sub draw_a_ellipse{
         my $hight_ceiling = $fz_auto_adjust ? $radius_b : 0;
         my $width_ceiling = $fz_auto_adjust ? $radius : 0;
         show_text_in_line(
-                            svg_obj=>$SVG_object,
+                            svg_obj=>$svg_obj,
                             text_x=>$text_x,
                             text_y=>$text_y,
                             text=>$text_fill,

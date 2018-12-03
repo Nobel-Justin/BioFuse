@@ -91,7 +91,7 @@ sub draw_an_arc{
                                      [centre] o (cx,cy)
 
 
-        Use as subroutine(svg_obj=>$SVG_object, key1=>value1, key2=>value2, ...);
+        Use as subroutine(svg_obj=>$svg_obj, key1=>value1, key2=>value2, ...);
 
         # Options key, enclosed by [ ] means default
         --- basic structure ---
@@ -112,16 +112,16 @@ sub draw_an_arc{
         # usage_print, [0]
 
         Use options in anonymous hash, like
-           subroutine( svg_obj=>$SVG_object, cx=>120, cy=>120 );
+           subroutine( svg_obj=>$svg_obj, cx=>120, cy=>120 );
 
     ';
 
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $SVG_object = $parm{svg_obj};
+    my $svg_obj = $parm{svg_obj};
 
-    if(!defined($SVG_object) || $parm{usage_print}){
+    if(!defined($svg_obj) || $parm{usage_print}){
         warn "\nThe Usage of $sub_routine_name:\n";
         warn "$Usage";
         warn "\n";
@@ -152,14 +152,13 @@ sub draw_an_arc{
 
     # path
     my $path = "M$x1,$y1,A$radius,$radius,0,$flag_1,1,$x2,$y2";
-    $$SVG_object->path(
-                        d=>$path,
-                        stroke=>$boud_color,
-                        'stroke-width'=>$boud_width,
-                        'stroke-linecap'=>$boud_linecap,
-                        fill=>'none',
-                        opacity=>$opacity
-                      ) if($draw_bool);
+    $svg_obj->path( d=>$path,
+                    stroke=>$boud_color,
+                    'stroke-width'=>$boud_width,
+                    'stroke-linecap'=>$boud_linecap,
+                    fill=>'none',
+                    opacity=>$opacity
+                  ) if $draw_bool;
 }
 
 1; ## tell the perl script the successful access of this module.

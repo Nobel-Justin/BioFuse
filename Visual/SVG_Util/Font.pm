@@ -24,8 +24,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Visual::SVG_Util::Font';
 #----- version --------
-$VERSION = "0.29";
-$DATE = '2018-11-17';
+$VERSION = "0.30";
+$DATE = '2018-12-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -936,7 +936,7 @@ sub show_text_in_line{
 
     my $Usage = '
 
-        Use as subroutine(svg_obj=>$SVG_object, key1=>value1, key2=>value2, ...);
+        Use as subroutine(svg_obj=>$svg_obj, key1=>value1, key2=>value2, ...);
 
         # Options key, enclosed by [ ] means default
         --- basic structure ---
@@ -977,16 +977,16 @@ sub show_text_in_line{
         # usage_print, [0]
 
         Use options in anonymous hash, like 
-           subroutine( svg_obj=>$SVG_object, text_x=>"10", text_y=>"20", font_family=>"Times", font_size=>15, height_limit=>20 );
+           subroutine( svg_obj=>$svg_obj, text_x=>"10", text_y=>"20", font_family=>"Times", font_size=>15, height_limit=>20 );
 
         ';
 
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $SVG_object = $parm{svg_obj};
+    my $svg_obj = $parm{svg_obj};
 
-    if(!defined($SVG_object) || $parm{usage_print}){
+    if(!defined($svg_obj) || $parm{usage_print}){
         warn "\nThe Usage of $sub_routine_name:\n";
         warn "$Usage";
         warn "\n";
@@ -1018,7 +1018,7 @@ sub show_text_in_line{
         my $Big_R = 1E6;
 
         my $arc_text_info_Aref =  show_text_on_arc(
-                                                    svg_obj=>$SVG_object,
+                                                    svg_obj=>$svg_obj,
                                                     cx=>$text_x,
                                                     cy=>$text_y + $Big_R,
                                                     radius=>$Big_R,
@@ -1047,12 +1047,7 @@ sub show_text_in_line{
     my ($anchor_height_Aref, $anchor_width_Aref);
     my $GET_PROPER_TEXT_SIZE_cross_bool = 0;
     GET_PROPER_TEXT_SIZE: {
-        ($anchor_height_Aref, $anchor_width_Aref) = 
-            &get_size_of_text_to_show(
-                                        font_family=>$font_family,
-                                        font_size=>$font_size,
-                                        text=>$text
-                                     );
+        ($anchor_height_Aref, $anchor_width_Aref) = &get_size_of_text_to_show(font_family=>$font_family, font_size=>$font_size, text=>$text);
         $text_height = $anchor_height_Aref->[0] - $anchor_height_Aref->[1]; # above - below, because below is negative value.
         $text_width  = $anchor_width_Aref->[0] + $anchor_width_Aref->[1]; # char width + gap width
         # check the limitation
@@ -1135,13 +1130,12 @@ sub show_text_in_line{
                       'text-anchor'=>$text_anchor
                      };
     # show text
-    $$SVG_object->text(
-                        x=>$text_x,
-                        y=>$text_y,
-                        style=>$style_Href,
-                        '-cdata'=>$text,
-                        transform=>"rotate($rotate_degree,$rotate_center_x,$rotate_center_y)"
-                      ) if($draw_bool);
+    $svg_obj->text( x=>$text_x,
+                    y=>$text_y,
+                    style=>$style_Href,
+                    '-cdata'=>$text,
+                    transform=>"rotate($rotate_degree,$rotate_center_x,$rotate_center_y)"
+                  ) if $draw_bool;
 
     # return height and width occupied by the text
     return [$text_height, $text_width];
@@ -1154,7 +1148,7 @@ sub show_text_on_arc{
 
     my $Usage = '
 
-        Use as subroutine(svg_obj=>$SVG_object, key1=>value1, key2=>value2, ...);
+        Use as subroutine(svg_obj=>$svg_obj, key1=>value1, key2=>value2, ...);
 
         # Options key, enclosed by [ ] means default
         --- basic structure ---
@@ -1191,17 +1185,17 @@ sub show_text_on_arc{
         # usage_print, [0]
 
         Use options in anonymous hash, like 
-           subroutine( svg_obj=>$SVG_object, cx=>"10", cy=>"20", anchor_degree=>90, font_family=>"Times", font_size=>15, height_limit=>20 );
+           subroutine( svg_obj=>$svg_obj, cx=>"10", cy=>"20", anchor_degree=>90, font_family=>"Times", font_size=>15, height_limit=>20 );
 
         ';
 
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $SVG_object = $parm{svg_obj};
+    my $svg_obj = $parm{svg_obj};
 
     # check part1
-    if(!defined($SVG_object) || $parm{usage_print}){
+    if(!defined($svg_obj) || $parm{usage_print}){
         warn "\nThe Usage of $sub_routine_name:\n";
         warn "$Usage";
         warn "\n";
@@ -1384,13 +1378,12 @@ sub show_text_on_arc{
             }
         }
         ## text
-        $$SVG_object->text(
-                            x=>$text_x,
-                            y=>$text_y,
-                            style=>$style_Href,
-                            '-cdata'=>$char,
-                            transform=>"rotate($rotate_degree,$text_cx,$text_cy)"
-                          ) if($draw_bool);
+        $svg_obj->text( x=>$text_x,
+                        y=>$text_y,
+                        style=>$style_Href,
+                        '-cdata'=>$char,
+                        transform=>"rotate($rotate_degree,$text_cx,$text_cy)"
+                      ) if $draw_bool;
         ## underline, it is a arc
         if($char_underline_width){
             # if bold
@@ -1416,7 +1409,7 @@ sub show_text_on_arc{
                 $rad_size += $Info_Aref->[1] / $radius; # gap
             }
             draw_an_arc(
-                            svg_obj=>$SVG_object,
+                            svg_obj=>$svg_obj,
                             cx=>$cx, cy=>$cy,
                             start_rad=>$start_rad, rad_size=>$rad_size, 
                             radius=>$arc_line_radius,
