@@ -32,7 +32,7 @@ my @functoion_list = qw/
                         output_SVG_file
                      /;
 
-#--- initilize SVG object ---
+#--- initialize SVG object ---
 sub initialize_SVG_obj{
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);

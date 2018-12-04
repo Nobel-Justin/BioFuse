@@ -21,8 +21,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Visual::SVG_Util::RadSys';
 #----- version --------
-$VERSION = "0.15";
-$DATE = '2018-11-17';
+$VERSION = "0.16";
+$DATE = '2018-12-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';

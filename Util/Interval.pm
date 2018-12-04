@@ -27,7 +27,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::Util::Interval';
 #----- version --------
 $VERSION = "0.33";
-$DATE = '2018-12-03';
+$DATE = '2018-12-04';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
