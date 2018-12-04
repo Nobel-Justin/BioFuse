@@ -40,7 +40,7 @@ my @functoion_list = qw/
                         get_ObjSingleCNdepthInMixed
                      /;
 
-#--- get genoome meterial part of Pure Tumor Cell in Mixed cells ---
+#--- get genome meterial part of Pure Tumor Cell in Mixed cells ---
 sub get_Tcell_GMpart{
     # options
     shift if (@_ && $_[0] =~ /::$MODULE_NAME/);
@@ -51,7 +51,7 @@ sub get_Tcell_GMpart{
     return $TumorCellPurity * $TumorCellPloidy;
 }
 
-#--- get genoome meterial ratio of Pure Tumor Cell in Mixed cells ---
+#--- get genome meterial ratio of Pure Tumor Cell in Mixed cells ---
 sub get_Tcell_GMratio{
     # options
     shift if (@_ && $_[0] =~ /::$MODULE_NAME/);
@@ -62,7 +62,7 @@ sub get_Tcell_GMratio{
     return $Tcell_GMpart / ($Tcell_GMpart + $Ncell_GMpart);
 }
 
-#--- get genoome meterial part of Pure Normal Cell in Mixed cells ---
+#--- get genome meterial part of Pure Normal Cell in Mixed cells ---
 sub get_Ncell_GMpart{
     # options
     shift if (@_ && $_[0] =~ /::$MODULE_NAME/);
@@ -73,7 +73,7 @@ sub get_Ncell_GMpart{
     return ( 1 - $TumorCellPurity ) * $NormalCellPloidy;
 }
 
-#--- get genoome meterial ratio of Pure Normal Cell in Mixed cells ---
+#--- get genome meterial ratio of Pure Normal Cell in Mixed cells ---
 sub get_Ncell_GMratio{
     # options
     shift if (@_ && $_[0] =~ /::$MODULE_NAME/);

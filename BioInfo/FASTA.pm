@@ -85,7 +85,7 @@ sub write_fasta_file{
     my $seq_Sref = $Option_Href->{SeqSref};
     my $fa_file = $Option_Href->{FaFile};
     my $segname = $Option_Href->{SegName};
-    my $linebase = $Option_Href->{LineBase};
+    my $linebase = $Option_Href->{LineBase} || 50;
     my $CL_Extend_Len = $Option_Href->{CircleExtLen} || 0;
     my $split_N_bool = $Option_Href->{split_N} || 0;
 
