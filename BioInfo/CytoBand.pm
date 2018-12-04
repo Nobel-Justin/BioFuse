@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read /;
 use BioFuse::Util::Log qw/ stout_and_sterr /;
-use BioFuse::Util::Array qw/ Get_Two_Seg_Olen /;
+use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen /;
 
 require Exporter;
 

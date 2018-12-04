@@ -9,7 +9,7 @@ use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Write /;
 use BioFuse::LoadOn;
 use BioFuse::BioInfo::GeneAnno::PSL qw/ load_GeneOrTrans_from_PSL /;
-use BioFuse::Util::Array qw/ merge /;
+use BioFuse::Util::Interval qw/ merge /;
 
 require Exporter;
 

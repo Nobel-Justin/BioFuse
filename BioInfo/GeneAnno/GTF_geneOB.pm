@@ -5,7 +5,7 @@ use warnings;
 use List::Util qw/ min max /;
 use BioFuse::BioInfo::GeneAnno::GTF_transOB;
 use BioFuse::BioInfo::CytoBand qw/ get_cytoband /;
-use BioFuse::Util::Array qw/ merge /;
+use BioFuse::Util::Interval qw/ merge /;
 
 require Exporter;
 

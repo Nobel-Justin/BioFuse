@@ -5,7 +5,7 @@ use warnings;
 use List::Util qw/ min /;
 use Data::Dumper;
 use BioFuse::Util::Log qw/ warn_and_exit /;
-use BioFuse::Util::Array qw/ Get_Two_Seg_Olen /;
+use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen /;
 use BioFuse::Util::Sort qw/ sortByStrAndSubNum /;
 
 require Exporter;

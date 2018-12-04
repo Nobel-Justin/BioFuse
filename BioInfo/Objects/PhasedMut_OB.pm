@@ -3,7 +3,7 @@ package BioFuse::BioInfo::Objects::PhasedMut_OB;
 use strict;
 use warnings;
 use BioFuse::Util::Log qw/ warn_and_exit /;
-use BioFuse::Util::Array qw/ Get_Two_Seg_Olen /;
+use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen /;
 
 require Exporter;
 

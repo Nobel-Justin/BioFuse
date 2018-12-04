@@ -5,7 +5,7 @@ use warnings;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Util::Log qw/ stout_and_sterr warn_and_exit /;
 use BioFuse::Util::Sys qw/ file_exist /;
-use BioFuse::Util::Array qw/ merge /;
+use BioFuse::Util::Interval qw/ merge /;
 
 require Exporter;
 
