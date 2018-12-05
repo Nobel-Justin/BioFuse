@@ -1,4 +1,4 @@
-package BioFuse::Dist::Statistics::FisherTest;
+package BioFuse::Stat::FisherTest;
 
 use strict;
 use warnings;
@@ -18,7 +18,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::Dist::Statistics::FisherTest';
+$MODULE_NAME = 'BioFuse::Stat::FisherTest';
 #----- version --------
 $VERSION = "0.01";
 $DATE = '2018-11-26';

@@ -1,4 +1,4 @@
-package BioFuse::Dist::Statistics::PearsonCorr;
+package BioFuse::Stat::PearsonCorr;
 
 use strict;
 use warnings;
@@ -19,7 +19,7 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 %EXPORT_TAGS = ( DEFAULT => [qw()],
                  OTHER   => [qw()]);
 
-$MODULE_NAME = 'BioFuse::Dist::Statistics::PearsonCorr';
+$MODULE_NAME = 'BioFuse::Stat::PearsonCorr';
 #----- version --------
 $VERSION = "0.01";
 $DATE = '2018-05-01';

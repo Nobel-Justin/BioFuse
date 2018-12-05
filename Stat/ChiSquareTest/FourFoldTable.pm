@@ -1,11 +1,11 @@
-package BioFuse::Dist::Statistics::ChiSquareTest::FourFoldTable;
+package BioFuse::Stat::ChiSquareTest::FourFoldTable;
 
 use strict;
 use warnings;
 use List::Util qw/ min sum /;
 use Statistics::Distributions;
 use BioFuse::Util::Log qw/ warn_and_exit /;
-use BioFuse::Dist::Statistics::FisherTest qw/ fisher_P  /;
+use BioFuse::Stat::FisherTest qw/ fisher_P  /;
 
 require Exporter;
 
@@ -17,7 +17,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::Dist::Statistics::ChiSquareTest::FourFoldTable';
+$MODULE_NAME = 'BioFuse::Stat::ChiSquareTest::FourFoldTable';
 #----- version --------
 $VERSION = "0.02";
 $DATE = '2018-11-26';

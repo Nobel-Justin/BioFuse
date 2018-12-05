@@ -1,16 +1,16 @@
 #!/usr/bin/perl -w
 use strict;
-use BioFuse::Dist::Statistics::ChiSquareTest::FourFoldTable;
+use BioFuse::Stat::ChiSquareTest::FourFoldTable;
 
 
 
-my %value = (r1c1=>99, r1c2=>15, r2c1=>750, r2c2=>21);
+my %value = (r1c1=>83, r1c2=>276, r2c1=>180, r2c2=>41);
 # my @value = @ARGV;
 # my @value = (12, 2, 10, 4);
 # my @value = (12, 0, 10, 0);
 #my @value = @ARGV;
 
-my $FourFoldTable = BioFuse::Dist::Statistics::ChiSquareTest::FourFoldTable->new(Value_Href=>\%value, method=>'basal_fomula');
+my $FourFoldTable = BioFuse::Stat::ChiSquareTest::FourFoldTable->new(Value_Href=>\%value);
 my $T = $FourFoldTable->get_theroy_value;
 print "@$T\n";
 print $FourFoldTable->get_method."\n";

@@ -1,11 +1,11 @@
-package BioFuse::Dist::Statistics::SpearmanCorr;
+package BioFuse::Stat::SpearmanCorr;
 
 use strict;
 use warnings;
 use List::Util qw/ min max sum /;
 use BioFuse::Util::Log qw/ warn_and_exit /;
 use BioFuse::Dist::DistStat qw/ get_value_mean /;
-use BioFuse::Dist::Statistics::PearsonCorr qw/ get_pearson_corr /;
+use BioFuse::Stat::PearsonCorr qw/ get_pearson_corr /;
 
 require Exporter;
 
@@ -20,7 +20,7 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 %EXPORT_TAGS = ( DEFAULT => [qw()],
                  OTHER   => [qw()]);
 
-$MODULE_NAME = 'BioFuse::Dist::Statistics::SpearmanCorr';
+$MODULE_NAME = 'BioFuse::Stat::SpearmanCorr';
 #----- version --------
 $VERSION = "0.01";
 $DATE = '2018-05-25';
