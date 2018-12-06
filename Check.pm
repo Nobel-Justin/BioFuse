@@ -11,8 +11,8 @@ our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @ISA = qw(Exporter);
 @EXPORT = qw/
-	          check
-			/;
+              check
+            /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
                  OTHER   => [qw()]);
@@ -28,8 +28,8 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
 my @functoion_list = qw/
-						check
-					 /;
+                        check
+                     /;
 
 #--- check para and database
 sub check{

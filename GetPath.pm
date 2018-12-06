@@ -13,8 +13,8 @@ our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @ISA = qw(Exporter);
 @EXPORT = qw/
-	          GetPath
-			/;
+              GetPath
+            /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
                  OTHER   => [qw()]);
@@ -30,10 +30,10 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 #--- get path ---
 sub GetPath{
-	# options
-	shift if (@_ && $_[0] =~ /$MODULE_NAME/);
-	my %parm = @_;
-	my $filekey = $parm{filekey};
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $filekey = $parm{filekey};
 
     # BioFuse files
     if($filekey eq 'func_json'){
@@ -43,12 +43,12 @@ sub GetPath{
             return catfile($V_Href->{RealBin},'BioFuse.pl');
     }
     # templete
-	# if($filekey eq ''){
-	# 	return catfile();
-	# }
+    # if($filekey eq ''){
+    #   return catfile();
+    # }
 
-	# reach here, not found
-	warn_and_exit "<ERROR>\tunrecognized filekey $filekey in $MODULE_NAME.\n";
+    # reach here, not found
+    warn_and_exit "<ERROR>\tunrecognized filekey $filekey in $MODULE_NAME.\n";
 }
 
 #--- 
