@@ -33,7 +33,7 @@ my @functoion_list = qw/
                         log_sum
                      /;
 
-my $E_Value = 2.718281828;
+our $E_Value = 2.718281828;
 
 #--- get four values Fisher P
 sub fisher_P{
