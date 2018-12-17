@@ -5,27 +5,27 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - Author: Wenlong Jia
 - Email:  wenlongkxm@gmail.com
 
-##Check.pm
-###BioFuse::Check
-###VERSION = "0.01"
+## Check.pm
+### BioFuse::Check
+### VERSION = "0.01"
 - check
 
-##Util/Log.pm
-###BioFuse::Util::Log
-###VERSION = "0.31"
+## Util/Log.pm
+### BioFuse::Util::Log
+### VERSION = "0.31"
 - warn_and_exit
 - stout_and_sterr
 
-##Util/Index.pm
-###BioFuse::Util::Index
-###VERSION = "0.05"
+## Util/Index.pm
+### BioFuse::Util::Index
+### VERSION = "0.05"
 - Pos2Idx
 - IndexRegion
 - FindOverlapIdxRegion
 
-##Util/Interval.pm
-###BioFuse::Util::Interval
-###VERSION = "0.33"
+## Util/Interval.pm
+### BioFuse::Util::Interval
+### VERSION = "0.33"
 - Get_Two_Seg_Olen
 - merge
 - intersect
@@ -34,64 +34,64 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - deal_circular_extended_part
 - clip_region_edge
 
-##Util/Sort.pm
-###BioFuse::Util::Sort
-###VERSION = "0.01"
+## Util/Sort.pm
+### BioFuse::Util::Sort
+### VERSION = "0.01"
 - sortByStrAndSubNum
 
-##Util/FileHeader.pm
-###BioFuse::Util::FileHeader
-###VERSION = "0.01"
+## Util/FileHeader.pm
+### BioFuse::Util::FileHeader
+### VERSION = "0.01"
 - getHeaderTag
 - lineInfoToHash
 
-##Util/Random.pm
-###BioFuse::Util::Random
-###VERSION = "0.31"
+## Util/Random.pm
+### BioFuse::Util::Random
+### VERSION = "0.31"
 - GetRandBool
 - PickRandAele
 
-##Util/GZfile.pm
-###BioFuse::Util::GZfile
-###VERSION = "0.08"
+## Util/GZfile.pm
+### BioFuse::Util::GZfile
+### VERSION = "0.08"
 - Try_GZ_Read
 - is_idx_bgz
 - Try_GZ_Write
 
-##Util/Array.pm
-###BioFuse::Util::Array
-###VERSION = "0.33"
+## Util/Array.pm
+### BioFuse::Util::Array
+### VERSION = "0.33"
 - binarySearch
 
-##Util/String.pm
-###BioFuse::Util::String
-###VERSION = "0.33"
+## Util/String.pm
+### BioFuse::Util::String
+### VERSION = "0.33"
 - getStrRepUnit
 - getStrUnitRepeatTime
 - getRegexRegion
 
-##Util/Sys.pm
-###BioFuse::Util::Sys
-###VERSION = "0.32"
+## Util/Sys.pm
+### BioFuse::Util::Sys
+### VERSION = "0.32"
 - file_exist
 - trible_run_for_success
 - check_java_version
 
-##Dist/DistStat.pm
-###BioFuse::Dist::DistStat
-###VERSION = "0.02"
+## Dist/DistStat.pm
+### BioFuse::Dist::DistStat
+### VERSION = "0.02"
 - get_value_mean
 - get_trimmed_mean
 - engineer_Ntimes_SD_evaluation
 
-##GetPath.pm
-###BioFuse::GetPath
-###VERSION = "0.01"
+## GetPath.pm
+### BioFuse::GetPath
+### VERSION = "0.01"
 - GetPath
 
-##BioInfo/Depth/MixToPureT.pm
-###BioFuse::BioInfo::Depth::MixToPureT
-###VERSION = "0.02"
+## BioInfo/Depth/MixToPureT.pm
+### BioFuse::BioInfo::Depth::MixToPureT
+### VERSION = "0.02"
 - get_Tcell_GMpart
 - get_Tcell_GMratio
 - get_Ncell_GMpart
@@ -99,25 +99,25 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_ObjCountOfPureTumorCell
 - get_ObjSingleCNdepthInMixed
 
-##BioInfo/GeneAnno/GTFtoGenePSL.pm
-###BioFuse::BioInfo::GeneAnno::GTFtoGenePSL
-###VERSION = "0.82"
+## BioInfo/GeneAnno/GTFtoGenePSL.pm
+### BioFuse::BioInfo::GeneAnno::GTFtoGenePSL
+### VERSION = "0.82"
 - return_HELP_INFO
 - Load_moduleVar_to_pubVarPool
 - Get_Cmd_Options
 - para_alert
 - GTFtoGenePSL
 
-##BioInfo/GeneAnno/PSL.pm
-###BioFuse::BioInfo::GeneAnno::PSL
-###VERSION = "0.04"
+## BioInfo/GeneAnno/PSL.pm
+### BioFuse::BioInfo::GeneAnno::PSL
+### VERSION = "0.04"
 - load_GeneOrTrans_from_PSL
 - extract_GeneOrTrans_seq
 - output_exon_seq
 
-##BioInfo/GeneAnno/PSLtoBED.pm
-###BioFuse::BioInfo::GeneAnno::PSLtoBED
-###VERSION = "0.01"
+## BioInfo/GeneAnno/PSLtoBED.pm
+### BioFuse::BioInfo::GeneAnno::PSLtoBED
+### VERSION = "0.01"
 - return_HELP_INFO
 - Load_moduleVar_to_pubVarPool
 - Get_Cmd_Options
@@ -127,9 +127,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - record_protein_coding_regions
 - record_exon_regions
 
-##BioInfo/GeneAnno/GTF_transOB.pm
-###BioFuse::BioInfo::GeneAnno::GTF_transOB
-###VERSION = "0.01"
+## BioInfo/GeneAnno/GTF_transOB.pm
+### BioFuse::BioInfo::GeneAnno::GTF_transOB
+### VERSION = "0.01"
 - new
 - load_exon_region
 - load_CDS_region
@@ -152,9 +152,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - refined_use_name
 - get_trans_psl_line
 
-##BioInfo/GeneAnno/GTF.pm
-###BioFuse::BioInfo::GeneAnno::GTF
-###VERSION = "0.07"
+## BioInfo/GeneAnno/GTF.pm
+### BioFuse::BioInfo::GeneAnno::GTF
+### VERSION = "0.07"
 - read_GTF
 - read_refseg_transform
 - load_GTF_gene
@@ -166,9 +166,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - mark_abnormal_Start_codon
 - check_Start_codon_Seq
 
-##BioInfo/GeneAnno/GTF_geneOB.pm
-###BioFuse::BioInfo::GeneAnno::GTF_geneOB
-###VERSION = "0.07"
+## BioInfo/GeneAnno/GTF_geneOB.pm
+### BioFuse::BioInfo::GeneAnno::GTF_geneOB
+### VERSION = "0.07"
 - new
 - load_gtf_info
 - add_cytoband_info
@@ -184,27 +184,27 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - refined_use_name
 - get_gene_psl_line
 
-##BioInfo/GeneAnno/PSLtoFASTA.pm
-###BioFuse::BioInfo::GeneAnno::PSLtoFASTA
-###VERSION = "0.84"
+## BioInfo/GeneAnno/PSLtoFASTA.pm
+### BioFuse::BioInfo::GeneAnno::PSLtoFASTA
+### VERSION = "0.84"
 - return_HELP_INFO
 - Load_moduleVar_to_pubVarPool
 - Get_Cmd_Options
 - para_alert
 - PSLtoFASTA
 
-##BioInfo/GeneAnno/GTFtoTransPSL.pm
-###BioFuse::BioInfo::GeneAnno::GTFtoTransPSL
-###VERSION = "0.82"
+## BioInfo/GeneAnno/GTFtoTransPSL.pm
+### BioFuse::BioInfo::GeneAnno::GTFtoTransPSL
+### VERSION = "0.82"
 - return_HELP_INFO
 - Load_moduleVar_to_pubVarPool
 - Get_Cmd_Options
 - para_alert
 - GTFtoTransPSL
 
-##BioInfo/GeneAnno/GTF_lineOB.pm
-###BioFuse::BioInfo::GeneAnno::GTF_lineOB
-###VERSION = "0.01"
+## BioInfo/GeneAnno/GTF_lineOB.pm
+### BioFuse::BioInfo::GeneAnno::GTF_lineOB
+### VERSION = "0.01"
 - new
 - get_refSeg
 - get_strand
@@ -224,9 +224,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - update_refSeg
 - match_gtf_source
 
-##BioInfo/Objects/PairEnd_OB.pm
-###BioFuse::BioInfo::Objects::PairEnd_OB
-###VERSION = "0.05"
+## BioInfo/Objects/PairEnd_OB.pm
+### BioFuse::BioInfo::Objects::PairEnd_OB
+### VERSION = "0.05"
 - new
 - load_reads_OB
 - get_pid
@@ -238,9 +238,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - discardAbnormalSP
 - printSAM
 
-##BioInfo/Objects/Trans_OB.pm
-###BioFuse::BioInfo::Objects::Trans_OB
-###VERSION = "0.02"
+## BioInfo/Objects/Trans_OB.pm
+### BioFuse::BioInfo::Objects::Trans_OB
+### VERSION = "0.02"
 - new
 - get_ENSid
 - get_ref_seg
@@ -256,9 +256,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_find_seq_mark
 - mark_find_seq
 
-##BioInfo/Objects/HicReads_OB.pm
-###BioFuse::BioInfo::Objects::HicReads_OB
-###VERSION = "0.03"
+## BioInfo/Objects/HicReads_OB.pm
+### BioFuse::BioInfo::Objects::HicReads_OB
+### VERSION = "0.03"
 - new
 - load_AlignJudge
 - load_SuppHaplo
@@ -272,9 +272,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - addHapIDtoOptfd
 - recover_SuppHaploAttr
 
-##BioInfo/Objects/AlleleOnReads_OB.pm
-###BioFuse::BioInfo::Objects::AlleleOnReads_OB
-###VERSION = "0.03"
+## BioInfo/Objects/AlleleOnReads_OB.pm
+### BioFuse::BioInfo::Objects::AlleleOnReads_OB
+### VERSION = "0.03"
 - new
 - setMiss
 - loadInfo
@@ -293,9 +293,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_delSize
 - get_deloffset
 
-##BioInfo/Objects/PhasedMut_OB.pm
-###BioFuse::BioInfo::Objects::PhasedMut_OB
-###VERSION = "0.10"
+## BioInfo/Objects/PhasedMut_OB.pm
+### BioFuse::BioInfo::Objects::PhasedMut_OB
+### VERSION = "0.10"
 - new
 - load_posIdx
 - load_ref_allele
@@ -319,9 +319,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - allele2haploID
 - release_memory
 
-##BioInfo/Objects/Gene_OB.pm
-###BioFuse::BioInfo::Objects::Gene_OB
-###VERSION = "0.02"
+## BioInfo/Objects/Gene_OB.pm
+### BioFuse::BioInfo::Objects::Gene_OB
+### VERSION = "0.02"
 - new
 - get_ENSid
 - get_ref_seg
@@ -333,9 +333,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_find_seq_mark
 - mark_find_seq
 
-##BioInfo/Objects/HicPairEnd_OB.pm
-###BioFuse::BioInfo::Objects::HicPairEnd_OB
-###VERSION = "0.05"
+## BioInfo/Objects/HicPairEnd_OB.pm
+### BioFuse::BioInfo::Objects::HicPairEnd_OB
+### VERSION = "0.05"
 - new
 - get_rEndWholeAlignJudge
 - get_rEndWholeSuppHaplo
@@ -346,9 +346,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - dEndInterHapJudge
 - addHapIDtoReadsOptfd
 
-##BioInfo/Objects/Reads_OB.pm
-###BioFuse::BioInfo::Objects::Reads_OB
-###VERSION = "0.11"
+## BioInfo/Objects/Reads_OB.pm
+### BioFuse::BioInfo::Objects::Reads_OB
+### VERSION = "0.11"
 - new
 - get_available_rgOB
 - get_pid
@@ -390,9 +390,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - printSAM
 - get_pos_allele_v1_BaseOnCigar
 
-##BioInfo/FASTA/GetNonNBed.pm
-###BioFuse::BioInfo::FASTA::GetNonNBed
-###VERSION = "0.02"
+## BioInfo/FASTA/GetNonNBed.pm
+### BioFuse::BioInfo::FASTA::GetNonNBed
+### VERSION = "0.02"
 - return_HELP_INFO
 - Load_moduleVar_to_pubVarPool
 - Get_Cmd_Options
@@ -400,55 +400,55 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - GetNonNBedfromFasta
 - get_nonN_region_from_segseq
 
-##BioInfo/Codon.pm
-###BioFuse::BioInfo::Codon
-###VERSION = "0.31"
+## BioInfo/Codon.pm
+### BioFuse::BioInfo::Codon
+### VERSION = "0.31"
 - Load_Codon
 
-##BioInfo/CytoBand.pm
-###BioFuse::BioInfo::CytoBand
-###VERSION = "0.01"
+## BioInfo/CytoBand.pm
+### BioFuse::BioInfo::CytoBand
+### VERSION = "0.01"
 - load_cytoband
 - get_cytoband
 
-##BioInfo/Depth.pm
-###BioFuse::BioInfo::Depth
-###VERSION = "0.05"
+## BioInfo/Depth.pm
+### BioFuse::BioInfo::Depth
+### VERSION = "0.05"
 - get_windowSmoDepth
 - deal_window_depth_info
 - get_ctrl_copyR
 - get_givenWinItvalMeanDepth
 
-##BioInfo/Position.pm
-###BioFuse::BioInfo::Position
-###VERSION = "0.01"
+## BioInfo/Position.pm
+### BioFuse::BioInfo::Position
+### VERSION = "0.01"
 - load_region_for_randPos
 - get_random_pos
 
-##BioInfo/Quality.pm
-###BioFuse::BioInfo::Quality
-###VERSION = "0.31"
+## BioInfo/Quality.pm
+### BioFuse::BioInfo::Quality
+### VERSION = "0.31"
 - baseQ_char2score
 
-##BioInfo/BED.pm
-###BioFuse::BioInfo::BED
-###VERSION = "0.02"
+## BioInfo/BED.pm
+### BioFuse::BioInfo::BED
+### VERSION = "0.02"
 - read_bed_file
 
-##BioInfo/FASTA.pm
-###BioFuse::BioInfo::FASTA
-###VERSION = "0.31"
+## BioInfo/FASTA.pm
+### BioFuse::BioInfo::FASTA
+### VERSION = "0.31"
 - read_fasta_file
 - write_fasta_file
 
-##LoadOn.pm
-###BioFuse::LoadOn
-###VERSION = "0.50"
+## LoadOn.pm
+### BioFuse::LoadOn
+### VERSION = "0.50"
 - load_variants_dict
 
-##RunFunc.pm
-###BioFuse::RunFunc
-###VERSION = "0.51"
+## RunFunc.pm
+### BioFuse::RunFunc
+### VERSION = "0.51"
 - options_alert_and_run
 - func_run
 - load_functions
@@ -456,25 +456,25 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - HelpInfo_ExtractOpt
 - para_alert
 
-##Stat/SpearmanCorr.pm
-###BioFuse::Stat::SpearmanCorr
-###VERSION = "0.01"
+## Stat/SpearmanCorr.pm
+### BioFuse::Stat::SpearmanCorr
+### VERSION = "0.01"
 - get_spearman_corr
 
-##Stat/FisherTest.pm
-###BioFuse::Stat::FisherTest
-###VERSION = "0.01"
+## Stat/FisherTest.pm
+### BioFuse::Stat::FisherTest
+### VERSION = "0.01"
 - fisher_P
 - log_sum
 
-##Stat/ConfInt.pm
-###BioFuse::Stat::ConfInt
-###VERSION = "0.01"
+## Stat/ConfInt.pm
+### BioFuse::Stat::ConfInt
+### VERSION = "0.01"
 - CIL2Z
 
-##Stat/MultiTest.pm
-###BioFuse::Stat::MultiTest
-###VERSION = "0.01"
+## Stat/MultiTest.pm
+### BioFuse::Stat::MultiTest
+### VERSION = "0.01"
 - new
 - load_test
 - get_all_test
@@ -483,9 +483,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - p_adjust
 - set_P_sig_under_FDR
 
-##Stat/ChiSquareTest/FourFoldTable.pm
-###BioFuse::Stat::ChiSquareTest::FourFoldTable
-###VERSION = "0.03"
+## Stat/ChiSquareTest/FourFoldTable.pm
+### BioFuse::Stat::ChiSquareTest::FourFoldTable
+### VERSION = "0.03"
 - new
 - get_odds_ratio
 - get_risk_ratio
@@ -495,50 +495,50 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_chi_square
 - get_method
 
-##Stat/PearsonCorr.pm
-###BioFuse::Stat::PearsonCorr
-###VERSION = "0.01"
+## Stat/PearsonCorr.pm
+### BioFuse::Stat::PearsonCorr
+### VERSION = "0.01"
 - get_pearson_corr
 
-##Visual/SVG_Util/RadSysEle.pm
-###BioFuse::Visual::SVG_Util::RadSysEle
-###VERSION = "0.28"
+## Visual/SVG_Util/RadSysEle.pm
+### BioFuse::Visual::SVG_Util::RadSysEle
+### VERSION = "0.28"
 - draw_circle_seg
 - draw_a_sector
 
-##Visual/SVG_Util/SVGWork.pm
-###BioFuse::Visual::SVG_Util::SVGWork
-###VERSION = "0.01"
+## Visual/SVG_Util/SVGWork.pm
+### BioFuse::Visual::SVG_Util::SVGWork
+### VERSION = "0.01"
 - initialize_SVG_obj
 - output_SVG_file
 
-##Visual/SVG_Util/Font.pm
-###BioFuse::Visual::SVG_Util::Font
-###VERSION = "0.30"
+## Visual/SVG_Util/Font.pm
+### BioFuse::Visual::SVG_Util::Font
+### VERSION = "0.30"
 - confirm_transform_ratio
 - show_text_in_line
 - show_text_on_arc
 - get_size_of_text_to_show
 - decode_char_size_symbol
 
-##Visual/SVG_Util/RectSysEle.pm
-###BioFuse::Visual::SVG_Util::RectSysEle
-###VERSION = "0.36"
+## Visual/SVG_Util/RectSysEle.pm
+### BioFuse::Visual::SVG_Util::RectSysEle
+### VERSION = "0.36"
 - draw_a_parallelogram
 - draw_a_triangle
 - draw_a_arrow
 - draw_a_ellipse
 
-##Visual/SVG_Util/RadSys.pm
-###BioFuse::Visual::SVG_Util::RadSys
-###VERSION = "0.16"
+## Visual/SVG_Util/RadSys.pm
+### BioFuse::Visual::SVG_Util::RadSys
+### VERSION = "0.16"
 - get_coordinate_on_circle
 - normalize_radian
 - draw_an_arc
 
-##Visual/Objects/Axis.pm
-###BioFuse::Visual::Objects::Axis
-###VERSION = "0.01"
+## Visual/Objects/Axis.pm
+### BioFuse::Visual::Objects::Axis
+### VERSION = "0.01"
 - new
 - add_resol
 - set_label
@@ -561,9 +561,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - draw_axisBodyLine
 - draw_stub
 
-##Visual/Objects/BiAxis.pm
-###BioFuse::Visual::Objects::BiAxis
-###VERSION = "0.01"
+## Visual/Objects/BiAxis.pm
+### BioFuse::Visual::Objects::BiAxis
+### VERSION = "0.01"
 - new
 - calc_orig
 - get_origX
@@ -572,14 +572,14 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - valueToSVGcoord
 - draw
 
-##Visual/Objects/Histogram.pm
-###BioFuse::Visual::Objects::Histogram
-###VERSION = "0.01"
+## Visual/Objects/Histogram.pm
+### BioFuse::Visual::Objects::Histogram
+### VERSION = "0.01"
 - new
 - load_data
 - set_attr
 - draw
 
-##BioFuse.pm
-###BioFuse::BioFuse
+## BioFuse.pm
+### BioFuse::BioFuse
 
