@@ -53,7 +53,7 @@ sub Get_Two_Seg_Olen{
     my ($s1,$e1,$s2,$e2,$offset) = @_;
     $offset = 1 unless defined $offset;
     my $overlap_len = min($e1,$e2) - max($s1,$s2) + $offset;
-    return ($overlap_len<0) ? 0 : $overlap_len;
+    return $overlap_len < 0 ? 0 : $overlap_len;
 }
 
 #--- merge intervals ---

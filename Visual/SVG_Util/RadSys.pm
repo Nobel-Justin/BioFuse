@@ -29,7 +29,7 @@ $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- degree radian transform (basic) --------#
-our $PI = 3.1415926;
+our $PI = asin(1) * 2; # 3.14159265358979
 our $deg2rad = $PI / 180;
 
 #--------- functions in this pm --------#

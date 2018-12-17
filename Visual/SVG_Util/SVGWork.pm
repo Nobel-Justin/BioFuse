@@ -37,11 +37,11 @@ sub initialize_SVG_obj{
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $bg_width  = $parm{bg_width} || '100';
-    my $bg_height = $parm{bg_height} || '100';
+    my $bg_width  = $parm{bg_width} || '800';
+    my $bg_height = $parm{bg_height} || '600';
     my $bg_col = $parm{bg_col} || 'white';
     my $bg_stroke_col = $parm{bg_stroke_col} || 'none';
-    my $AUTHOR = $parm{AUTHOR} || 'test';
+    my $AUTHOR = $parm{AUTHOR} || 'anonymous';
     my $EMAIL = $parm{EMAIL} || 'test@test.com';
 
     my $svg_obj = SVG->new( width=>$bg_width, height=>$bg_height, author=>$AUTHOR, 'author-mail'=>$EMAIL);
