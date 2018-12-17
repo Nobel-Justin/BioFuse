@@ -410,7 +410,6 @@ sub draw_stub{
     # stub-tic angle related to body line
     my $relateAng = $axis->{tic}->{clockwise} ? 180 : 0;
        $relateAng += 180 * (($axis->{headAng}>270 || abs($axis->{headAng}-135)<=45) ? 1 : 0) - $axis->{headAng} if $parallelToSX;
-       print "$relateAng\n";
     # stub SVG-text anchor
     my $text_anchor;
     if($axis->{headAng} <= 90 || $axis->{headAng} >= 270){
