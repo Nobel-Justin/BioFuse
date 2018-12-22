@@ -183,6 +183,7 @@ sub add_stub{
     my %parm = @_;
     my $stub = $parm{stub};
     push $axis->{stub}, $stub unless first {$_==$stub} @{$axis->{stub}};
+    @{$axis->{stub}} = sort {$a<=>$b} @{$axis->{stub}};
 }
 
 #--- set tics on axis ---
