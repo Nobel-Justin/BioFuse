@@ -95,7 +95,7 @@ sub get_reads_OB{
 sub get_sorted_reads_OB{
     my $pe_OB = shift;
     my %parm = @_;
-    my $rEndAref = $parm{rEndAref}; # [1,2] or [1] or [2]
+    my $rEndAref = $parm{rEndAref} || [1,2]; # [1,2] or [1] or [2]
     my $onlyMap  = $parm{onlyMap} || 0;
     my $chrSortHref = $parm{chrSortHref} || undef;
     my $chrSortKey  = $parm{chrSortKey} || undef;
