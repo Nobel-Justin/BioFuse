@@ -293,6 +293,30 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_delSize
 - get_deloffset
 
+## BioInfo/Objects/Bam_OB.pm
+### BioFuse::BioInfo::Objects::Bam_OB
+### VERSION = "0.10"
+- new
+- verify_bam
+- verify_index
+- get_filepath
+- get_tag
+- get_SAMheader
+- start_read
+- start_write
+- stop_write
+- write
+- load_reads_for_ReadsGroup
+- rg_count_need_reads_ForIns
+- extract_ReadsGroup_OB
+- add_ReadsGroup_OBs
+- get_region_depth
+- delete_regionDepthFile
+- get_region_alt_vcf_gz
+- get_pos_marker_stat
+- get_allele_marker_stat
+- smartBam_PEread
+
 ## BioInfo/Objects/PhasedMut_OB.pm
 ### BioFuse::BioInfo::Objects::PhasedMut_OB
 ### VERSION = "0.10"
@@ -348,7 +372,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/Reads_OB.pm
 ### BioFuse::BioInfo::Objects::Reads_OB
-### VERSION = "0.11"
+### VERSION = "0.12"
 - new
 - get_available_rgOB
 - get_pid
@@ -389,6 +413,20 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_pos_allele
 - printSAM
 - get_pos_allele_v1_BaseOnCigar
+
+## BioInfo/Objects/ReadsGroup_OB.pm
+### BioFuse::BioInfo::Objects::ReadsGroup_OB
+### VERSION = "0.03"
+- new
+- load_reads_for_ins_evalue
+- evalue_ins
+- test_3p_overlap
+- get_RGid
+- get_stat_file_prefix
+- get_report_structure
+- generate_report
+- load_report
+- generate_insDistLog
 
 ## BioInfo/FASTA/GetNonNBed.pm
 ### BioFuse::BioInfo::FASTA::GetNonNBed
