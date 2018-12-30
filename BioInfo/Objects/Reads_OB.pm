@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Reads_OB';
 #----- version --------
-$VERSION = "0.11";
-$DATE = '2018-11-04';
+$VERSION = "0.12";
+$DATE = '2018-12-28';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -71,6 +71,7 @@ my @functoion_list = qw/
                      /;
 
 #--- structure of object
+# reads_OB -> SAMtext = $SAMtext # for simple load
 # reads_OB -> pid = $pid
 # reads_OB -> flag = $flag
 # reads_OB -> mseg = $mseg
@@ -97,36 +98,20 @@ sub new{
     my $SAMtext = $parm{ReadsLineText};
     my $_rc_optfd = $parm{_rc_optfd};
     my $_rc_rdstr = $parm{_rc_rdstr};
-    my $reads_end = $parm{reads_end}; # for PE single-end mapped, e.g., Hi-C
+    my $reads_end = $parm{reads_end}; # for R1 and R2 aligned respectively, e.g., Hi-C PE-reads
+    my $simpleLoad = $parm{simpleLoad} || 0; # just record reads' basic information
 
     my $reads_OB = {};
     # basic infos
     chomp($SAMtext);
     my @term = split /\t+/, $SAMtext;
+
+    # basic alignment info
     $reads_OB->{pid}   = $term[0];
     $reads_OB->{flag}  = $term[1];
     $reads_OB->{mseg}  = $term[2];
     $reads_OB->{mpos}  = $term[3];
-    $reads_OB->{mapQ}  = $term[4];
-    $reads_OB->{cigar} = $term[5];
-    ($reads_OB->{MDtag}) = ($SAMtext =~ /\sMD:Z:(\S+)/); # sometimes, SAM lacks MD-tag
-    # paired-end info
-    $reads_OB->{p_mseg} = $term[6];
-    $reads_OB->{p_mpos} = $term[7];
-    $reads_OB->{tlen}   = $term[8];
-    # read string
-    $reads_OB->{rlen}   = length($term[9]); # note that Hard-clip is short!
-    if( $_rc_rdstr ){
-        $reads_OB->{rseq}  = $term[9];
-        $reads_OB->{baseQ} = $term[10];
-    }
-    # optional fields
-    if( $_rc_optfd ){
-        $reads_OB->{optfd} = join("\t", @term[11 .. $#term]);
-    }
-    # reads group
-    $reads_OB->{rg_id} = ($SAMtext =~ /RG\:Z\:(\S+)/) ? $1 : undef;
-    # reads end NO.
+    ## reads end NO.
     if( defined $reads_end ){
         $reads_OB->{endNO} = $reads_end;
         $reads_OB->{flag} |= ( $reads_end == 1 ? 0x40 : 0x80 ); # update flag
@@ -134,7 +119,35 @@ sub new{
     else{
         $reads_OB->{endNO} = ($reads_OB->{flag} & 0x40) ? 1 : 2; # 0x80 is '2'
     }
-    # make up cigar 'H' for GATK realn
+
+    # simple load
+    if($simpleLoad){
+        $reads_OB->{SAMtext}  = $SAMtext;
+        bless($reads_OB);
+        return $reads_OB;
+    }
+
+    # normal load
+    $reads_OB->{mapQ}  = $term[4];
+    $reads_OB->{cigar} = $term[5];
+    ($reads_OB->{MDtag}) = ($SAMtext =~ /\sMD:Z:(\S+)/); # sometimes, SAM lacks MD-tag
+    ## paired-end info
+    $reads_OB->{p_mseg} = $term[6];
+    $reads_OB->{p_mpos} = $term[7];
+    $reads_OB->{tlen}   = $term[8];
+    ## read string
+    $reads_OB->{rlen}   = length($term[9]); # note that Hard-clip is short!
+    if( $_rc_rdstr ){
+        $reads_OB->{rseq}  = $term[9];
+        $reads_OB->{baseQ} = $term[10];
+    }
+    ## optional fields
+    if( $_rc_optfd ){
+        $reads_OB->{optfd} = join("\t", @term[11 .. $#term]);
+    }
+    ### reads group
+    $reads_OB->{rg_id} = ($SAMtext =~ /RG\:Z\:(\S+)/) ? $1 : undef;
+    ### make up cigar 'H' for GATK realn
     if(    $reads_OB->{cigar} !~ /H/
         && $SAMtext =~ /OC\:Z\:(\S+H\S*)/
     ){
@@ -865,11 +878,11 @@ sub get_pos_allele{
 
 #--- print reads in SAM format ---
 sub printSAM{
-
     my $reads_OB = shift;
-
+    # simple load
+    return $reads_OB->{SAMtext} if defined $reads_OB->{SAMtext};
+    # normal load
     my @SAM_fields = qw/ pid flag mseg mpos mapQ cigar p_mseg p_mpos tlen rseq baseQ optfd /;
-
     return join("\t", map {($reads_OB->{$_})} @SAM_fields );
 }
 
