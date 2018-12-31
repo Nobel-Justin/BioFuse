@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::HicPairEnd_OB';
 #----- version --------
-$VERSION = "0.05";
-$DATE = '2018-11-13';
+$VERSION = "0.06";
+$DATE = '2018-12-31';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -78,8 +78,8 @@ sub get_rEndWholeSuppHaplo{
 }
 
 #--- test is the paired-ends are invalid Hi-C PE ---
-## 1) aligned to same fragement
-## 2) aligned too close, if not set to skip
+## 1) aligned too close, if set
+## 2) aligned to same fragement
 sub isInValidPair{
     my $pe_OB = shift;
     my %parm = @_;
@@ -94,17 +94,23 @@ sub isInValidPair{
         return 0;
     }
     else{
-        # check close alignment
-        if(    ! $skipCloseAlign
-            && $rOB_a->is_closeAlign(test_rOB => $rOB_b, distance => $maxCloseAlignDist)
+        if(      # check close alignment
+               (    ! $skipCloseAlign
+                 && $rOB_a->is_closeAlign(test_rOB => $rOB_b, distance => $maxCloseAlignDist)
+               )
+            ||   # check fragment index
+               (    binarySearch(query => $rOB_a->get_mpos, array => $chr2enzymePosHf->{$rOB_a->get_mseg})
+                 == binarySearch(query => $rOB_b->get_mpos, array => $chr2enzymePosHf->{$rOB_b->get_mseg})
+               )
         ){
-            return 1;
-        }
-        # check fragment index
-        elsif( binarySearch(query => $rOB_a->get_mpos, array => $chr2enzymePosHf->{$rOB_a->get_mseg})
-            == binarySearch(query => $rOB_b->get_mpos, array => $chr2enzymePosHf->{$rOB_b->get_mseg})
-        ){
-            return 1;
+            my $fw_a = $rOB_a->is_fw_map;
+            my $rv_b = $rOB_b->is_rv_map;
+            return 'DanglingEnd'  if ($fw_a && $rv_b); # most
+            my $rv_a = $rOB_a->is_rv_map;
+            my $fw_b = $rOB_b->is_fw_map;
+            return 'SelfCircle'   if ($rv_a && $fw_b);
+            return 'DumpedPairFw' if ($fw_a && $fw_b);
+            return 'DumpedPairRv' if ($rv_a && $rv_b);
         }
         else{
             return 0;
