@@ -37,6 +37,7 @@ my @functoion_list = qw/
                         get_sorted_reads_OB
                         test_need_RefSeg
                         onlyKeep_need_RefSeg
+                        makePrimeAlignment
                         discardAbnormalSP
                         printSAM
                      /;
