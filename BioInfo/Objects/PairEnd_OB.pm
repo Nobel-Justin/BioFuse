@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::PairEnd_OB';
 #----- version --------
-$VERSION = "0.05";
-$DATE = '2018-11-01';
+$VERSION = "0.06";
+$DATE = '2019-01-29';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -221,25 +221,21 @@ sub discardAbnormalSP{
 
 #--- print PE in SAM format ---
 sub printSAM{
-
     my $pe_OB = shift;
     my %parm = @_;
-    my $skip_2ndmap = $parm{skip_2ndmap};
-    my $skip_suppmap= $parm{skip_suppmap};
-    my $skip_unmap  = $parm{skip_unmap};
-    my $skip_dup    = $parm{skip_dup};
-    my $skip_mltmap = $parm{skip_mltmap};
-    my $skip_SHclip = $parm{skip_SHclip};
+    my $keep_all = $parm{keep_all} || 0;
 
     my @SAM;
     for my $reads_end ( sort {$a<=>$b} keys %{$pe_OB->{reads_OB}} ){
         for my $reads_OB ( @{$pe_OB->{reads_OB}->{$reads_end}} ){
-            next if( $skip_2ndmap  && $reads_OB->is_2ndmap );
-            next if( $skip_suppmap && $reads_OB->is_suppmap );
-            next if( $skip_unmap   && $reads_OB->is_unmap );
-            next if( $skip_dup     && $reads_OB->is_dup );
-            next if( $skip_mltmap  && $reads_OB->is_mltmap );
-            next if( $skip_SHclip  && $reads_OB->is_clip );
+            unless($keep_all){
+                next if( $parm{skip_2ndmap}  && $reads_OB->is_2ndmap );
+                next if( $parm{skip_suppmap} && $reads_OB->is_suppmap );
+                next if( $parm{skip_unmap}   && $reads_OB->is_unmap );
+                next if( $parm{skip_dup}     && $reads_OB->is_dup );
+                next if( $parm{skip_mltmap}  && $reads_OB->is_mltmap );
+                next if( $parm{skip_SHclip}  && $reads_OB->is_clip );
+            }
             push @SAM, $reads_OB->printSAM;
         }
     }
