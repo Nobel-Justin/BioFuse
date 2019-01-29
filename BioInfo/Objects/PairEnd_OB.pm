@@ -156,6 +156,25 @@ sub onlyKeep_need_RefSeg{
     }
     # move outside
     splice(@$rOB_Af, $_, 1) for @discIdx;
+    # make prime alignment after discard certain original alignment
+    $pe_OB->makePrimeAlignment(reads_end => $parm{reads_end});
+}
+
+#--- make prime alignment if not exists ---
+sub makePrimeAlignment{
+    my $pe_OB = shift;
+    my %parm = @_;
+
+    my @rEnd = $parm{reads_end} ? ($parm{reads_end}) : (1,2);
+    for my $rEnd (@rEnd){
+        my $rOB_Af = $pe_OB->get_reads_OB(reads_end => $rEnd);
+        my $primeAlign = first { !$_->is_2ndmap && !$_->is_suppmap } @$rOB_Af;
+        # cannot find prime alignment, so take the first alignment and make it
+        unless(defined $primeAlign){
+            $rOB_Af->[0]->free_2ndmap;
+            $rOB_Af->[0]->free_suppmap;
+        }
+    }
 }
 
 #--- discard abnormal supplementary alignment ---

@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Reads_OB';
 #----- version --------
-$VERSION = "0.12";
-$DATE = '2018-12-28';
+$VERSION = "0.13";
+$DATE = '2019-01-29';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -48,7 +48,9 @@ my @functoion_list = qw/
                         is_rv_map
                         is_unmap
                         is_2ndmap
+                        free_2ndmap
                         is_suppmap
+                        free_suppmap
                         is_dup
                         is_mltmap
                         is_good_cigar
@@ -335,10 +337,22 @@ sub is_2ndmap{
     return $reads_OB->{flag} & 0x100;
 }
 
+#--- free it from 0x100 if it is secondary alignment ---
+sub free_2ndmap{
+    my $reads_OB = shift;
+    $reads_OB->{flag} -= 0x100 if $reads_OB->is_2ndmap;
+}
+
 #--- test whether it is 0x800, supplementary alignemnt ---
 sub is_suppmap{
     my $reads_OB = shift;
     return $reads_OB->{flag} & 0x800;
+}
+
+#--- free it from 0x800 if it is supplementary alignemnt ---
+sub free_suppmap{
+    my $reads_OB = shift;
+    $reads_OB->{flag} -= 0x800 if $reads_OB->is_suppmap;
 }
 
 #--- test whether it is 0x400, duplicated alignemnt ---
