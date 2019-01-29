@@ -2,7 +2,7 @@ package BioFuse::BioInfo::Objects::PairEnd_OB;
 
 use strict;
 use warnings;
-use List::Util qw/ min /;
+use List::Util qw/ min first /;
 use Data::Dumper;
 use BioFuse::Util::Log qw/ warn_and_exit /;
 use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen /;
