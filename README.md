@@ -226,7 +226,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/PairEnd_OB.pm
 ### BioFuse::BioInfo::Objects::PairEnd_OB
-### VERSION = "0.05"
+### VERSION = "0.06"
 - new
 - load_reads_OB
 - get_pid
@@ -235,6 +235,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_sorted_reads_OB
 - test_need_RefSeg
 - onlyKeep_need_RefSeg
+- makePrimeAlignment
 - discardAbnormalSP
 - printSAM
 
@@ -359,7 +360,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/HicPairEnd_OB.pm
 ### BioFuse::BioInfo::Objects::HicPairEnd_OB
-### VERSION = "0.05"
+### VERSION = "0.06"
 - new
 - get_rEndWholeAlignJudge
 - get_rEndWholeSuppHaplo
@@ -372,7 +373,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/Reads_OB.pm
 ### BioFuse::BioInfo::Objects::Reads_OB
-### VERSION = "0.12"
+### VERSION = "0.13"
 - new
 - get_available_rgOB
 - get_pid
@@ -393,7 +394,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - is_rv_map
 - is_unmap
 - is_2ndmap
+- free_2ndmap
 - is_suppmap
+- free_suppmap
 - is_dup
 - is_mltmap
 - is_good_cigar
