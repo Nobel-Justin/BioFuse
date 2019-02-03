@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::PairEnd_OB';
 #----- version --------
-$VERSION = "0.06";
-$DATE = '2019-01-29';
+$VERSION = "0.07";
+$DATE = '2019-02-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -35,6 +35,7 @@ my @functoion_list = qw/
                         get_peIdx
                         get_reads_OB
                         get_sorted_reads_OB
+                        tryDiscardAlign
                         test_need_RefSeg
                         onlyKeep_need_RefSeg
                         makePrimeAlignment
@@ -117,6 +118,38 @@ sub get_sorted_reads_OB{
                 } @reads_OB;
     # return Aref
     return \@reads_OB;
+}
+
+#--- try to dicard alignment of certain scenario ---
+# see function 'judgeAlign' in BioFuse::BioInfo::Objects::Reads_OB
+sub tryDiscardAlign{
+    my $pe_OB = shift;
+    # which alignment to discard and whether have remains
+    my %discIdx;
+    my %hasRemains;
+    for my $rEnd (1,2){
+        my $rOB_Af = $pe_OB->get_reads_OB(reads_end => $rEnd);
+        for my $i (0 .. @$rOB_Af-1){
+            next if $rOB_Af->[$i]->is_unmap; # skip unmap
+            if($rOB_Af->[$i]->judgeAlign(@_)){
+                unshift @{$discIdx{$rEnd}}, $i;
+            }
+            else{
+                $hasRemains{$rEnd} = 1;
+            }
+        }
+    }
+    # if both R1 and R2 have remain alignment, do discard.
+    if($hasRemains{1} && $hasRemains{2}){
+        for my $rEnd (1,2){
+            my $rOB_Af = $pe_OB->get_reads_OB(reads_end => $rEnd);
+            splice(@$rOB_Af, $_, 1) for @{$discIdx{$rEnd}};
+        }
+        return 1;
+    }
+    else{
+        return 0;
+    }
 }
 
 #--- return need-chr situation of given reads-end ---

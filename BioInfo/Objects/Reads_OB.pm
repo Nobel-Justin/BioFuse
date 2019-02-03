@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Reads_OB';
 #----- version --------
-$VERSION = "0.13";
-$DATE = '2019-01-29';
+$VERSION = "0.14";
+$DATE = '2019-02-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -44,6 +44,7 @@ my @functoion_list = qw/
                         add_str_to_optfd
                         optfd_has_regex
                         update_rgOB_maxRlen
+                        judgeAlign
                         is_fw_map
                         is_rv_map
                         is_unmap
@@ -311,6 +312,31 @@ sub update_rgOB_maxRlen{
     my $rg_OB = $reads_OB->{rg_OB};
     my $endNO = $reads_OB->{endNO};
     $rg_OB->{read_Len}->{$endNO} = max( $rg_OB->{read_Len}->{$endNO}, $reads_OB->{rlen} );
+}
+
+#--- do judgement on alignment ---
+## SP: Supplementary alignment
+## SD: Secondary alignment
+## MM: Multiple-Mapped
+## LM: Low Mapping quality
+sub judgeAlign{
+    my $reads_OB = shift;
+    my %parm = @_;
+    my $type = $parm{type};
+    my $min_mapQ = $parm{min_mapQ};
+
+    if($type eq 'SP'){
+        return $reads_OB->is_suppmap;
+    }
+    elsif($type eq 'SD'){
+        return $reads_OB->is_2ndmap;
+    }
+    elsif($type eq 'MM'){
+        return $reads_OB->is_mltmap;
+    }
+    elsif($type eq 'LM'){
+        return ($reads_OB->get_mapQ < $min_mapQ);
+    }
 }
 
 #--- test whether it is forward-mapped ---
