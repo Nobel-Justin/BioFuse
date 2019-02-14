@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::PairEnd_OB';
 #----- version --------
-$VERSION = "0.07";
-$DATE = '2019-02-03';
+$VERSION = "0.08";
+$DATE = '2019-02-11';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -37,6 +37,7 @@ my @functoion_list = qw/
                         get_sorted_reads_OB
                         tryDiscardAlign
                         test_need_RefSeg
+                        test_pair_RefSeg
                         onlyKeep_need_RefSeg
                         makePrimeAlignment
                         discardAbnormalSP
@@ -93,7 +94,7 @@ sub get_reads_OB{
 }
 
 #--- return sorted reads OB array-ref ---
-## ascending sort chr,pos
+# ascending sort chr,pos
 sub get_sorted_reads_OB{
     my $pe_OB = shift;
     my %parm = @_;
@@ -171,6 +172,55 @@ sub test_need_RefSeg{
         }
     }
     return $cnt_Hf;
+}
+
+#--- test whether reads mapped to required chr-[pair] ---
+# return 1 means mapped, return 0 means not mapped.
+sub test_pair_RefSeg{
+    my $pe_OB = shift;
+    my %parm = @_;
+    my $soloBoth = $parm{soloBoth}; # pe must both match a_refseg if only a_refseg provided
+
+    # parameters
+    unless(exists $parm{a_refSegHref}){
+        warn_and_exit "<ERROR>\tlacks 'a_refSegHref' parameter in func 'test_pair_RefSeg' of pe_OB.\n";
+    }
+    my %refSegHref = (a => $parm{a_refSegHref});
+    $refSegHref{b} = $parm{b_refSegHref} if exists $parm{b_refSegHref};
+    # test refseg
+    my %testResult;
+    for my $rEnd (1,2){
+        $testResult{$rEnd}{$_} = $pe_OB->test_need_RefSeg(reads_end => $rEnd, refSegHref => $refSegHref{$_}) for keys %refSegHref;
+    }
+    # make judgment
+    if(exists $refSegHref{b}){
+        if(    $testResult{1}{a}{isNeed} * $testResult{2}{b}{isNeed} != 0
+            || $testResult{1}{b}{isNeed} * $testResult{2}{a}{isNeed} != 0
+        ){
+            return 1;
+        }
+        else{
+            return 0;
+        }
+    }
+    else{
+        if($soloBoth){
+            if($testResult{1}{a}{isNeed} * $testResult{2}{a}{isNeed} != 0){
+                return 1;
+            }
+            else{
+                return 0;
+            }
+        }
+        else{
+            if($testResult{1}{a}{isNeed} + $testResult{2}{a}{isNeed} != 0){
+                return 1;
+            }
+            else{
+                return 0;
+            }
+        }
+    }
 }
 
 #--- only keep need-chr alignment of given reads-end ---
