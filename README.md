@@ -226,7 +226,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/PairEnd_OB.pm
 ### BioFuse::BioInfo::Objects::PairEnd_OB
-### VERSION = "0.07"
+### VERSION = "0.08"
 - new
 - load_reads_OB
 - get_pid
@@ -235,6 +235,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_sorted_reads_OB
 - tryDiscardAlign
 - test_need_RefSeg
+- test_pair_RefSeg
 - onlyKeep_need_RefSeg
 - makePrimeAlignment
 - discardAbnormalSP
