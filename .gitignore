@@ -1,7 +1,7 @@
 README.md.update.sh
-Visual/ArrangeObj.pm
-Visual/AxisWork.pm
-Visual/DepthWork.pm
-Visual/GeneWork.pm
-Visual/RMSKwork.pm
-Visual/RegionWork.pm
+Visual/CANDIDATES_PM/DepthWork.pm
+Visual/CANDIDATES_PM/RMSKwork.pm
+Visual/CANDIDATES_PM/ArrangeObj.pm
+Visual/CANDIDATES_PM/GeneWork.pm
+Visual/CANDIDATES_PM/AxisWork.pm
+Visual/CANDIDATES_PM/RegionWork.pm

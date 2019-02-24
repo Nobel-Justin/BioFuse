@@ -546,9 +546,13 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## Visual/SVG_Util/RadSysEle.pm
 ### BioFuse::Visual::SVG_Util::RadSysEle
-### VERSION = "0.28"
+### VERSION = "0.29"
 - draw_circle_seg
 - draw_a_sector
+
+## Visual/SVG_Util/Color.pm
+### BioFuse::Visual::SVG_Util::Color
+### VERSION = "0.01"
 
 ## Visual/SVG_Util/SVGWork.pm
 ### BioFuse::Visual::SVG_Util::SVGWork
@@ -582,7 +586,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## Visual/Objects/Axis.pm
 ### BioFuse::Visual::Objects::Axis
-### VERSION = "0.01"
+### VERSION = "0.02"
 - new
 - add_resol
 - set_label
@@ -595,6 +599,8 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_origX
 - get_origY
 - get_axisLen
+- get_resol
+- get_stub
 - get_headAng
 - get_headRad
 - get_origValue
@@ -604,6 +610,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - draw_quick
 - draw_axisBodyLine
 - draw_stub
+- draw_label
 
 ## Visual/Objects/BiAxis.pm
 ### BioFuse::Visual::Objects::BiAxis
@@ -623,6 +630,19 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - load_data
 - set_attr
 - draw
+
+## Visual/Objects/GradColor.pm
+### BioFuse::Visual::Objects::GradColor
+### VERSION = "0.01"
+- new
+- set_axis
+- get_stRGB
+- get_edRGB
+- get_stValue
+- get_edValue
+- valueToRGB
+- draw_quick
+- draw_body
 
 ## BioFuse.pm
 ### BioFuse::BioFuse
