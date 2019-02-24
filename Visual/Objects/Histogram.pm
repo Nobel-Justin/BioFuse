@@ -62,6 +62,7 @@ sub load_data{
     my %parm = @_;
     push @{$histogram->{data}}, { vA => $parm{vA},
                                   vB => $parm{vB} || [],
+                                  fill => $parm{fill} || {},
                                   strokeCol => $parm{strokeCol} || {},
                                   strokeWid => $parm{strokeWid} || {}
                                 };
@@ -92,7 +93,7 @@ sub draw{
     my $vB_orig = $vB_axis->get_origValue;
     my $upleft_angle = 180 - ($vA_axis->get_headAng - $vB_axis->get_headAng);
     my $rotate_degree = $vB_axis->get_headAng + 90 - $upleft_angle;
-    for my $Hf (@{$histogram->{data}}){
+    for my $Hf (sort {$a->{vA}<=>$b->{vA}} @{$histogram->{data}}){
         my $vA = $Hf->{vA};
         my $vB_count = scalar @{$Hf->{vB}};
         my @i = (0 .. $vB_count-1);
@@ -106,9 +107,9 @@ sub draw{
             my ($xbom,$ybom) = $biAxis->valueToSVGcoord(valueAf=>[$vA,$vbom], adjustOuterAf=>[1,0]);
             my $cx = ($xtop + $xbom) / 2;
             my $cy = ($ytop + $ybom) / 2;
-            my $fill = $histogram->{fill}->[$i] || $histogram->{fill}->[-1];
-            my $strokeCol = $histogram->{stroke}->{color}->[$i] || $histogram->{stroke}->{color}->[-1];
-            my $strokeWid = $histogram->{stroke}->{width}->[$i] || $histogram->{stroke}->{width}->[-1];
+            my $fill = $Hf->{fill}->{$i} || $histogram->{fill}->[$i] || $histogram->{fill}->[-1];
+            my $strokeCol = $Hf->{strokeCol}->{$i} || $histogram->{stroke}->{color}->[$i] || $histogram->{stroke}->{color}->[-1];
+            my $strokeWid = $Hf->{strokeWid}->{$i} || $histogram->{stroke}->{width}->[$i] || $histogram->{stroke}->{width}->[-1];
             my $height = $vB_axis->valueToAxisDist(value => $vtop) - $vB_axis->valueToAxisDist(value => $vbom);
                $height += 0.001 unless $height;
             draw_a_parallelogram( svg_obj => $svg_obj,
