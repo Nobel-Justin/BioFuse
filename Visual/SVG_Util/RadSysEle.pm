@@ -13,7 +13,6 @@ our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @ISA = qw(Exporter);
 @EXPORT = qw/
-              %COLOR_DB
               draw_circle_seg
               get_coordinate_on_circle
             /;
@@ -23,21 +22,12 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Visual::SVG_Util::RadSysEle';
 #----- version --------
-$VERSION = "0.28";
-$DATE = '2018-12-03';
+$VERSION = "0.29";
+$DATE = '2019-02-24';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
-
-# url: http://www.december.com/html/spec/colorsvg.html
-our %COLOR_DB=(
-                1=>'blue',    2=>'lime',     3=>'gold',      4=>'tomato',     5=>'purple',
-                6=>'brown',   7=>'green',    8=>'orange',    9=>'skyblue',   10=>'pink',
-               11=>'orchid', 12=>'darkred', 13=>'seagreen', 14=>'chocolate', 15=>'tan',
-
-               dark_col=>'blue|brown|green|purple|chocolate|darkred'
-             );
 
 #--------- functions in this pm --------#
 my @functoion_list = qw/
