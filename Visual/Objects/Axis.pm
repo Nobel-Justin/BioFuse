@@ -2,7 +2,7 @@ package BioFuse::Visual::Objects::Axis;
 
 use strict;
 use warnings;
-use List::Util qw/ min sum first /;
+use List::Util qw/ min sum first any /;
 use POSIX qw/ ceil /;
 use Data::Dumper;
 use BioFuse::Util::Log qw/ warn_and_exit /;
@@ -22,8 +22,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Visual::Objects::Axis';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2018-12-16';
+$VERSION = "0.02";
+$DATE = '2019-02-24';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -43,6 +43,8 @@ my @functoion_list = qw/
                         get_origX
                         get_origY
                         get_axisLen
+                        get_resol
+                        get_stub
                         get_headAng
                         get_headRad
                         get_origValue
@@ -52,6 +54,7 @@ my @functoion_list = qw/
                         draw_quick
                         draw_axisBodyLine
                         draw_stub
+                        draw_label
                      /;
 
 #--- structure of object
@@ -60,11 +63,11 @@ my @functoion_list = qw/
 # axis -> origPos = {x=>$origP_X, y=>$origP_Y, value=>$origP_value, dist_offset=>$dist_offset}
 # axis -> headAng = $headAng ## it's clock-wise angle (0-360) from zero o'clock
 # axis -> headRad = $headRad ## radian of $headAng
-# axis -> resol = [{min=>$min, max=>$max, method=>'log/linear', logbase=>undef/2/10, resol=>}, {}, ..]
-# axis -> label = {text=>$text, fontfam=>$fontfam, fontsize=>$fontsize}
+# axis -> resol = [{min=>$min, max=>$max, method=>'linear', resol=>}, {}, ..]
+# axis -> label = {text=>$text, gapToBodyLine=>$gapToBodyLine}
 # axis -> stub = [$stub1, $stub2, ..]
 # axis -> stubText = $stubText
-# axis -> stubAttr = {ticGap=>$stubTicGap, vtToBL=>$verticalToBL, plToSX=>$parallelToSX}
+# axis -> stubAttr = {ticGap=>$stubTicGap, vtToBL=>$verticalToBL, plToSX=>$parallelToSX, sciNum=>$stubSciNum}
 # axis -> tic = {len=>$len, width=>$width, clockwise=>0/1}
 # axis -> resolItvGap = $resolItvGap
 # axis -> drawn = {bodyline=>0/1, stub=>0/1, legend=>0/1, label=>0/1}
@@ -121,8 +124,9 @@ sub set_label{
     my $axis = shift;
     my %parm = @_;
     my $fontsize = $parm{fontsize} || 12;
-    $axis->{labelText} = $parm{text};
-    $axis->{font}->{size}->{label} = $parm{fontsize} || 12;
+    $axis->{label}->{text} = $parm{text};
+    $axis->{font}->{size}->{label} = $parm{fontsize} || 14;
+    $axis->{label}->{gapToBodyLine} = $parm{gapToBodyLine} || ($axis->{font}->{size}->{label} * 1.5);
 }
 
 #--- set stubs on axis ---
@@ -182,7 +186,7 @@ sub add_stub{
     my $axis = shift;
     my %parm = @_;
     my $stub = $parm{stub};
-    push $axis->{stub}, $stub unless first {$_==$stub} @{$axis->{stub}};
+    push $axis->{stub}, $stub unless any {$_==$stub} @{$axis->{stub}};
     @{$axis->{stub}} = sort {$a<=>$b} @{$axis->{stub}};
 }
 
@@ -243,6 +247,18 @@ sub get_origY{
 sub get_axisLen{
     my $axis = shift;
     return $axis->{axisLen};
+}
+
+#--- return resolution ---
+sub get_resol{
+    my $axis = shift;
+    return $axis->{resol};
+}
+
+#--- return stub ---
+sub get_stub{
+    my $axis = shift;
+    return $axis->{stub};
 }
 
 #--- return axis head angle ---
@@ -334,6 +350,7 @@ sub draw_quick{
     my $axis = shift;
     $axis->draw_axisBodyLine(@_);
     $axis->draw_stub(@_);
+    $axis->draw_label(@_);
 }
 
 #--- draw the body line of axis ---
@@ -390,6 +407,7 @@ sub draw_stub{
     $axis->{stubAttr}->{vtToBL} = $parm{verticalToBL} if defined $parm{verticalToBL};
     $axis->{stubAttr}->{plToSX} = $parm{parallelToSX} if defined $parm{parallelToSX};
     $axis->{stubAttr}->{ticGap} = $parm{stubTicGap} if defined $parm{stubTicGap};
+    $axis->{stubAttr}->{sciNum} = $parm{stubSciNum} if defined $parm{stubSciNum};
 
     # draw
     my $verticalToBL = $axis->{stubAttr}->{vtToBL};
@@ -430,6 +448,7 @@ sub draw_stub{
                         stroke => $axis->{stroke}->{color}, 'stroke-width' => $axis->{tic}->{width}, 'stroke-linecap' => 'round'
                       );
         # stub
+        ($stub = sprintf ("%.$axis->{stubAttr}->{sciNum}e",$stub)) =~ s/\.?0*e\+0?/E/ if $axis->{stubAttr}->{sciNum} && $stub > 10**$axis->{stubAttr}->{sciNum};
         my ($text_x, $text_y) = $axis->extendCoord(coordAf => [$stub_x, $stub_y], relateAng => $relateAng, distance => $axis->{tic}->{len}+$axis->{stubAttr}->{ticGap});
         $stub = $text_anchor eq 'end' ? "$axis->{stubText} $stub" : "$stub $axis->{stubText}" if $i == $stubCount-1 && defined $axis->{stubText};
         show_text_in_line( svg_obj => $svg_obj, text_x => $text_x, text_y => $text_y, text => $stub, text_anchor => $text_anchor,
@@ -439,6 +458,57 @@ sub draw_stub{
     }
     # mark
     $axis->{drawn}->{stub} = 1;
+}
+
+#--- draw label along the axis ---
+sub draw_label{
+    my $axis = shift;
+    my %parm = @_;
+    my $svg_obj = $parm{svg_obj};
+
+    # drawn before?
+    return if $axis->{drawn}->{label} || !$axis->{label}->{text};
+
+    # draw
+    my $verticalToBL = 0;
+    # label SVG-text-anchor-point Y coordinate to adjust
+    my $height_adjust;
+    if($axis->{headAng} <= 180){
+        $height_adjust = $verticalToBL ? 1 : $axis->{tic}->{clockwise} ? 2 : 0;
+    }
+    else{
+        $height_adjust = $verticalToBL ? 1 : $axis->{tic}->{clockwise} ? 0 : 2;
+    }
+    # label SVG-text to rotate
+    my $rotate_degree = $axis->{headAng} - 90 * ($verticalToBL ? 0 : 1);
+    while($rotate_degree >  180){ $rotate_degree -= 360}
+    while($rotate_degree < -180){ $rotate_degree += 360}
+    while($rotate_degree >   90){ $rotate_degree -= 180}
+    while($rotate_degree <  -90){ $rotate_degree += 180}
+    # stub-tic angle related to body line
+    my $relateAng = $axis->{tic}->{clockwise} ? 180 : 0;
+    # label SVG-text anchor
+    my $text_anchor;
+    if($axis->{headAng} <= 90 || $axis->{headAng} >= 270){
+        $text_anchor = $verticalToBL ? ($axis->{tic}->{clockwise} ? 'start' : 'end') : 'middle';
+    }
+    else{
+        $text_anchor = $verticalToBL ? ($axis->{tic}->{clockwise} ? 'end' : 'start') : 'middle';
+    }
+
+    # draw label
+    my $stubCount = @{$axis->{stub}};
+    my $label_stub =   $stubCount % 2
+                     ? $axis->{stub}->[int($stubCount/2)]
+                     : ($axis->{stub}->[$stubCount/2] + $axis->{stub}->[$stubCount/2-1]) / 2;
+    my ($label_stub_x, $label_stub_y) = $axis->valueToSVGcoord(value => $label_stub);
+    my ($label_text_x, $label_text_y) = $axis->extendCoord(coordAf => [$label_stub_x, $label_stub_y], relateAng => $relateAng, distance => $axis->{label}->{gapToBodyLine});
+    show_text_in_line( svg_obj => $svg_obj, text_x => $label_text_x, text_y => $label_text_y, text => $axis->{label}->{text}, text_anchor => $text_anchor,
+                       font_family => $axis->{font}->{family}, font_size => $axis->{font}->{size}->{label},
+                       height_adjust => $height_adjust, rotate_degree => $rotate_degree
+                     );
+    # mark
+    $axis->{drawn}->{label} = 1;
 }
 
 1; ## tell the perl script the successful access of this module.
