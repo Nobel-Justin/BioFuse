@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::HicPairEnd_OB';
 #----- version --------
-$VERSION = "0.06";
-$DATE = '2018-12-31';
+$VERSION = "0.07";
+$DATE = '2019-03-01';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -120,8 +120,10 @@ sub isInValidPair{
 
 #--- judgement on dEnd-hx PE-reads ---
 ## 1) at least one end must have 'UK' alignment, then go to 2)
-## 2) the 'hx' alignment of two ends cannot be close
-## return 0 means keep dEnd, 1 means change to sEnd
+## 2) at least two 'hx' alignments (R1-vs-R2) is not close aligned
+## *) here, we'd better also check whether one UK is close to 'hx' alignment of the other end.
+## return 0, go to phMut-sEnd-hx
+## return 1, keep  phMut-dEnd-hx
 sub dEndSameHapJudge{
     my $pe_OB = shift;
     my %parm = @_;
@@ -134,19 +136,19 @@ sub dEndSameHapJudge{
     # else, keep dEnd
     my $R1_hasUK = grep ! $_->has_SuppHaplo, @$R1_rOB_Aref;
     my $R2_hasUK = grep ! $_->has_SuppHaplo, @$R2_rOB_Aref;
-    return 0 unless( $R1_hasUK || $R2_hasUK );
+    return 1 unless( $R1_hasUK || $R2_hasUK );
 
     # then, check whether the 'hx' alignment of two ends is close-Align
     for my $r1_OB ( grep $_->has_SuppHaplo, @$R1_rOB_Aref ){ # skip 'UK'
         for my $r2_OB ( grep $_->has_SuppHaplo, @$R2_rOB_Aref ){ # skip 'UK'
-            # close !
-            if( $r1_OB->is_closeAlign(test_rOB => $r2_OB, distance => $maxCloseAlignDist) ){
+            # not close !
+            # return to keep dEnd
+            if( ! $r1_OB->is_closeAlign(test_rOB => $r2_OB, distance => $maxCloseAlignDist) ){
                 return 1;
             }
         }
     }
-    # not close!
-    # return to keep dEnd
+    # all close!
     return 0;
 }
 
