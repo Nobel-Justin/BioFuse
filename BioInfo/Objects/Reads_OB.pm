@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Reads_OB';
 #----- version --------
-$VERSION = "0.14";
-$DATE = '2019-02-03';
+$VERSION = "0.15";
+$DATE = '2019-03-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -596,6 +596,8 @@ sub digestMDtag{
         }
         # update
         $MDtag =~ s/^\^?$MDtag[-1]->[1]//;
+        # discard solo '0'
+        pop @MDtag if $MDtag[-1]->[1] eq '0';
     }
 
     return \@MDtag;
