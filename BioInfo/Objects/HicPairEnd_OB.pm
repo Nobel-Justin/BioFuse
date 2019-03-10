@@ -5,6 +5,7 @@ use BioFuse::BioInfo::Objects::PairEnd_OB; # inheritance
 use strict;
 use warnings;
 use Data::Dumper;
+use BioFuse::Util::Log qw/ warn_and_exit /;
 use BioFuse::Util::Array qw/ binarySearch /;
 
 require Exporter;
@@ -19,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::HicPairEnd_OB';
 #----- version --------
-$VERSION = "0.07";
-$DATE = '2019-03-01';
+$VERSION = "0.08";
+$DATE = '2019-03-11';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -32,6 +33,7 @@ my @functoion_list = qw/
                         get_rEndWholeAlignJudge
                         get_rEndWholeSuppHaplo
                         isInValidPair
+                        testLinkRefSeg
                         dEndSameHapJudge
                         sEndSoloHapJudge
                         sEndInterHapJudge
@@ -114,6 +116,68 @@ sub isInValidPair{
         }
         else{
             return 0;
+        }
+    }
+}
+
+#--- test whether links mapped to required chr-[pair] ---
+# return 1 means mapped, return 0 means not mapped.
+sub testLinkRefSeg{
+    my $pe_OB = shift;
+    my %parm = @_;
+    my $soloBoth = $parm{soloBoth}; # pe must both match a_refseg if only a_refseg provided
+    my $chrSortHref = $parm{chrSortHref} || undef;
+    my $chrSortKey  = $parm{chrSortKey} || undef;
+
+    # parameters
+    unless(exists $parm{a_refSegHref}){
+        warn_and_exit "<ERROR>\tlacks 'a_refSegHref' parameter in func 'testLinkRefSeg' of pe_OB.\n";
+    }
+    my %refSegHref = (a => $parm{a_refSegHref});
+    $refSegHref{b} = $parm{b_refSegHref} if exists $parm{b_refSegHref};
+    # test refseg
+    my $rOB_Af = $pe_OB->get_sorted_reads_OB(chrSortHref => $chrSortHref, chrSortKey  => $chrSortKey);
+    my %testResult;
+    for my $i (0,-1){
+        my $mseg = $rOB_Af->[$i]->get_mseg;
+        for my $ab (keys %refSegHref){
+            if(exists $refSegHref{$ab}{$mseg}){
+                $testResult{$i}{$ab}{isNeed} = 1;
+                $testResult{$i}{$ab}{noNeed} = 0;
+            }
+            else{
+                $testResult{$i}{$ab}{isNeed} = 0;
+                $testResult{$i}{$ab}{noNeed} = 1;
+            }
+        }
+    }
+    # make judgment
+    if(exists $refSegHref{b}){
+        if(    $testResult{0}{a}{isNeed} * $testResult{-1}{b}{isNeed} != 0
+            || $testResult{0}{b}{isNeed} * $testResult{-1}{a}{isNeed} != 0
+        ){
+            return 1;
+        }
+        else{
+            return 0;
+        }
+    }
+    else{
+        if($soloBoth){
+            if($testResult{0}{a}{isNeed} * $testResult{-1}{a}{isNeed} != 0){
+                return 1;
+            }
+            else{
+                return 0;
+            }
+        }
+        else{
+            if($testResult{0}{a}{isNeed} + $testResult{-1}{a}{isNeed} != 0){
+                return 1;
+            }
+            else{
+                return 0;
+            }
         }
     }
 }

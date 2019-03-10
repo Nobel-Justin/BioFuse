@@ -362,11 +362,12 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/HicPairEnd_OB.pm
 ### BioFuse::BioInfo::Objects::HicPairEnd_OB
-### VERSION = "0.06"
+### VERSION = "0.08"
 - new
 - get_rEndWholeAlignJudge
 - get_rEndWholeSuppHaplo
 - isInValidPair
+- testLinkRefSeg
 - dEndSameHapJudge
 - sEndSoloHapJudge
 - sEndInterHapJudge
@@ -375,7 +376,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/Reads_OB.pm
 ### BioFuse::BioInfo::Objects::Reads_OB
-### VERSION = "0.14"
+### VERSION = "0.15"
 - new
 - get_available_rgOB
 - get_pid
