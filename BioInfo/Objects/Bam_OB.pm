@@ -516,7 +516,7 @@ sub smartBam_PEread{
                     $pe_CountInform += $peC_ReportUnit;
                 }
                 # stop?
-                last if $subrt_signal == -1;
+                last if defined $subrt_signal && $subrt_signal == -1;
             }
             # create new pe_OB
             $last_peOB = $peObjModule->new;
