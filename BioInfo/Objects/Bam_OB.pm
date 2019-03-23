@@ -24,8 +24,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Bam_OB';
 #----- version --------
-$VERSION = "0.10";
-$DATE = '2018-12-30';
+$VERSION = "0.11";
+$DATE = '2019-03-22';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -492,6 +492,7 @@ sub smartBam_PEread{
     my $last_pid = '';
     my $last_peOB = undef;
     my @peOB_pool = ();
+    my $subrt_signal = 1;
     my $fh = $bam->start_read(samtools => $samtools, viewOpt => $viewOpt);
     while(<$fh>){
         my $reads_OB = $rdObjModule->new( ReadsLineText => $_, _rc_optfd => 1, _rc_rdstr => 1, simpleLoad => $simpleLoad );
@@ -501,10 +502,10 @@ sub smartBam_PEread{
             push @peOB_pool, $last_peOB if( defined $last_peOB );
             if( $pe_Count % $peOB_AbufferSize == 0 ){
                 if($deal_peOB_pool){
-                    &{$subrtRef}(pe_OB_poolAf => \@peOB_pool, @$subrtParmAref);
+                    $subrt_signal = &{$subrtRef}(pe_OB_poolAf => \@peOB_pool, @$subrtParmAref);
                 }
                 else{
-                    &{$subrtRef}(pe_OB => $_, @$subrtParmAref) for @peOB_pool;
+                    $subrt_signal = &{$subrtRef}(pe_OB => $_, @$subrtParmAref) for @peOB_pool;
                 }
                 # sweep
                 @peOB_pool = ();
@@ -514,6 +515,8 @@ sub smartBam_PEread{
                                          ."\tload $pe_CountInform PE-reads from $mark bam.\n" unless $quiet;
                     $pe_CountInform += $peC_ReportUnit;
                 }
+                # stop?
+                last if $subrt_signal == -1;
             }
             # create new pe_OB
             $last_peOB = $peObjModule->new;
@@ -525,7 +528,11 @@ sub smartBam_PEread{
     }
     close $fh;
     # deal the last one
-    if( defined $last_peOB ){
+    if(    defined $last_peOB
+        && (   !defined $subrt_signal
+            || $subrt_signal != -1   # not stop initiatively
+           )
+    ){
         push @peOB_pool, $last_peOB;
         if($deal_peOB_pool){
             &{$subrtRef}(pe_OB_poolAf => \@peOB_pool, @$subrtParmAref);
