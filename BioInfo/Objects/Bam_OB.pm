@@ -24,8 +24,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Bam_OB';
 #----- version --------
-$VERSION = "0.11";
-$DATE = '2019-03-22';
+$VERSION = "0.12";
+$DATE = '2019-03-24';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -475,7 +475,7 @@ sub smartBam_PEread{
     my $subrtRef = $parm{subrtRef};
     my $subrtParmAref = $parm{subrtParmAref} || [];
     my $peC_ReportUnit = $parm{peC_ReportUnit} || 1E6;
-    my $peOB_AbufferSize = $parm{peOB_AbufferSize} || 1E5;
+    my $peOB_AbufferSize = $parm{peOB_AbufferSize} || 2E4; # 1E5
     my $deal_peOB_pool = $parm{deal_peOB_pool} || 0;
     my $quiet = $parm{quiet} || 0; # not inform PE Count
     my $simpleLoad = $parm{simpleLoad} || 0; # just record reads' basic information
