@@ -298,7 +298,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/Bam_OB.pm
 ### BioFuse::BioInfo::Objects::Bam_OB
-### VERSION = "0.10"
+### VERSION = "0.12"
 - new
 - verify_bam
 - verify_index
