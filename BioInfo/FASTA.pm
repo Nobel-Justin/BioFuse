@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Util::Log qw/ stout_and_sterr warn_and_exit /;
-use BioFuse::Util::Sys qw/ file_exist /;
+use BioFuse::Util::Sys qw/ file_exist trible_run_for_success /;
 
 require Exporter;
 
@@ -15,6 +15,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT = qw/
               read_fasta_file
               write_fasta_file
+              BWA_index_fasta
+              Faidx_Dict_fasta
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
@@ -22,8 +24,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::FASTA';
 #----- version --------
-$VERSION = "0.31";
-$DATE = '2018-10-30';
+$VERSION = "0.32";
+$DATE = '2019-05-02';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -34,6 +36,8 @@ $EMAIL = 'wenlongkxm@gmail.com';
 my @functoion_list = qw/
                         read_fasta_file
                         write_fasta_file
+                        BWA_index_fasta
+                        Faidx_Dict_fasta
                      /;
 
 #--- read fasta file and do something ---
@@ -47,9 +51,7 @@ sub read_fasta_file{
     my $subrtParmAref = $parm{subrtParmAref};
 
     # check fasta file existence
-    if( !defined $FaFile){
-        warn_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n";
-    }
+    warn_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n" unless defined $FaFile;
     file_exist(filePath=>$FaFile, alert=>1);
 
     # read fasta file and run sub-routine
@@ -79,15 +81,15 @@ sub read_fasta_file{
 #--- write fa file, can extend some base at the end ---
 ## will not change the original sequence
 sub write_fasta_file{
-
-    my $Option_Href = (@_ && $_[0] =~ /$MODULE_NAME/) ? $_[1] : $_[0];
-
-    my $seq_Sref = $Option_Href->{SeqSref};
-    my $fa_file = $Option_Href->{FaFile};
-    my $segname = $Option_Href->{SegName};
-    my $linebase = $Option_Href->{LineBase} || 50;
-    my $CL_Extend_Len = $Option_Href->{CircleExtLen} || 0;
-    my $split_N_bool = $Option_Href->{split_N} || 0;
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $seq_Sref = $parm{SeqSref};
+    my $fa_file = $parm{FaFile};
+    my $segname = $parm{SegName};
+    my $linebase = $parm{LineBase} || 50;
+    my $CL_Extend_Len = $parm{CircleExtLen} || 0;
+    my $split_N_bool = $parm{split_N} || 0;
 
     # how to extend, or not
     my $new_seg = '';
@@ -115,6 +117,42 @@ sub write_fasta_file{
         }
     }
     close FA;
+}
+
+#--- construct BWA index ---
+sub BWA_index_fasta{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $FaFile = $parm{FaFile};
+    my $bwa = $parm{bwa};
+
+    # check fasta file existence
+    warn_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n" unless defined $FaFile;
+    file_exist(filePath=>$FaFile, alert=>1);
+
+    # at least BWA 0.7.13 automatically select index algriothm based on reference size.
+    # check this link, https://www.biostars.org/p/53546/
+    # generally, virus genome is smaller than 2GB, so '-a is' is preferable
+    my $cmd = "$bwa index $FaFile 2>/dev/null";
+    trible_run_for_success($cmd, 'IndexByBwa', {cmd_Nvb=>1, esdo_Nvb=>1});
+}
+
+#--- faidx and dict ---
+sub Faidx_Dict_fasta{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $FaFile = $parm{FaFile};
+    my $samtools = $parm{samtools};
+
+    # check fasta file existence
+    warn_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n" unless defined $FaFile;
+    file_exist(filePath=>$FaFile, alert=>1);
+
+    (my $dict_file = "$FaFile.dict") =~ s/\.fa\.dict/\.dict/;
+    my $cmd = "($samtools faidx $FaFile 2>/dev/null) && ($samtools dict $FaFile 2>/dev/null 1>$dict_file)";
+    trible_run_for_success($cmd, 'Faidx_Dict', {cmd_Nvb=>1, esdo_Nvb=>1});
 }
 
 1; ## tell the perl script the successful access of this module.
