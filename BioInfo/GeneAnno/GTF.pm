@@ -52,28 +52,29 @@ my @functoion_list = qw/
 
 #--- read GTF file ---
 sub read_GTF{
-
     # read refseg transforming list
-    &read_refseg_transform;
+    &read_refseg_transform(@_);
 
     # read gtf file to GTF_geneOB type
-    &load_GTF_gene;
+    &load_GTF_gene(@_);
 
     # refine the codon info
-    &refine_GTF_info;
+    &refine_GTF_info(@_);
 
     # refine the gene/transcript name
-    &refine_names;
+    &refine_names(@_);
 
     # add cytoBand info if set
-    if(defined $V_Href->{cytoBand_file}){
-        load_cytoband(cytoBand_Href => $V_Href->{cytoBand}, cytoBand_file => $V_Href->{cytoBand_file});
-        &add_refseg_cytoband;
-    }
+    &add_refseg_cytoband(@_);
 }
 
 #--- read the file contains the refseg transform information ---
 sub read_refseg_transform{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $V_Href = exists $parm{V_Href} ? $parm{V_Href} : BioFuse::LoadOn->load_variants_dict;
+
     return unless defined $V_Href->{refseg_transform_list};
     open (RT, Try_GZ_Read($V_Href->{refseg_transform_list})) || die "cannot read refseg_transform_list: $!\n";
     while(<RT>){
@@ -89,6 +90,11 @@ sub read_refseg_transform{
 
 #--- load the initial gtf info to GTF_geneOB type from the gtf file ---
 sub load_GTF_gene{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $V_Href = exists $parm{V_Href} ? $parm{V_Href} : BioFuse::LoadOn->load_variants_dict;
+
     my $gtf_source = join(',', @{$V_Href->{gtf_source}});
     open (GTF, Try_GZ_Read($V_Href->{gtf})) || die "cannot read gtf_file: $!\n";
     while(<GTF>){
@@ -136,6 +142,11 @@ sub load_GTF_gene{
 
 #--- refine the codon number of transcript ---
 sub refine_GTF_info{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $V_Href = exists $parm{V_Href} ? $parm{V_Href} : BioFuse::LoadOn->load_variants_dict;
+
     $_->refine_gtf_info for values %{$V_Href->{GTF_gene}};
     # inform
     stout_and_sterr "[INFO]\trefine the gtf info ok.\n";
@@ -143,6 +154,11 @@ sub refine_GTF_info{
 
 #--- refine duplicated use_names of gene and transcript ---
 sub refine_names{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $V_Href = exists $parm{V_Href} ? $parm{V_Href} : BioFuse::LoadOn->load_variants_dict;
+
     # get name count
     my (%_genename_count,%_transname_count);
     for my $gene (values %{$V_Href->{GTF_gene}}){
@@ -164,6 +180,13 @@ sub refine_names{
 
 #--- add the refseg cytoband info ---
 sub add_refseg_cytoband{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $V_Href = exists $parm{V_Href} ? $parm{V_Href} : BioFuse::LoadOn->load_variants_dict;
+
+    return unless defined $V_Href->{cytoBand_file};
+    load_cytoband(cytoBand_Href => $V_Href->{cytoBand}, cytoBand_file => $V_Href->{cytoBand_file});
     $_->add_cytoband_info(cytoBand_Href => $V_Href->{cytoBand}) for values %{$V_Href->{GTF_gene}};
     # inform
     stout_and_sterr "[INFO]\tadd the refseg cytoband ok.\n";
@@ -171,6 +194,11 @@ sub add_refseg_cytoband{
 
 #--- creat gene psl file ---
 sub create_gene_PSL{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $V_Href = exists $parm{V_Href} ? $parm{V_Href} : BioFuse::LoadOn->load_variants_dict;
+
     open (GPSL, Try_GZ_Write($V_Href->{psl})) || die "fail create PSL_file: $!\n";
     for my $_gene_ENSid (sort keys %{$V_Href->{GTF_gene}}){
         print GPSL $V_Href->{GTF_gene}->{$_gene_ENSid}->get_gene_psl_line . "\n";
@@ -187,6 +215,7 @@ sub create_trans_PSL{
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
     my $show_metainfo = $parm{show_metainfo} || 0;
+    my $V_Href = exists $parm{V_Href} ? $parm{V_Href} : BioFuse::LoadOn->load_variants_dict;
 
     open (TPSL, Try_GZ_Write($V_Href->{psl})) || die "fail create PSL_file: $!\n";
     for my $_gene_ENSid (sort keys %{$V_Href->{GTF_gene}}){
@@ -202,6 +231,11 @@ sub create_trans_PSL{
 
 #--- refine the start codon seq according to the genome ---
 sub mark_abnormal_Start_codon{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $V_Href = exists $parm{V_Href} ? $parm{V_Href} : BioFuse::LoadOn->load_variants_dict;
+
     # standard start codon
     my %Start_codon = map {(uc($_),1)} @{$V_Href->{Start_codon}};
     stout_and_sterr "[INFO]\tStandard start codon sequence: ".join(',',sort keys %Start_codon)."\n";
