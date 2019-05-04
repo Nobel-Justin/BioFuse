@@ -1,4 +1,4 @@
-package BioFuse::BioInfo::GeneAnno::PSL;
+package BioFuse::BioInfo::Objects::GeneAnno::PSL_OB;
 
 use strict;
 use warnings;
@@ -16,17 +16,15 @@ our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @ISA = qw(Exporter);
 @EXPORT = qw/
-              load_GeneOrTrans_from_PSL
-              extract_GeneOrTrans_seq
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
                  OTHER   => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::PSL';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::GeneAnno::PSL_OB';
 #----- version --------
-$VERSION = "0.04";
-$DATE = '2018-11-29';
+$VERSION = "0.05";
+$DATE = '2019-05-04';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -35,19 +33,38 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
 my @functoion_list = qw/
+                        new
                         load_GeneOrTrans_from_PSL
+                        get_objPOOLHf
                         extract_GeneOrTrans_seq
                         output_exon_seq
                      /;
 
+#--- structure of object
+# psl -> filePath = $filePath
+# psl -> psl_type = $psl_type (gene/trans)
+# psl -> objPOOL = {}
+# psl -> objPOOLRecKey = $key (refseg/name)
+
+#--- construction of object ---
+sub new{
+    my $type = shift;
+    my %parm = @_;
+
+    my $psl = {};
+    # load basic attributes of psl
+    $psl->{filePath} = $parm{filePath};
+    $psl->{psl_type} = $parm{psl_type} || 'gene'; # or trans
+    $psl->{objPOOL} = {}; # main container
+
+    bless($psl);
+    return $psl;
+}
+
 #--- read PSL file ---
 sub load_GeneOrTrans_from_PSL{
-    # options
-    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my $psl = shift;
     my %parm = @_;
-    my $ObjectPoolHref = $parm{ObjectPoolHref};
-    my $psl_file = $parm{psl_file};
-    my $psl_type = $parm{psl_type} || 'gene'; # or trans
     my $useExts = $parm{useExts} || 0; # load info specific for FuseSV virus meta-info
     my $recordKey = $parm{recordKey} || 'refseg'; # genename
     # filter
@@ -59,11 +76,14 @@ sub load_GeneOrTrans_from_PSL{
     $requireObjHref = undef if defined $requireObjHref && ! scalar keys %$requireObjHref;
     $requireBtyHref = undef if defined $requireBtyHref && ! scalar keys %$requireBtyHref;
 
+    # reset attributes
+    $psl->{objPOOL} = {};
+    $psl->{objPOOLRecKey} = $recordKey;
     # gene or trans object
-    my $objModule = $psl_type eq 'gene' ? 'BioFuse::BioInfo::Objects::GeneAnno::Gene_OB' : 'BioFuse::BioInfo::Objects::GeneAnno::Trans_OB';
-    stout_and_sterr "[INFO]\tapply object module $objModule for $psl_type PSL file.\n";
+    my $objModule = $psl->{psl_type} eq 'gene' ? 'BioFuse::BioInfo::Objects::GeneAnno::Gene_OB' : 'BioFuse::BioInfo::Objects::GeneAnno::Trans_OB';
+    stout_and_sterr "[INFO]\tapply object module $objModule for $psl->{psl_type} PSL file.\n";
     # read PSL
-    open (PSL, Try_GZ_Read($psl_file)) || die"fail $psl_file: $!\n";
+    open (PSL, Try_GZ_Read($psl->{filePath})) || die"fail psl_file: $!\n";
     while(<PSL>){
         next if /^#/;
         # create object
@@ -78,36 +98,49 @@ sub load_GeneOrTrans_from_PSL{
             $key = $object->get_ref_seg;
         }
         elsif($recordKey eq 'genename'){
-            $key = $psl_type eq 'gene' ? $object->get_use_name : $object->get_gene_use_name;
+            $key = $psl->{psl_type} eq 'gene' ? $object->get_use_name : $object->get_gene_use_name;
         }
-        push @{$ObjectPoolHref->{$key}}, $object;
+        push @{$psl->{objPOOL}->{$key}}, $object;
     }
     close PSL;
     # inform
-    stout_and_sterr "[INFO]\tload information from $psl_type PSL OK.\n"
-                         ."\t$psl_file\n";
+    stout_and_sterr "[INFO]\tload information from $psl->{psl_type} PSL OK.\n"
+                         ."\t$psl->{filePath}\n";
+}
+
+#--- return objPOOL Href ---
+sub get_objPOOLHf{
+    my $psl = shift;
+    return $psl->{objPOOL};
 }
 
 #--- output base ---
 sub extract_GeneOrTrans_seq{
-    # options
-    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my $psl = shift;
     my %parm = @_;
-    my $ObjectPoolHref = $parm{ObjectPoolHref};
     my $outputFasta = $parm{outputFasta};
     my $whole_genome = $parm{whole_genome};
     my $extendLength = $parm{extendLength} || 0;
 
+    # map refseg to objects
+    my $refSegToObjHf = {};
+    if($psl->{objPOOLRecKey} eq 'refseg'){
+        $refSegToObjHf = $psl->{objPOOL};
+    }
+    else{
+        for my $objAf (values %{$psl->{objPOOL}}){
+            push @{$refSegToObjHf->{$_->get_ref_seg}}, $_ for @$objAf;
+        }
+    }
     # read fasta file
     open (my $outfh, Try_GZ_Write($outputFasta)) || die "fail write output Fasta: $!\n";
-    read_fasta_file( FaFile => $whole_genome, needSeg_Href => $ObjectPoolHref,
+    read_fasta_file( FaFile => $whole_genome, needSeg_Href => $refSegToObjHf,
                      subrtRef => \&output_exon_seq,
-                     subrtParmAref => [fh => $outfh, ObjectPoolHref => $ObjectPoolHref, extendLength => $extendLength] );
+                     subrtParmAref => [fh => $outfh, refSegToObjHf => $refSegToObjHf, extendLength => $extendLength] );
     close $outfh;
-
     # check the remained unit
-    for my $ref_seg (sort keys %$ObjectPoolHref){
-        stout_and_sterr "<WARN>\tseqeuence of ".$_->get_use_name." from Refseg $ref_seg remains undetected.\n" for grep !$_->get_find_seq_mark, @{$ObjectPoolHref->{$ref_seg}};
+    for my $ref_seg (sort keys %$refSegToObjHf){
+        stout_and_sterr "<WARN>\tseqeuence of ".$_->get_use_name." from Refseg $ref_seg remains undetected.\n" for grep !$_->get_find_seq_mark, @{$refSegToObjHf->{$ref_seg}};
     }
     # inform
     stout_and_sterr "[INFO]\tcreate Exon_Seq file OK!\n"
@@ -122,11 +155,11 @@ sub output_exon_seq{
     my $segName = $parm{segName};
     my $segSeq_Sref = $parm{segSeq_Sref};
     my $fh = $parm{fh};
-    my $ObjectPoolHref = $parm{ObjectPoolHref};
+    my $refSegToObjHf = $parm{refSegToObjHf};
     my $extendLength = $parm{extendLength} || 0;
 
     my $line_base = 50;
-    for my $object (sort {$a->get_use_name cmp $b->get_use_name} @{$ObjectPoolHref->{$segName}}){
+    for my $object (sort {$a->get_use_name cmp $b->get_use_name} @{$refSegToObjHf->{$segName}}){
         # get exon sequence along plus strand orientation
         my $exon_reg = $object->get_exon_region;
         my $exon_seq = join('', map {substr($$segSeq_Sref, $_->[0]-1, $_->[1]-$_->[0]+1)} @$exon_reg);

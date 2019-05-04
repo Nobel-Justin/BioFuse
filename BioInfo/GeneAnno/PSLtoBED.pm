@@ -8,7 +8,7 @@ use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
 use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Write /;
 use BioFuse::LoadOn;
-use BioFuse::BioInfo::GeneAnno::PSL qw/ load_GeneOrTrans_from_PSL /;
+use BioFuse::BioInfo::Objects::GeneAnno::PSL_OB;
 use BioFuse::Util::Interval qw/ merge /;
 
 require Exporter;
@@ -26,8 +26,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::PSLtoBED';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2018-11-30';
+$VERSION = "0.02";
+$DATE = '2019-05-04';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -110,7 +110,6 @@ sub Load_moduleVar_to_pubVarPool{
             [ oneBase => 0 ], # one-start region, not BED
 
             # intermediate variants
-            [ GeneOrTransOB => {} ],
             [ Regions_Hf => {} ],
 
             # list to abs-path
@@ -156,29 +155,30 @@ sub para_alert{
 
 #--- get genetic regions based on PSL file ---
 sub PSLtoBED{
-    # load trans psl file
-    load_GeneOrTrans_from_PSL( ObjectPoolHref => $V_Href->{GeneOrTransOB},
-                               psl_file => $V_Href->{tpsl},
-                               psl_type => 'trans',
-                               recordKey => 'genename',
-                               skipRefSegHref => { map {($_,1)} @{$V_Href->{abandon_refseg}} },
-                               requireBtyHref => { map {($_,1)} @{$V_Href->{require_biotype}} }
-                             );
+    # psl object (tpsl)
+    my $psl = BioFuse::BioInfo::Objects::GeneAnno::PSL_OB->new(filePath => $V_Href->{tpsl}, psl_type => 'trans');
+    # load psl file
+    $psl->load_GeneOrTrans_from_PSL( recordKey => 'genename',
+                                     skipRefSegHref => { map {($_,1)} @{$V_Href->{abandon_refseg}} },
+                                     requireBtyHref => { map {($_,1)} @{$V_Href->{require_biotype}} }
+                                   );
     # output region
-    &output_region_of_transOB;
+    &output_region_of_transOB(transPOOLHf => $psl->get_objPOOLHf);
 }
 
 #--- output series of regions of transcript ---
 sub output_region_of_transOB{
+    my %parm = @_;
+    my $transPOOLHf = $parm{transPOOLHf};
 
-    # genename filter
+    # gene name filter
     if(scalar @{$V_Href->{require_genename}}){
         my %require_genename = map {($_,1)} @{$V_Href->{require_genename}};
-        delete $V_Href->{GeneOrTransOB}->{$_} for grep ! exists $require_genename{$_}, keys %{$V_Href->{GeneOrTransOB}};
+        delete $transPOOLHf->{$_} for grep ! exists $require_genename{$_}, keys %$transPOOLHf;
     }
 
     # record series of regions
-    for my $transOB_Af (values %{$V_Href->{GeneOrTransOB}}){
+    for my $transOB_Af (values %$transPOOLHf){
         # protein_coding? CDS/UTR
         my @transOB_prcd =   $V_Href->{include_ab_protein}
                            ? (grep $_->get_biotype =~ /^protein_coding/, @$transOB_Af)
@@ -247,7 +247,7 @@ sub record_exon_regions{
     if(    $V_Href->{exon_mode} eq 'protein_trNO'
         && scalar @$transOB_prcd_Af
     ){
-        @transOB_forExon = ($transOB_prcd_Af->[0]);
+        @transOB_forExon =  (sort {$a->get_ori_name cmp $b->get_ori_name} @$transOB_prcd_Af)[0];
     }
     elsif(   $V_Href->{exon_mode} eq 'trNO'
           || (   $V_Href->{exon_mode} eq 'protein_trNO'

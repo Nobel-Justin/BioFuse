@@ -6,7 +6,7 @@ use Getopt::Long;
 use BioFuse::Util::Log qw/ warn_and_exit /;
 use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::LoadOn;
-use BioFuse::BioInfo::GeneAnno::PSL qw/ load_GeneOrTrans_from_PSL extract_GeneOrTrans_seq /;
+use BioFuse::BioInfo::Objects::GeneAnno::PSL_OB;
 
 require Exporter;
 
@@ -23,8 +23,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::PSLtoFASTA';
 #----- version --------
-$VERSION = "0.84";
-$DATE = '2018-11-29';
+$VERSION = "0.85";
+$DATE = '2019-05-04';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -93,9 +93,6 @@ sub Load_moduleVar_to_pubVarPool{
             [ require_objname => [] ],
             [ require_biotype => [] ],
 
-            # intermediate variants
-            [ GeneOrTransOB => {} ],
-
             # list to abs-path
             [ ToAbsPath_Aref => [ ['seqFA'],
                                   ['psl'],
@@ -137,21 +134,18 @@ sub para_alert{
 
 #--- get fa files based on PSL file ---
 sub PSLtoFASTA{
-
+    # psl object
+    my $psl = BioFuse::BioInfo::Objects::GeneAnno::PSL_OB->new(filePath => $V_Href->{psl}, psl_type => $V_Href->{psl_type});
     # load psl file
-    load_GeneOrTrans_from_PSL( ObjectPoolHref => $V_Href->{GeneOrTransOB},
-                               psl_file => $V_Href->{psl},
-                               psl_type => $V_Href->{psl_type},
-                               skipRefSegHref => { map {($_,1)} @{$V_Href->{abandon_refseg}} },
-                               requireObjHref => { map {($_,1)} @{$V_Href->{require_objname}} },
-                               requireBtyHref => { map {($_,1)} @{$V_Href->{require_biotype}} }
-                             );
+    $psl->load_GeneOrTrans_from_PSL( skipRefSegHref => { map {($_,1)} @{$V_Href->{abandon_refseg}} },
+                                     requireObjHref => { map {($_,1)} @{$V_Href->{require_objname}} },
+                                     requireBtyHref => { map {($_,1)} @{$V_Href->{require_biotype}} }
+                                   );
     # output fasta
-    extract_GeneOrTrans_seq( ObjectPoolHref => $V_Href->{GeneOrTransOB},
-                             outputFasta => $V_Href->{seqFA},
-                             whole_genome => $V_Href->{whole_genome},
-                             extendLength => $V_Href->{extendLength}
-                           );
+    $psl->extract_GeneOrTrans_seq( outputFasta => $V_Href->{seqFA},
+                                   whole_genome => $V_Href->{whole_genome},
+                                   extendLength => $V_Href->{extendLength}
+                                 );
 }
 
 #--- 
