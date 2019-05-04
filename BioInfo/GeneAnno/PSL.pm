@@ -6,8 +6,8 @@ use Data::Dumper;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Util::Log qw/ stout_and_sterr /;
 use BioFuse::BioInfo::FASTA qw/ read_fasta_file /;
-use BioFuse::BioInfo::Objects::Gene_OB;
-use BioFuse::BioInfo::Objects::Trans_OB;
+use BioFuse::BioInfo::Objects::GeneAnno::Gene_OB;
+use BioFuse::BioInfo::Objects::GeneAnno::Trans_OB;
 
 require Exporter;
 
@@ -60,7 +60,7 @@ sub load_GeneOrTrans_from_PSL{
     $requireBtyHref = undef if defined $requireBtyHref && ! scalar keys %$requireBtyHref;
 
     # gene or trans object
-    my $objModule = $psl_type eq 'gene' ? 'BioFuse::BioInfo::Objects::Gene_OB' : 'BioFuse::BioInfo::Objects::Trans_OB';
+    my $objModule = $psl_type eq 'gene' ? 'BioFuse::BioInfo::Objects::GeneAnno::Gene_OB' : 'BioFuse::BioInfo::Objects::GeneAnno::Trans_OB';
     stout_and_sterr "[INFO]\tapply object module $objModule for $psl_type PSL file.\n";
     # read PSL
     open (PSL, Try_GZ_Read($psl_file)) || die"fail $psl_file: $!\n";

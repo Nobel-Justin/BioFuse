@@ -1,9 +1,9 @@
-package BioFuse::BioInfo::GeneAnno::GTF_geneOB;
+package BioFuse::BioInfo::Objects::GeneAnno::GTF_geneOB;
 
 use strict;
 use warnings;
 use List::Util qw/ min max /;
-use BioFuse::BioInfo::GeneAnno::GTF_transOB;
+use BioFuse::BioInfo::Objects::GeneAnno::GTF_transOB;
 use BioFuse::BioInfo::CytoBand qw/ get_cytoband /;
 use BioFuse::Util::Interval qw/ merge /;
 
@@ -17,7 +17,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::GTF_geneOB';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::GeneAnno::GTF_geneOB';
 #----- version --------
 $VERSION = "0.07";
 $DATE = '2018-11-17';
@@ -90,7 +90,7 @@ sub load_gtf_info{
     # initialize one GTF_transOB object
     my $trans_ENSid = $gtfLineOB->get_ENSid(type => 'trans');
     unless(exists $gene->{isoforms}->{$trans_ENSid}){
-        $gene->{isoforms}->{$trans_ENSid} = BioFuse::BioInfo::GeneAnno::GTF_transOB->new(gtfLineOB => $gtfLineOB);
+        $gene->{isoforms}->{$trans_ENSid} = BioFuse::BioInfo::Objects::GeneAnno::GTF_transOB->new(gtfLineOB => $gtfLineOB);
     }
     # load other information, exon, CDS, codon, ...
     my $trans = $gene->{isoforms}->{$trans_ENSid};

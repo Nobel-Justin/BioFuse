@@ -1,4 +1,4 @@
-package BioFuse::BioInfo::GeneAnno::GTF_transOB;
+package BioFuse::BioInfo::Objects::GeneAnno::GTF_transOB;
 
 use strict;
 use warnings;
@@ -15,7 +15,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::GTF_transOB';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::GeneAnno::GTF_transOB';
 #----- version --------
 $VERSION = "0.01";
 $DATE = '2018-11-17';

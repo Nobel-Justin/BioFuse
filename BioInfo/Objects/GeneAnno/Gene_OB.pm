@@ -1,4 +1,4 @@
-package BioFuse::BioInfo::Objects::Gene_OB;
+package BioFuse::BioInfo::Objects::GeneAnno::Gene_OB;
 
 use strict;
 use warnings;

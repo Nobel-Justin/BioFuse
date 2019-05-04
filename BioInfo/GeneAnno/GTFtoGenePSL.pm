@@ -6,7 +6,7 @@ use Getopt::Long;
 use BioFuse::Util::Log qw/ warn_and_exit /;
 use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::LoadOn;
-use BioFuse::BioInfo::GeneAnno::GTF qw/ read_GTF create_gene_PSL /;
+use BioFuse::BioInfo::Objects::GeneAnno::GTF_OB;
 
 require Exporter;
 
@@ -23,8 +23,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::GTFtoGenePSL';
 #----- version --------
-$VERSION = "0.82";
-$DATE = '2018-11-15';
+$VERSION = "0.83";
+$DATE = '2019-05-04';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -131,10 +131,15 @@ sub para_alert{
 
 #--- get gene PSL file from GTF file---
 sub GTFtoGenePSL{
+    # gtf object
+    my $gtf = BioFuse::BioInfo::Objects::GeneAnno::GTF_OB->new(filePath => $V_Href->{gtf});
     # read GTF
-    read_GTF;
+    $gtf->load_GTF( refseg_transform_list => $V_Href->{refseg_transform_list},
+                    gtf_source => $V_Href->{gtf_source},
+                    cytoBand_file => $V_Href->{cytoBand_file}
+                  );
     # output gene psl
-    create_gene_PSL;
+    $gtf->create_gene_PSL(gPSLpath => $V_Href->{psl});
 }
 
 #--- 

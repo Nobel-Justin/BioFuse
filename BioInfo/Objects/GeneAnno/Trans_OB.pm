@@ -1,4 +1,4 @@
-package BioFuse::BioInfo::Objects::Trans_OB;
+package BioFuse::BioInfo::Objects::GeneAnno::Trans_OB;
 
 use strict;
 use warnings;

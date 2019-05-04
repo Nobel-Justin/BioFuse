@@ -110,7 +110,7 @@ sub Load_moduleVar_to_pubVarPool{
             [ oneBase => 0 ], # one-start region, not BED
 
             # intermediate variants
-            [ GeneToTransOB => {} ],
+            [ GeneOrTransOB => {} ],
             [ Regions_Hf => {} ],
 
             # list to abs-path
@@ -157,7 +157,7 @@ sub para_alert{
 #--- get genetic regions based on PSL file ---
 sub PSLtoBED{
     # load trans psl file
-    load_GeneOrTrans_from_PSL( ObjectPoolHref => $V_Href->{GeneToTransOB},
+    load_GeneOrTrans_from_PSL( ObjectPoolHref => $V_Href->{GeneOrTransOB},
                                psl_file => $V_Href->{tpsl},
                                psl_type => 'trans',
                                recordKey => 'genename',
@@ -174,11 +174,11 @@ sub output_region_of_transOB{
     # genename filter
     if(scalar @{$V_Href->{require_genename}}){
         my %require_genename = map {($_,1)} @{$V_Href->{require_genename}};
-        delete $V_Href->{GeneToTransOB}->{$_} for grep ! exists $require_genename{$_}, keys %{$V_Href->{GeneToTransOB}};
+        delete $V_Href->{GeneOrTransOB}->{$_} for grep ! exists $require_genename{$_}, keys %{$V_Href->{GeneOrTransOB}};
     }
 
     # record series of regions
-    for my $transOB_Af (values %{$V_Href->{GeneToTransOB}}){
+    for my $transOB_Af (values %{$V_Href->{GeneOrTransOB}}){
         # protein_coding? CDS/UTR
         my @transOB_prcd =   $V_Href->{include_ab_protein}
                            ? (grep $_->get_biotype =~ /^protein_coding/, @$transOB_Af)
