@@ -10,6 +10,11 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 ### VERSION = "0.01"
 - check
 
+## Util/Web.pm
+### BioFuse::Util::Web
+### VERSION = "0.01"
+- urlToHtmlText
+
 ## Util/Log.pm
 ### BioFuse::Util::Log
 ### VERSION = "0.31"
@@ -101,23 +106,16 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/GeneAnno/GTFtoGenePSL.pm
 ### BioFuse::BioInfo::GeneAnno::GTFtoGenePSL
-### VERSION = "0.82"
+### VERSION = "0.83"
 - return_HELP_INFO
 - Load_moduleVar_to_pubVarPool
 - Get_Cmd_Options
 - para_alert
 - GTFtoGenePSL
 
-## BioInfo/GeneAnno/PSL.pm
-### BioFuse::BioInfo::GeneAnno::PSL
-### VERSION = "0.04"
-- load_GeneOrTrans_from_PSL
-- extract_GeneOrTrans_seq
-- output_exon_seq
-
 ## BioInfo/GeneAnno/PSLtoBED.pm
 ### BioFuse::BioInfo::GeneAnno::PSLtoBED
-### VERSION = "0.01"
+### VERSION = "0.02"
 - return_HELP_INFO
 - Load_moduleVar_to_pubVarPool
 - Get_Cmd_Options
@@ -127,8 +125,114 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - record_protein_coding_regions
 - record_exon_regions
 
-## BioInfo/GeneAnno/GTF_transOB.pm
-### BioFuse::BioInfo::GeneAnno::GTF_transOB
+## BioInfo/GeneAnno/PSLtoFASTA.pm
+### BioFuse::BioInfo::GeneAnno::PSLtoFASTA
+### VERSION = "0.85"
+- return_HELP_INFO
+- Load_moduleVar_to_pubVarPool
+- Get_Cmd_Options
+- para_alert
+- PSLtoFASTA
+
+## BioInfo/GeneAnno/GTFtoTransPSL.pm
+### BioFuse::BioInfo::GeneAnno::GTFtoTransPSL
+### VERSION = "0.83"
+- return_HELP_INFO
+- Load_moduleVar_to_pubVarPool
+- Get_Cmd_Options
+- para_alert
+- GTFtoTransPSL
+
+## BioInfo/Objects/PairEnd_OB.pm
+### BioFuse::BioInfo::Objects::PairEnd_OB
+### VERSION = "0.08"
+- new
+- load_reads_OB
+- get_pid
+- get_peIdx
+- get_reads_OB
+- get_sorted_reads_OB
+- tryDiscardAlign
+- test_need_RefSeg
+- test_pair_RefSeg
+- onlyKeep_need_RefSeg
+- makePrimeAlignment
+- discardAbnormalSP
+- printSAM
+
+## BioInfo/Objects/HicReads_OB.pm
+### BioFuse::BioInfo::Objects::HicReads_OB
+### VERSION = "0.03"
+- new
+- load_AlignJudge
+- load_SuppHaplo
+- del_SuppHaplo
+- onlyKeep_SuppHaplo
+- get_AlignJudge
+- get_SuppHaploHref
+- get_SuppHaploStr
+- has_SuppHaplo
+- is_fromUnPhasedRegRand
+- addHapIDtoOptfd
+- recover_SuppHaploAttr
+
+## BioInfo/Objects/GeneAnno/PSL_OB.pm
+### BioFuse::BioInfo::Objects::GeneAnno::PSL_OB
+### VERSION = "0.05"
+- new
+- load_GeneOrTrans_from_PSL
+- get_objPOOLHf
+- extract_GeneOrTrans_seq
+- output_exon_seq
+
+## BioInfo/Objects/GeneAnno/Trans_OB.pm
+### BioFuse::BioInfo::Objects::GeneAnno::Trans_OB
+### VERSION = "0.02"
+- new
+- get_ENSid
+- get_ref_seg
+- get_strand
+- get_use_name
+- get_ori_name
+- get_gene_use_name
+- get_biotype
+- get_exon_region
+- get_exon_sumLen
+- get_CDS_region
+- get_UTR_region
+- get_find_seq_mark
+- mark_find_seq
+
+## BioInfo/Objects/GeneAnno/GTF_OB.pm
+### BioFuse::BioInfo::Objects::GeneAnno::GTF_OB
+### VERSION = "0.08"
+- new
+- load_GTF
+- read_refseg_transform
+- refine_GTF_info
+- refine_names
+- add_refseg_cytoband
+- create_gene_PSL
+- create_trans_PSL
+- mark_abnormal_Start_codon
+- check_Start_codon_Seq
+
+## BioInfo/Objects/GeneAnno/Gene_OB.pm
+### BioFuse::BioInfo::Objects::GeneAnno::Gene_OB
+### VERSION = "0.02"
+- new
+- get_ENSid
+- get_ref_seg
+- get_strand
+- get_use_name
+- get_ori_name
+- get_biotype
+- get_exon_region
+- get_find_seq_mark
+- mark_find_seq
+
+## BioInfo/Objects/GeneAnno/GTF_transOB.pm
+### BioFuse::BioInfo::Objects::GeneAnno::GTF_transOB
 ### VERSION = "0.01"
 - new
 - load_exon_region
@@ -152,22 +256,8 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - refined_use_name
 - get_trans_psl_line
 
-## BioInfo/GeneAnno/GTF.pm
-### BioFuse::BioInfo::GeneAnno::GTF
-### VERSION = "0.07"
-- read_GTF
-- read_refseg_transform
-- load_GTF_gene
-- refine_GTF_info
-- refine_names
-- add_refseg_cytoband
-- create_gene_PSL
-- create_trans_PSL
-- mark_abnormal_Start_codon
-- check_Start_codon_Seq
-
-## BioInfo/GeneAnno/GTF_geneOB.pm
-### BioFuse::BioInfo::GeneAnno::GTF_geneOB
+## BioInfo/Objects/GeneAnno/GTF_geneOB.pm
+### BioFuse::BioInfo::Objects::GeneAnno::GTF_geneOB
 ### VERSION = "0.07"
 - new
 - load_gtf_info
@@ -184,26 +274,8 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - refined_use_name
 - get_gene_psl_line
 
-## BioInfo/GeneAnno/PSLtoFASTA.pm
-### BioFuse::BioInfo::GeneAnno::PSLtoFASTA
-### VERSION = "0.84"
-- return_HELP_INFO
-- Load_moduleVar_to_pubVarPool
-- Get_Cmd_Options
-- para_alert
-- PSLtoFASTA
-
-## BioInfo/GeneAnno/GTFtoTransPSL.pm
-### BioFuse::BioInfo::GeneAnno::GTFtoTransPSL
-### VERSION = "0.82"
-- return_HELP_INFO
-- Load_moduleVar_to_pubVarPool
-- Get_Cmd_Options
-- para_alert
-- GTFtoTransPSL
-
-## BioInfo/GeneAnno/GTF_lineOB.pm
-### BioFuse::BioInfo::GeneAnno::GTF_lineOB
+## BioInfo/Objects/GeneAnno/GTF_lineOB.pm
+### BioFuse::BioInfo::Objects::GeneAnno::GTF_lineOB
 ### VERSION = "0.01"
 - new
 - get_refSeg
@@ -223,57 +295,6 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_proteinENSid
 - update_refSeg
 - match_gtf_source
-
-## BioInfo/Objects/PairEnd_OB.pm
-### BioFuse::BioInfo::Objects::PairEnd_OB
-### VERSION = "0.08"
-- new
-- load_reads_OB
-- get_pid
-- get_peIdx
-- get_reads_OB
-- get_sorted_reads_OB
-- tryDiscardAlign
-- test_need_RefSeg
-- test_pair_RefSeg
-- onlyKeep_need_RefSeg
-- makePrimeAlignment
-- discardAbnormalSP
-- printSAM
-
-## BioInfo/Objects/Trans_OB.pm
-### BioFuse::BioInfo::Objects::Trans_OB
-### VERSION = "0.02"
-- new
-- get_ENSid
-- get_ref_seg
-- get_strand
-- get_use_name
-- get_ori_name
-- get_gene_use_name
-- get_biotype
-- get_exon_region
-- get_exon_sumLen
-- get_CDS_region
-- get_UTR_region
-- get_find_seq_mark
-- mark_find_seq
-
-## BioInfo/Objects/HicReads_OB.pm
-### BioFuse::BioInfo::Objects::HicReads_OB
-### VERSION = "0.03"
-- new
-- load_AlignJudge
-- load_SuppHaplo
-- del_SuppHaplo
-- onlyKeep_SuppHaplo
-- get_AlignJudge
-- get_SuppHaploHref
-- get_SuppHaploStr
-- has_SuppHaplo
-- is_fromUnPhasedRegRand
-- addHapIDtoOptfd
-- recover_SuppHaploAttr
 
 ## BioInfo/Objects/AlleleOnReads_OB.pm
 ### BioFuse::BioInfo::Objects::AlleleOnReads_OB
@@ -345,20 +366,6 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - has_indel
 - allele2haploID
 - release_memory
-
-## BioInfo/Objects/Gene_OB.pm
-### BioFuse::BioInfo::Objects::Gene_OB
-### VERSION = "0.02"
-- new
-- get_ENSid
-- get_ref_seg
-- get_strand
-- get_use_name
-- get_ori_name
-- get_biotype
-- get_exon_region
-- get_find_seq_mark
-- mark_find_seq
 
 ## BioInfo/Objects/HicPairEnd_OB.pm
 ### BioFuse::BioInfo::Objects::HicPairEnd_OB
@@ -482,9 +489,11 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/FASTA.pm
 ### BioFuse::BioInfo::FASTA
-### VERSION = "0.31"
+### VERSION = "0.32"
 - read_fasta_file
 - write_fasta_file
+- BWA_index_fasta
+- Faidx_Dict_fasta
 
 ## LoadOn.pm
 ### BioFuse::LoadOn
