@@ -17,8 +17,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## Util/Log.pm
 ### BioFuse::Util::Log
-### VERSION = "0.31"
+### VERSION = "0.32"
 - warn_and_exit
+- cluck_and_exit
 - stout_and_sterr
 
 ## Util/Index.pm

@@ -2,6 +2,7 @@ package BioFuse::Util::Log;
 
 use strict;
 use warnings;
+use Carp qw/ cluck /;
 require Exporter;
 
 #----- systemic variables -----
@@ -10,6 +11,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @ISA = qw(Exporter);
 @EXPORT = qw/
               warn_and_exit
+              cluck_and_exit
               stout_and_sterr
             /;
 @EXPORT_OK = qw();
@@ -18,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Log';
 #----- version --------
-$VERSION = "0.31";
-$DATE = '2018-10-30';
+$VERSION = "0.32";
+$DATE = '2019-05-05';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -29,6 +31,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 #--------- functions in this pm --------#
 my @functoion_list = qw/
                         warn_and_exit
+                        cluck_and_exit
                         stout_and_sterr
                      /;
 
@@ -37,6 +40,14 @@ sub warn_and_exit{
     my ($warn_content, $exit_signal) = @_;
     $exit_signal = 1 unless defined($exit_signal);
     warn "$warn_content";
+    exit($exit_signal);
+}
+
+#----------- cluck the content and exit -----------
+sub cluck_and_exit{
+    my ($warn_content, $exit_signal) = @_;
+    $exit_signal = 1 unless defined($exit_signal);
+    cluck "$warn_content";
     exit($exit_signal);
 }
 
