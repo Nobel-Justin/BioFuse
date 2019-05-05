@@ -42,7 +42,7 @@ my @functoion_list = qw/
 #--- return HELP_INFO ---
 sub return_HELP_INFO{
  return "
-     Usage:   perl $V_Href->{MainName} get_tpsl <[Options]>
+     Usage:   perl $V_Href->{MainName} psl_seq <[Options]>
 
      Options:
 
