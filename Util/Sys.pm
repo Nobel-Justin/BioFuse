@@ -14,6 +14,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
               file_exist
               trible_run_for_success
               check_java_version
+              reset_folder
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
@@ -21,8 +22,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Sys';
 #----- version --------
-$VERSION = "0.32";
-$DATE = '2018-10-31';
+$VERSION = "0.33";
+$DATE = '2019-05-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -33,6 +34,7 @@ my @functoion_list = qw/
                         file_exist
                         trible_run_for_success
                         check_java_version
+                        reset_folder
                      /;
 
 #--- verify existence of file/softlink
@@ -104,6 +106,15 @@ sub check_java_version{
     if($java_version < $minVer){
         warn_and_exit "<ERROR>\tThe version of java must be at least $minVer, but yours is $java_version\n";
     }
+}
+
+#--- try to `rm -rf` and then `mkdir -p` given folder path ---
+sub reset_folder{
+    shift @_ if(@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $folder = $parm{folder};
+    `rm -rf $folder`;
+    `mkdir -p $folder`;
 }
 
 1; ## tell the perl script the successful access of this module.
