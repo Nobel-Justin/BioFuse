@@ -38,7 +38,7 @@ my @functoion_list = qw/
                      /;
 
 #--- structure of object
-## for gene PSL format, refer to module BioFuse::BioInfo::GeneAnno::GTF_geneOB
+## for gene PSL format, refer to module BioFuse::BioInfo::Objects::GeneAnno::GTF_geneOB
 # gene -> ENSid = $ENSid
 # gene -> ref_seg = $ref_seg
 # gene -> strand = $strand
