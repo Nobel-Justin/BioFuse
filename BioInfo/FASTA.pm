@@ -3,7 +3,7 @@ package BioFuse::BioInfo::FASTA;
 use strict;
 use warnings;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
-use BioFuse::Util::Log qw/ stout_and_sterr warn_and_exit /;
+use BioFuse::Util::Log qw/ stout_and_sterr cluck_and_exit /;
 use BioFuse::Util::Sys qw/ file_exist trible_run_for_success /;
 
 require Exporter;
@@ -51,7 +51,7 @@ sub read_fasta_file{
     my $subrtParmAref = $parm{subrtParmAref};
 
     # check fasta file existence
-    warn_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n" unless defined $FaFile;
+    cluck_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n" unless defined $FaFile;
     file_exist(filePath=>$FaFile, alert=>1);
 
     # read fasta file and run sub-routine
@@ -128,7 +128,7 @@ sub BWA_index_fasta{
     my $bwa = $parm{bwa};
 
     # check fasta file existence
-    warn_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n" unless defined $FaFile;
+    cluck_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n" unless defined $FaFile;
     file_exist(filePath=>$FaFile, alert=>1);
 
     # at least BWA 0.7.13 automatically select index algriothm based on reference size.
@@ -147,7 +147,7 @@ sub Faidx_Dict_fasta{
     my $samtools = $parm{samtools};
 
     # check fasta file existence
-    warn_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n" unless defined $FaFile;
+    cluck_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n" unless defined $FaFile;
     file_exist(filePath=>$FaFile, alert=>1);
 
     (my $dict_file = "$FaFile.dict") =~ s/\.fa\.dict/\.dict/;
