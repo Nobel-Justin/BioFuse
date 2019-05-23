@@ -3,7 +3,7 @@ package BioFuse::Util::Sys;
 use strict;
 use warnings;
 use Cwd qw/ abs_path /;
-use BioFuse::Util::Log qw/ warn_and_exit /;
+use BioFuse::Util::Log qw/ cluck_and_exit /;
 require Exporter;
 
 #----- systemic variables -----
@@ -22,8 +22,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Sys';
 #----- version --------
-$VERSION = "0.33";
-$DATE = '2019-05-07';
+$VERSION = "0.34";
+$DATE = '2019-05-23';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -49,7 +49,7 @@ sub file_exist{
         || !-e abs_path( $filePath )
         || `file $filePath` =~ /broken symbolic link/
     ){
-        warn_and_exit "<ERROR>\tFile does not exist:\n"
+        cluck_and_exit "<ERROR>\tFile does not exist:\n"
                             ."\t$filePath\n" if( $alert );
         return 0;
     }
@@ -91,7 +91,7 @@ sub trible_run_for_success{
     }
 
     # if reach here, fail
-    warn_and_exit "<ERROR>\t$type command fails three times.\n"
+    cluck_and_exit "<ERROR>\t$type command fails three times.\n"
                         ."\t$command\n";
 }
 
@@ -104,7 +104,7 @@ sub check_java_version{
 
     my ($java_version) = (`$javaPath -Xmx1m -version 2>&1` =~ /\s+version\D+(\d+\.\d+)/);
     if($java_version < $minVer){
-        warn_and_exit "<ERROR>\tThe version of java must be at least $minVer, but yours is $java_version\n";
+        cluck_and_exit "<ERROR>\tThe version of java must be at least $minVer, but yours is $java_version\n";
     }
 }
 
