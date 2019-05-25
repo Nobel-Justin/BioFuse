@@ -17,6 +17,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
               write_fasta_file
               BWA_index_fasta
               Faidx_Dict_fasta
+              read_Fai
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
@@ -24,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::FASTA';
 #----- version --------
-$VERSION = "0.32";
-$DATE = '2019-05-02';
+$VERSION = "0.33";
+$DATE = '2019-05-24';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -38,6 +39,7 @@ my @functoion_list = qw/
                         write_fasta_file
                         BWA_index_fasta
                         Faidx_Dict_fasta
+                        read_Fai
                      /;
 
 #--- read fasta file and do something ---
@@ -153,6 +155,22 @@ sub Faidx_Dict_fasta{
     (my $dict_file = "$FaFile.dict") =~ s/\.fa\.dict/\.dict/;
     my $cmd = "($samtools faidx $FaFile 2>/dev/null) && ($samtools dict $FaFile 2>/dev/null 1>$dict_file)";
     trible_run_for_success($cmd, 'Faidx_Dict', {cmd_Nvb=>1, esdo_Nvb=>1});
+}
+
+#--- read host fai ---
+sub read_Fai{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $fai = $parm{fai};
+    my $cHf = $parm{cHf};
+
+    open (FAI,Try_GZ_Read($fai)) || die "fail read fai: $!\n";
+    while(<FAI>){
+        my ($id,$length) = (split)[0,1];
+        $cHf->{$id} = BioFuse::BioInfo::Objects::Segment::RefSeg_OB->new(id=>$id, length=>$length);
+    }
+    close FAI;
 }
 
 1; ## tell the perl script the successful access of this module.
