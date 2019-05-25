@@ -78,10 +78,11 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## Util/Sys.pm
 ### BioFuse::Util::Sys
-### VERSION = "0.32"
+### VERSION = "0.34"
 - file_exist
 - trible_run_for_success
 - check_java_version
+- reset_folder
 
 ## Dist/DistStat.pm
 ### BioFuse::Dist::DistStat
@@ -144,15 +145,15 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - para_alert
 - GTFtoTransPSL
 
-## BioInfo/Objects/PairEnd_OB.pm
-### BioFuse::BioInfo::Objects::PairEnd_OB
-### VERSION = "0.08"
+## BioInfo/Objects/SeqData/PairEnd_OB.pm
+### BioFuse::BioInfo::Objects::SeqData::PairEnd_OB
+### VERSION = "0.09"
 - new
 - load_reads_OB
-- get_pid
-- get_peIdx
-- get_reads_OB
-- get_sorted_reads_OB
+- pid
+- peIdx
+- rOB_Af
+- sorted_rOB_Af
 - tryDiscardAlign
 - test_need_RefSeg
 - test_pair_RefSeg
@@ -161,8 +162,8 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - discardAbnormalSP
 - printSAM
 
-## BioInfo/Objects/HicReads_OB.pm
-### BioFuse::BioInfo::Objects::HicReads_OB
+## BioInfo/Objects/SeqData/HicReads_OB.pm
+### BioFuse::BioInfo::Objects::SeqData::HicReads_OB
 ### VERSION = "0.03"
 - new
 - load_AlignJudge
@@ -176,6 +177,115 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - is_fromUnPhasedRegRand
 - addHapIDtoOptfd
 - recover_SuppHaploAttr
+
+## BioInfo/Objects/SeqData/Bam_OB.pm
+### BioFuse::BioInfo::Objects::SeqData::Bam_OB
+### VERSION = "0.13"
+- new
+- verify_bam
+- verify_index
+- addTool
+- filepath
+- tag
+- header_Af
+- isNsort
+- toNsort
+- isCsort
+- toCsort
+- start_read
+- start_write
+- stop_write
+- write
+- load_reads_for_ReadsGroup
+- rg_count_need_reads_ForIns
+- extract_ReadsGroup_OB
+- add_ReadsGroup_OBs
+- get_region_depth
+- delete_regionDepthFile
+- get_region_alt_vcf_gz
+- get_pos_marker_stat
+- get_allele_marker_stat
+- smartBam_PEread
+
+## BioInfo/Objects/SeqData/HicPairEnd_OB.pm
+### BioFuse::BioInfo::Objects::SeqData::HicPairEnd_OB
+### VERSION = "0.08"
+- new
+- get_rEndWholeAlignJudge
+- get_rEndWholeSuppHaplo
+- isInValidPair
+- testLinkRefSeg
+- dEndSameHapJudge
+- sEndSoloHapJudge
+- sEndInterHapJudge
+- dEndInterHapJudge
+- addHapIDtoReadsOptfd
+
+## BioInfo/Objects/SeqData/Reads_OB.pm
+### BioFuse::BioInfo::Objects::SeqData::Reads_OB
+### VERSION = "0.16"
+- new
+- pid
+- endNO
+- mseg
+- mpos
+- mapQ
+- rlen
+- mReadLen
+- mRefLen
+- lenFromCigar
+- barc_10x
+- optfd_str
+- add_str_to_optfd
+- optfd_has_regex
+- judgeAlign
+- is_proper_map
+- is_fw_map
+- is_rv_map
+- is_unmap
+- is_2ndmap
+- free_2ndmap
+- is_suppmap
+- free_suppmap
+- is_dup
+- is_mltmap
+- is_good_cigar
+- is_softclip
+- is_hardclip
+- is_clip
+- has_MDtag
+- is_closeAlign
+- foreClipLen
+- hindClipLen
+- biClipLen
+- tlen_FixTlen_with_S
+- digestMDtag
+- fuseCigarMD
+- getNearAltDist
+- get_pos_allele
+- printSAM
+- find_rgOB
+- update_rgOB_maxRlen
+- update_rid_RGprefix
+- get_pos_allele_v1_BaseOnCigar
+
+## BioInfo/Objects/SeqData/ReadsGroup_OB.pm
+### BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB
+### VERSION = "0.04"
+- new
+- set_RG_NO
+- set_rID_prefix
+- addAffix
+- bam_OB
+- load_reads_for_ins_evalue
+- evalue_ins
+- test_3p_overlap
+- RG_ID
+- file_prefix
+- report_format
+- write_report
+- load_report
+- write_insDistLog
 
 ## BioInfo/Objects/GeneAnno/PSL_OB.pm
 ### BioFuse::BioInfo::Objects::GeneAnno::PSL_OB
@@ -297,8 +407,21 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - update_refSeg
 - match_gtf_source
 
-## BioInfo/Objects/AlleleOnReads_OB.pm
-### BioFuse::BioInfo::Objects::AlleleOnReads_OB
+## BioInfo/Objects/Segment/RefSeg_OB.pm
+### BioFuse::BioInfo::Objects::Segment::RefSeg_OB
+### VERSION = "0.01"
+- new
+- id
+- length
+- addNote
+- note
+- setTmpFile
+- startWriteTmp
+- writeTmp
+- stop_write
+
+## BioInfo/Objects/Allele/AlleleOnReads_OB.pm
+### BioFuse::BioInfo::Objects::Allele::AlleleOnReads_OB
 ### VERSION = "0.03"
 - new
 - setMiss
@@ -318,32 +441,8 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - get_delSize
 - get_deloffset
 
-## BioInfo/Objects/Bam_OB.pm
-### BioFuse::BioInfo::Objects::Bam_OB
-### VERSION = "0.12"
-- new
-- verify_bam
-- verify_index
-- get_filepath
-- get_tag
-- get_SAMheader
-- start_read
-- start_write
-- stop_write
-- write
-- load_reads_for_ReadsGroup
-- rg_count_need_reads_ForIns
-- extract_ReadsGroup_OB
-- add_ReadsGroup_OBs
-- get_region_depth
-- delete_regionDepthFile
-- get_region_alt_vcf_gz
-- get_pos_marker_stat
-- get_allele_marker_stat
-- smartBam_PEread
-
-## BioInfo/Objects/PhasedMut_OB.pm
-### BioFuse::BioInfo::Objects::PhasedMut_OB
+## BioInfo/Objects/Allele/PhasedMut_OB.pm
+### BioFuse::BioInfo::Objects::Allele::PhasedMut_OB
 ### VERSION = "0.10"
 - new
 - load_posIdx
@@ -368,80 +467,28 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - allele2haploID
 - release_memory
 
-## BioInfo/Objects/HicPairEnd_OB.pm
-### BioFuse::BioInfo::Objects::HicPairEnd_OB
-### VERSION = "0.08"
+## BioInfo/Objects/Sample/Sample_OB.pm
+### BioFuse::BioInfo::Objects::Sample::Sample_OB
+### VERSION = "0.01"
 - new
-- get_rEndWholeAlignJudge
-- get_rEndWholeSuppHaplo
-- isInValidPair
-- testLinkRefSeg
-- dEndSameHapJudge
-- sEndSoloHapJudge
-- sEndInterHapJudge
-- dEndInterHapJudge
-- addHapIDtoReadsOptfd
+- setType
+- type
+- setPatient
+- patient
+- setTissue
+- tissue
+- addNote
+- note
+- addBam
+- bam
+- addFQ
 
-## BioInfo/Objects/Reads_OB.pm
-### BioFuse::BioInfo::Objects::Reads_OB
-### VERSION = "0.15"
+## BioInfo/Objects/Sample/Patient_OB.pm
+### BioFuse::BioInfo::Objects::Sample::Patient_OB
+### VERSION = "0.01"
 - new
-- get_available_rgOB
-- get_pid
-- get_endNO
-- get_mseg
-- get_mpos
-- get_mapQ
-- get_rlen
-- get_mReadLen
-- get_mRefLen
-- get_lenFromCigar
-- get_10x_barc
-- get_optfd_str
-- add_str_to_optfd
-- optfd_has_regex
-- update_rgOB_maxRlen
-- judgeAlign
-- is_fw_map
-- is_rv_map
-- is_unmap
-- is_2ndmap
-- free_2ndmap
-- is_suppmap
-- free_suppmap
-- is_dup
-- is_mltmap
-- is_good_cigar
-- is_softclip
-- is_hardclip
-- is_clip
-- has_MDtag
-- is_closeAlign
-- get_foreClipLen
-- get_hindClipLen
-- get_biClipLen
-- tlen_FixTlen_with_S
-- extract_FS_readid_prefix
-- digestMDtag
-- fuseCigarMD
-- getNearAltDist
-- get_pos_allele
-- printSAM
-- get_pos_allele_v1_BaseOnCigar
-
-## BioInfo/Objects/ReadsGroup_OB.pm
-### BioFuse::BioInfo::Objects::ReadsGroup_OB
-### VERSION = "0.03"
-- new
-- load_reads_for_ins_evalue
-- evalue_ins
-- test_3p_overlap
-- get_RGid
-- get_stat_file_prefix
-- get_report_structure
-- generate_report
-- load_report
-- generate_insDistLog
+- addNote
+- addSample
 
 ## BioInfo/FASTA/GetNonNBed.pm
 ### BioFuse::BioInfo::FASTA::GetNonNBed
@@ -490,11 +537,12 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/FASTA.pm
 ### BioFuse::BioInfo::FASTA
-### VERSION = "0.32"
+### VERSION = "0.33"
 - read_fasta_file
 - write_fasta_file
 - BWA_index_fasta
 - Faidx_Dict_fasta
+- read_Fai
 
 ## LoadOn.pm
 ### BioFuse::LoadOn
