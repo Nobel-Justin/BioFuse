@@ -1,6 +1,6 @@
-package BioFuse::BioInfo::Objects::HicReads_OB;
+package BioFuse::BioInfo::Objects::SeqData::HicReads_OB;
 
-use BioFuse::BioInfo::Objects::Reads_OB; # inheritance
+use BioFuse::BioInfo::Objects::SeqData::Reads_OB; # inheritance
 
 use strict;
 use warnings;
@@ -11,12 +11,12 @@ use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
 #----- systemic variables -----
 our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
-@ISA = qw(Exporter BioFuse::BioInfo::Objects::Reads_OB);
+@ISA = qw(Exporter BioFuse::BioInfo::Objects::SeqData::Reads_OB);
 @EXPORT = qw();
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::Objects::HicReads_OB';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::HicReads_OB';
 #----- version --------
 $VERSION = "0.03";
 $DATE = '2018-11-04';
@@ -42,7 +42,7 @@ my @functoion_list = qw/
                      /;
 
 #--- structure of object
-# basis, BioFuse::BioInfo::Objects::Reads_OB
+# basis, BioFuse::BioInfo::Objects::SeqData::Reads_OB
 # reads_OB -> hapID = {$hapID=>[$allele_OB, ..], ..}
 # reads_OB -> alignJudge = $alignJudgeString
 
@@ -50,7 +50,7 @@ my @functoion_list = qw/
 sub new{
     my $type = shift;
 
-    my $reads_OB = BioFuse::BioInfo::Objects::Reads_OB->new( @_ );
+    my $reads_OB = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new( @_ );
 
     bless($reads_OB);
     return $reads_OB;

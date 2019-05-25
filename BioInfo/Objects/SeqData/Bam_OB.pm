@@ -1,16 +1,17 @@
-package BioFuse::BioInfo::Objects::Bam_OB;
+package BioFuse::BioInfo::Objects::SeqData::Bam_OB;
 
 use strict;
 use warnings;
 use Cwd qw/ abs_path /;
 use Data::Dumper;
-use BioFuse::Util::Sys qw/ trible_run_for_success file_exist /;
-use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
-use BioFuse::BioInfo::Objects::Reads_OB;
-use BioFuse::BioInfo::Objects::PairEnd_OB;
-use BioFuse::BioInfo::Objects::HicReads_OB;
-use BioFuse::BioInfo::Objects::HicPairEnd_OB;
-use BioFuse::BioInfo::Objects::ReadsGroup_OB;
+use List::Util qw/ first /;
+use BioFuse::Util::Sys qw/ trible_run_for_success file_exist reset_folder /;
+use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
+use BioFuse::BioInfo::Objects::SeqData::Reads_OB;
+use BioFuse::BioInfo::Objects::SeqData::PairEnd_OB;
+use BioFuse::BioInfo::Objects::SeqData::HicReads_OB;
+use BioFuse::BioInfo::Objects::SeqData::HicPairEnd_OB;
+use BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB;
 
 require Exporter;
 
@@ -22,10 +23,10 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::Objects::Bam_OB';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
-$VERSION = "0.12";
-$DATE = '2019-03-24';
+$VERSION = "0.13";
+$DATE = '2019-05-25';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -36,9 +37,14 @@ my @functoion_list = qw/
                         new
                         verify_bam
                         verify_index
-                        get_filepath
-                        get_tag
-                        get_SAMheader
+                        addTool
+                        filepath
+                        tag
+                        header_Af
+                        isNsort
+                        toNsort
+                        isCsort
+                        toCsort
                         start_read
                         start_write
                         stop_write
@@ -59,8 +65,9 @@ my @functoion_list = qw/
 # bam -> filepath = $filepath
 # bam -> tag = $tag
 # bam -> tissue = $tissue
+# bam -> tools = {samtools => $samtools, bcftools => $bcftools}
 # bam -> write_fh = $write_fh
-# bam -> rgOB = { rgID->$rgOB }, check BioFuse::BioInfo::Objects::ReadsGroup_OB
+# bam -> rgOB = { rgID->$rgOB }, check BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB
 # bam -> regionDepthFile = $regionDepthFile
 
 #--- construction of object ---
@@ -87,7 +94,7 @@ sub verify_bam{
     $bam->{filepath} = abs_path $bam->{filepath};
 
     if( ! file_exist(filePath => $bam->{filepath}) ){
-        warn_and_exit "<ERROR>\tCannot find bam:\n"
+        cluck_and_exit "<ERROR>\tCannot find bam:\n"
                             ."\t$bam->{filepath}\n";
     }
 }
@@ -101,28 +108,35 @@ sub verify_index{
     if(    ! file_exist(filePath => $bai_filepath1)
         && ! file_exist(filePath => $bai_filepath2)
     ){
-        warn_and_exit "<ERROR>\tCannot find index bai file of bam:\n"
+        cluck_and_exit "<ERROR>\tCannot find index bai file of bam:\n"
                             ."\t$bam->{filepath}\n";
     }
 }
 
+#--- add tool ---
+sub addTool{
+    my $bam = shift;
+    my %parm = @_;
+    $bam->{tools}->{lc($_)} = $parm{$_} for keys %parm;
+}
+
 #--- return file path ---
-sub get_filepath{
+sub filepath{
     my $bam = shift;
     return $bam->{filepath};
 }
 
 #--- return bam tag ---
-sub get_tag{
+sub tag{
     my $bam = shift;
     return $bam->{tag};
 }
 
 #--- return refer of SAM header content array ---
-sub get_SAMheader{
+sub header_Af{
     my $bam = shift;
     my %parm = @_;
-    my $samtools = $parm{samtools};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
     my @header;
     open (HEAD, "$samtools view -H $bam->{filepath} |") || die "fail reading SAM header: $!\n";
@@ -132,16 +146,64 @@ sub get_SAMheader{
     return \@header;
 }
 
+#--- test whether is N-sort ---
+sub isNsort{
+    my $bam = shift;
+    my $HDline = first {grep /^\@HD/} @{$bam->header_Af};
+    return $HDline =~ /SO:queryname/;
+}
+
+#--- output N-sort bam ---
+sub toNsort{
+    my $bam = shift;
+    my %parm = @_;
+    my $nSortBam = $parm{nSortBam};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+
+    my $sortTmpFolder = $nSortBam->filepath . '-nSortTmpFolder';
+    reset_folder(folder => $sortTmpFolder);
+    my $cmd = "$samtools sort --threads 4 -n -m 1G -T $sortTmpFolder/nSort -o $nSortBam->{filepath} $bam->{filepath}";
+    trible_run_for_success($cmd, 'nSortBam', {esdo_Nvb=>1});
+    `rm -rf $sortTmpFolder`;
+    stout_and_sterr "[INFO]\ttoNsort bam ok.\n"
+                         ."\torigBam: $bam->{filepath}\n"
+                         ."\tsortBam: $nSortBam->{filepath}\n";
+}
+
+#--- test whether is C-sort ---
+sub isCsort{
+    my $bam = shift;
+    my $HDline = first {grep /^\@HD/} @{$bam->header_Af};
+    return $HDline =~ /SO:coordinate/;
+}
+
+#--- output C-sort bam ---
+sub toCsort{
+    my $bam = shift;
+    my %parm = @_;
+    my $cSortBam = $parm{cSortBam};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+
+    my $sortTmpFolder = $cSortBam->filepath . '-cSortTmpFolder';
+    reset_folder(folder => $sortTmpFolder);
+    my $cmd = "$samtools sort --threads 4 -m 1G -T $sortTmpFolder/nSort -o $cSortBam->{filepath} $bam->{filepath}";
+    trible_run_for_success($cmd, 'cSortBam', {esdo_Nvb=>1});
+    `rm -rf $sortTmpFolder`;
+    stout_and_sterr "[INFO]\ttoCsort bam ok.\n"
+                         ."\torigBam: $bam->{filepath}\n"
+                         ."\tsortBam: $cSortBam->{filepath}\n";
+}
+
 #--- open file-handle to start reading ---
 sub start_read{
     my $bam = shift;
     my %parm = @_;
-    my $samtools = $parm{samtools};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
     my $viewOpt = $parm{viewOpt} || '';
 
     # check existence
-    unless(file_exist(filePath => $bam->get_filepath)){
-        warn_and_exit "<ERROR>\tCannot find bam\n".Dumper($bam);
+    unless(file_exist(filePath => $bam->filepath)){
+        cluck_and_exit "<ERROR>\tCannot find bam\n".Dumper($bam);
     }
     # open fh
     open (my $readFH,"$samtools view $viewOpt $bam->{filepath} |") || die "fail reading: $!\n".Dumper($bam);
@@ -153,11 +215,11 @@ sub start_read{
 sub start_write{
     my $bam = shift;
     my %parm = @_;
-    my $samtools = $parm{samtools};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
     # check
     if(exists $bam->{write_fh}){
-        warn_and_exit "<ERROR>\tthe write file-handle of bam_OB already exists.\n".Dumper($bam);
+        cluck_and_exit "<ERROR>\tthe write file-handle of bam_OB already exists.\n".Dumper($bam);
     }
     # open fh
     open ($bam->{write_fh}, "| $samtools view -b -o $bam->{filepath}") || die "fail writing: $!\n".Dumper($bam);
@@ -180,7 +242,6 @@ sub write{
 
 #--- load reads and INS-stat for all ReadsGroup ---
 sub load_reads_for_ReadsGroup{
-
     my $bam = shift;
     my %parm = @_;
     my $rgid2rgOB_Href = $parm{rgid2rgOB_Href};
@@ -188,7 +249,7 @@ sub load_reads_for_ReadsGroup{
     my $pr_DropProb    = $parm{pr_DropProb} || 0;
     my $pr_AimCount    = $parm{pr_AimCount} || 10000;
     my $Tool_Tag       = $parm{Tool_Tag} || '__NULL__';
-    my $samtools       = $parm{samtools};
+    my $samtools       = $parm{samtools} || $bam->{tools}->{samtools};
 
     # still has reads group to load reads?
     my $rgNeedReads = $bam->rg_count_need_reads_ForIns;
@@ -200,13 +261,13 @@ sub load_reads_for_ReadsGroup{
     open (BAM,"$samtools view -f 0x2 -F 0xD00 $bam->{filepath} |") || die"fail read bam: $!\n";
     while(<BAM>){
         # load reads object
-        my $reads_OB = BioFuse::BioInfo::Objects::Reads_OB->new( ReadsLineText => $_, _rc_optfd => 0, _rc_rdstr => 0 );
+        my $reads_OB = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new( ReadsLineText => $_, _rc_optfd => 0, _rc_rdstr => 0 );
         # check RG_ID
-        my $rg_OB = $reads_OB->get_available_rgOB( bam => $bam, rgid2rgOB_Href => $rgid2rgOB_Href );
+        my $rg_OB = $reads_OB->find_rgOB(rgid2rgOB_Href => $rgid2rgOB_Href);
         ## enough reads for ins evalue
         next if( $rg_OB->{EnoughReadsBool} );
         # extract read-id FS prefix to rg_OB, and prepare for update
-        $reads_OB->extract_FS_readid_prefix( rg_OB => $rg_OB, Tool_Tag => $Tool_Tag ) unless( defined $rg_OB->{rID_prefix} );
+        $reads_OB->update_rid_RGprefix(Tool_Tag => $Tool_Tag) unless defined $rg_OB->{rID_prefix} ;
         # count in this paired reads for RG ins evalue
         $rg_OB->load_reads_for_ins_evalue( reads_OB => $reads_OB, only_SoftClip => $only_SoftClip, pr_AimCount => $pr_AimCount, pr_DropProb => $pr_DropProb );
         # stop when all RG(s) are full
@@ -241,7 +302,7 @@ sub extract_ReadsGroup_OB{
     my $bam = shift;
     my %parm = @_;
     my $rgid2rgOB_Href = $parm{rgid2rgOB_Href};
-    my $samtools       = $parm{samtools};
+    my $samtools       = $parm{samtools} || $bam->{tools}->{samtools};
     # my $Allow_Lack_RG  = $parm{Allow_Lack_RG};
 
     # read bam header
@@ -253,16 +314,16 @@ sub extract_ReadsGroup_OB{
                 ($RG_ID, $LB_ID) = ($1, $2);
             }
             else{
-                warn_and_exit "<ERROR>:\tCannot get RG_ID or LB_ID from header line $. of  bam file:\n".
+                cluck_and_exit "<ERROR>\tCannot get RG_ID or LB_ID from header line $. of  bam file:\n".
                                       "\t$bam->{filepath}\n";
             }
             # check recurrence
             if( exists $rgid2rgOB_Href->{$RG_ID} ){
-                warn_and_exit "<ERROR>:\tThe RG_ID $RG_ID from header line $. of $bam->{tissue} bam file is recurrent.\n".
+                cluck_and_exit "<ERROR>\tThe RG_ID $RG_ID from header line $. of $bam->{tissue} bam file is recurrent.\n".
                                       "\t$bam->{filepath}\n";
             }
             # create reads group object (rg_OB)
-            $rgid2rgOB_Href->{$RG_ID} = BioFuse::BioInfo::Objects::ReadsGroup_OB->new( bam => $bam, RG_ID => $RG_ID, LB_ID => $LB_ID );
+            $rgid2rgOB_Href->{$RG_ID} = BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB->new( bam => $bam, RG_ID => $RG_ID, LB_ID => $LB_ID );
             # link the rg_OB with the bam
             $bam->add_ReadsGroup_OBs( rgOB_Aref => [ $rgid2rgOB_Href->{$RG_ID} ] );
         }
@@ -275,7 +336,7 @@ sub extract_ReadsGroup_OB{
             # future updates 
         }
         else{
-            warn_and_exit "<ERROR>:\tThe $bam->{tissue} bam file lacks reads group info.\n".
+            cluck_and_exit "<ERROR>\tThe $bam->{tissue} bam file lacks reads group info.\n".
                                   "\t$bam->{filepath}\n";
         }
     }
@@ -289,7 +350,7 @@ sub extract_ReadsGroup_OB{
 sub add_ReadsGroup_OBs{
     my $bam = shift;
     my %parm = @_;
-    $bam->{rgOB}->{$_->get_RGid} = $_ for @{$parm{rgOB_Aref}};
+    $bam->{rgOB}->{$_->RG_ID} = $_ for @{$parm{rgOB_Aref}};
 }
 
 #--- get depth of certain region ---
@@ -303,14 +364,14 @@ sub get_region_depth{
     my $min_mapQ  = exists($parm{min_mapQ})  ? $parm{min_mapQ}  : 10;
     my $no_SoftClip = $parm{no_SoftClip} || 0;
     my $outFilePrefix = $parm{out_prefix};
-    my $samtools = $parm{samtools};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
     unless( $region_refseg && $region_st_pos && $region_ed_pos && $outFilePrefix){
-        warn_and_exit "bam->get_region_depth( refseg=>?, st_pos=>?, ed_pos=>?, out_prefix=>?)\n";
+        cluck_and_exit "bam->get_region_depth( refseg=>?, st_pos=>?, ed_pos=>?, out_prefix=>?)\n";
     }
 
     unless( defined($samtools) && -e $samtools ){
-        warn_and_exit "<ERROR>:\tCannot locate samtools in function bam->get_region_depth().\n";
+        cluck_and_exit "<ERROR>:\tCannot locate samtools in function bam->get_region_depth().\n";
     }
 
     my $bamForDepth = $bam->{filepath};
@@ -348,8 +409,8 @@ sub get_region_alt_vcf_gz{
     my %parm = @_;
     my $vcfgz = $parm{vcfgz};
     my $cmd_name = $parm{cmd_name} || 'get_alt_vcf_gz';
-    my $samtools = $parm{samtools};
-    my $bcftools = $parm{bcftools};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+    my $bcftools = $parm{bcftools} || $bam->{tools}->{bcftools};
     my $pos_list = $parm{pos_list};
     my $idx_ref = $parm{idx_ref};
     my $ploidy_set = $parm{ploidy_set} || 'GRCh37';
@@ -403,17 +464,17 @@ sub get_pos_marker_stat{
     my $chr = $parm{chr};
     my $pos = $parm{pos};
     my $marker = $parm{marker}; # '10x', 'Hi-C', 'MinIon', 'PacBio'
-    my $samtools = $parm{samtools};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
     my $PmakerStat_Href = {};
     # FLAG: -F 0x100(sd) + 0x400(d) + 0x800(sp) = 0xD00
     open (BAM,"$samtools view -F 0xD00 $bam->{filepath} $chr:$pos-$pos |") || die"fail read bam: $!\n";
     while(<BAM>){
         # load reads object
-        my $reads_OB = BioFuse::BioInfo::Objects::Reads_OB->new( ReadsLineText => $_, _rc_optfd => 1, _rc_rdstr => 1 );
+        my $reads_OB = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new( ReadsLineText => $_, _rc_optfd => 1, _rc_rdstr => 1 );
         next if( $reads_OB->is_unmap );
         # get marker of pos
-        my $marker_str = ( $marker =~ /10x/i ? $reads_OB->get_10x_barc : $reads_OB->get_pid );
+        my $marker_str = ( $marker =~ /10x/i ? $reads_OB->barc_10x : $reads_OB->pid );
         $PmakerStat_Href->{$marker_str} ++ if( $marker_str ne 'NA' );
     }
     close BAM;
@@ -430,14 +491,14 @@ sub get_allele_marker_stat{
     my $chr = $parm{chr};
     my $pos = $parm{pos};
     my $marker = $parm{marker}; # '10x', 'Hi-C', 'MinIon', 'PacBio'
-    my $samtools = $parm{samtools};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
     my $AmakerStat_Href = {};
     # FLAG: -F 0x100(sd) + 0x400(d) + 0x800(sp) = 0xD00
     open (BAM,"$samtools view -F 0xD00 $bam->{filepath} $chr:$pos-$pos |") || die"fail read bam: $!\n";
     while(<BAM>){
         # load reads object
-        my $reads_OB = BioFuse::BioInfo::Objects::Reads_OB->new( ReadsLineText => $_, _rc_optfd => 1, _rc_rdstr => 1 );
+        my $reads_OB = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new( ReadsLineText => $_, _rc_optfd => 1, _rc_rdstr => 1 );
         next if( $reads_OB->is_unmap );
         # get marker of pos allele
         my $alleleInfo_Href = $reads_OB->get_pos_allele( chr => $chr, pos => $pos );
@@ -455,7 +516,7 @@ sub get_allele_marker_stat{
             elsif( $alleleType eq 'del' ){
                 $allele = 'D,'.$alleleInfo_Href->{delSize}.','.$alleleInfo_Href->{offset};
             }
-            my $marker_str = ( $marker =~ /10x/i ? $reads_OB->get_10x_barc : $reads_OB->get_pid );
+            my $marker_str = ( $marker =~ /10x/i ? $reads_OB->barc_10x : $reads_OB->pid );
             $AmakerStat_Href->{$allele}->{$marker_str} ++ if( $marker_str ne 'NA' );
         }
     }
@@ -468,8 +529,8 @@ sub get_allele_marker_stat{
 sub smartBam_PEread{
     my $bam = shift;
     my %parm = @_;
-    my $samtools = $parm{samtools};
-    my $mark = $parm{mark} || $bam->get_tag;
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+    my $mark = $parm{mark} || $bam->tag || '';
     my $viewOpt = $parm{viewOpt} || '';
     my $readsType = $parm{readsType} || 'norm'; # norm/HiC
     my $subrtRef = $parm{subrtRef};
@@ -482,9 +543,9 @@ sub smartBam_PEread{
 
     # objects modules
     my $rdObjSource = {norm => 'Reads_OB',   HiC => 'HicReads_OB'};
-    my $rdObjModule = 'BioFuse::BioInfo::Objects::' . $rdObjSource->{$readsType};
+    my $rdObjModule = 'BioFuse::BioInfo::Objects::SeqData::' . $rdObjSource->{$readsType};
     my $peObjSource = {norm => 'PairEnd_OB', HiC => 'HicPairEnd_OB'};
-    my $peObjModule = 'BioFuse::BioInfo::Objects::' . $peObjSource->{$readsType};
+    my $peObjModule = 'BioFuse::BioInfo::Objects::SeqData::' . $peObjSource->{$readsType};
 
     # read BAM
     my $pe_Count = 0;
@@ -496,7 +557,7 @@ sub smartBam_PEread{
     my $fh = $bam->start_read(samtools => $samtools, viewOpt => $viewOpt);
     while(<$fh>){
         my $reads_OB = $rdObjModule->new( ReadsLineText => $_, _rc_optfd => 1, _rc_rdstr => 1, simpleLoad => $simpleLoad );
-        if( $reads_OB->get_pid ne $last_pid ){
+        if( $reads_OB->pid ne $last_pid ){
             # deal last pe_OB
             $pe_Count++;
             push @peOB_pool, $last_peOB if( defined $last_peOB );
@@ -521,7 +582,7 @@ sub smartBam_PEread{
             # create new pe_OB
             $last_peOB = $peObjModule->new;
             # update
-            $last_pid = $reads_OB->get_pid;
+            $last_pid = $reads_OB->pid;
         }
         # load this reads_OB to pe_OB
         $last_peOB->load_reads_OB(reads_OB => $reads_OB);

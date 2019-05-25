@@ -1,11 +1,11 @@
-package BioFuse::BioInfo::Objects::Reads_OB;
+package BioFuse::BioInfo::Objects::SeqData::Reads_OB;
 
 use strict;
 use warnings;
 use Data::Dumper;
 use List::Util qw/ max /;
-use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
-use BioFuse::BioInfo::Objects::AlleleOnReads_OB;
+use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
+use BioFuse::BioInfo::Objects::Allele::AlleleOnReads_OB;
 
 require Exporter;
 
@@ -17,10 +17,10 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::Objects::Reads_OB';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
-$VERSION = "0.15";
-$DATE = '2019-03-03';
+$VERSION = "0.16";
+$DATE = '2019-05-25';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -29,22 +29,21 @@ $EMAIL = 'wenlongkxm@gmail.com';
 #--------- functions in this pm --------#
 my @functoion_list = qw/
                         new
-                        get_available_rgOB
-                        get_pid
-                        get_endNO
-                        get_mseg
-                        get_mpos
-                        get_mapQ
-                        get_rlen
-                        get_mReadLen
-                        get_mRefLen
-                        get_lenFromCigar
-                        get_10x_barc
-                        get_optfd_str
+                        pid
+                        endNO
+                        mseg
+                        mpos
+                        mapQ
+                        rlen
+                        mReadLen
+                        mRefLen
+                        lenFromCigar
+                        barc_10x
+                        optfd_str
                         add_str_to_optfd
                         optfd_has_regex
-                        update_rgOB_maxRlen
                         judgeAlign
+                        is_proper_map
                         is_fw_map
                         is_rv_map
                         is_unmap
@@ -60,17 +59,18 @@ my @functoion_list = qw/
                         is_clip
                         has_MDtag
                         is_closeAlign
-                        get_foreClipLen
-                        get_hindClipLen
-                        get_biClipLen
+                        foreClipLen
+                        hindClipLen
+                        biClipLen
                         tlen_FixTlen_with_S
-                        extract_FS_readid_prefix
                         digestMDtag
                         fuseCigarMD
                         getNearAltDist
                         printSAM
                         get_pos_allele
-                        get_pos_allele_v1_BaseOnCigar
+                        find_rgOB
+                        update_rgOB_maxRlen
+                        update_rid_RGprefix
                      /;
 
 #--- structure of object
@@ -92,6 +92,7 @@ my @functoion_list = qw/
 # reads_OB -> baseQ = $baseQ
 # reads_OB -> optfd = $optfd
 # reads_OB -> rg_id = $rg_id
+# reads_OB -> rg_OB = $rg_OB
 # reads_OB -> endNO = $endNO
 
 #--- construction of object ---
@@ -163,89 +164,69 @@ sub new{
     return $reads_OB;
 }
 
-#--- find rg_OB based on rg_id ---
-sub get_available_rgOB{
-
-    my $reads_OB = shift;
-    my %parm = @_;
-    my $bam_OB = $parm{bam_OB};
-    my $rgid2rgOB_Href = $parm{rgid2rgOB_Href};
-
-    if(    !defined $reads_OB->{rg_id}
-        || !exists $rgid2rgOB_Href->{$reads_OB->{rg_id}}
-      ){
-        warn_and_exit "<ERROR>\tCan not get available RG_ID from reads $reads_OB->{pid}/$reads_OB->{endNO} of $bam_OB->{tissue} bam:\n"
-                            ."\t$bam_OB->{filepath}\n";
-    }
-    else{
-        $reads_OB->{rg_OB} = $rgid2rgOB_Href->{$reads_OB->{rg_id}};
-        return $rgid2rgOB_Href->{$reads_OB->{rg_id}};
-    }
-}
-
 #--- return pid ---
-sub get_pid{
+sub pid{
     my $reads_OB = shift;
     return $reads_OB->{pid};
 }
 
 #--- return endNO ---
-sub get_endNO{
+sub endNO{
     my $reads_OB = shift;
     return $reads_OB->{endNO};
 }
 
 #--- return mapped segment name ---
-sub get_mseg{
+sub mseg{
     my $reads_OB = shift;
     return $reads_OB->{mseg};
 }
 
 #--- return mapped position ---
-sub get_mpos{
+sub mpos{
     my $reads_OB = shift;
     return $reads_OB->{mpos};
 }
 
 #--- return mapping quality ---
-sub get_mapQ{
+sub mapQ{
     my $reads_OB = shift;
     return $reads_OB->{mapQ};
 }
 
 #--- return read length ---
 ## based on col.10 in SAM
-sub get_rlen{
+sub rlen{
     my $reads_OB = shift;
     return $reads_OB->{rlen};
 }
 
 #--- return length of read's mapped part ---
 ## mReadLen: just remove length of bilateral soft-clip part(s); hard-clip is rlen
-sub get_mReadLen{
+sub mReadLen{
     my $reads_OB = shift;
     unless( exists $reads_OB->{mReadLen} ){
-        $reads_OB->{mReadLen} = $reads_OB->get_rlen - $reads_OB->get_biClipLen;
+        $reads_OB->{mReadLen} = $reads_OB->rlen - $reads_OB->biClipLen;
     }
     return $reads_OB->{mReadLen};
 }
 
 #--- return the length of mapped part on reference genome ---
 ## mRefLen: consider InDel and skip
-sub get_mRefLen{
+sub mRefLen{
     my $reads_OB = shift;
     unless( exists $reads_OB->{mRefLen} ){
-        $reads_OB->{mRefLen} =   $reads_OB->get_mReadLen
-                               + $reads_OB->get_lenFromCigar(type=>'D')
-                               + $reads_OB->get_lenFromCigar(type=>'N')
-                               - $reads_OB->get_lenFromCigar(type=>'I');
+        $reads_OB->{mRefLen} =   $reads_OB->mReadLen
+                               + $reads_OB->lenFromCigar(type=>'D')
+                               + $reads_OB->lenFromCigar(type=>'N')
+                               - $reads_OB->lenFromCigar(type=>'I');
     }
     return $reads_OB->{mRefLen};
 }
 
 #--- get length of given type from Cigar ---
 ## M,D,I,H,S,N
-sub get_lenFromCigar{
+sub lenFromCigar{
     my $reads_OB = shift;
     my %parm = @_;
     my $type = $parm{type};
@@ -263,7 +244,7 @@ sub get_lenFromCigar{
 }
 
 #--- return 10x-barcode of this reads ---
-sub get_10x_barc{
+sub barc_10x{
     my $reads_OB = shift;
 
     if(    defined $reads_OB->{optfd}
@@ -275,19 +256,19 @@ sub get_10x_barc{
         return $1;
     }
     else{
-        warn_and_exit "<ERROR>\tCannot confirm 10x-barcode of reads $reads_OB->{pid} end-$reads_OB->{endNO}.\n";
+        cluck_and_exit "<ERROR>\tCannot confirm 10x-barcode of reads $reads_OB->{pid} end-$reads_OB->{endNO}.\n";
     }
 }
 
 #--- return optfd_str ---
-sub get_optfd_str{
+sub optfd_str{
     my $reads_OB = shift;
 
     if( defined $reads_OB->{optfd} ){
         return $reads_OB->{optfd};
     }
     else{
-        warn_and_exit "<ERROR>\tCannot find optfd_string of reads $reads_OB->{pid} end-$reads_OB->{endNO}.\n";
+        cluck_and_exit "<ERROR>\tCannot find optfd_string of reads $reads_OB->{pid} end-$reads_OB->{endNO}.\n";
     }
 }
 
@@ -304,14 +285,6 @@ sub optfd_has_regex{
     my $reads_OB = shift;
     my %parm = @_;
     return ($reads_OB->{optfd} =~ /$parm{regex}/);
-}
-
-#--- update the maximum read length of its rg_OB ---
-sub update_rgOB_maxRlen{
-    my $reads_OB = shift;
-    my $rg_OB = $reads_OB->{rg_OB};
-    my $endNO = $reads_OB->{endNO};
-    $rg_OB->{read_Len}->{$endNO} = max( $rg_OB->{read_Len}->{$endNO}, $reads_OB->{rlen} );
 }
 
 #--- do judgement on alignment ---
@@ -335,8 +308,14 @@ sub judgeAlign{
         return $reads_OB->is_mltmap;
     }
     elsif($type eq 'LM'){
-        return ($reads_OB->get_mapQ < $min_mapQ);
+        return ($reads_OB->mapQ < $min_mapQ);
     }
+}
+
+#--- test whether it is proper-mapped ---
+sub is_proper_map{
+    my $reads_OB = shift;
+    return $reads_OB->{flag} & 0x2;
 }
 
 #--- test whether it is forward-mapped ---
@@ -439,8 +418,8 @@ sub is_closeAlign{
         return 0;
     }
 
-    if(        $reads_OB->get_mseg eq $test_rOB->get_mseg
-        && abs($reads_OB->get_mpos -  $test_rOB->get_mpos) < $distance
+    if(        $reads_OB->mseg eq $test_rOB->mseg
+        && abs($reads_OB->mpos -  $test_rOB->mpos) < $distance
     ){
         return 1;
     }
@@ -453,7 +432,7 @@ sub is_closeAlign{
 ## default 'S'
 ## memory debug: 1) avoid variable in regex is OK
 ## 2018-11-13    2) avoid variable in '[]' in regex is BAD
-sub get_foreClipLen{
+sub foreClipLen{
     my $reads_OB = shift;
     my %parm = @_;
     my $clipType = $parm{clipType} || 'S';
@@ -487,7 +466,7 @@ sub get_foreClipLen{
 
 #--- return hind-clip length of given type ---
 ## default 'S'
-sub get_hindClipLen{
+sub hindClipLen{
     my $reads_OB = shift;
     my %parm = @_;
     my $clipType = $parm{clipType} || 'S';
@@ -520,12 +499,12 @@ sub get_hindClipLen{
 
 #--- get bi-clip length of given type ---
 ## default 'S'
-sub get_biClipLen{
+sub biClipLen{
     my $reads_OB = shift;
     my %parm = @_;
     my $clipType = $parm{clipType} || 'S';
-    return (  $reads_OB->get_foreClipLen( clipType => $clipType )
-            + $reads_OB->get_hindClipLen( clipType => $clipType ) );
+    return (  $reads_OB->foreClipLen( clipType => $clipType )
+            + $reads_OB->hindClipLen( clipType => $clipType ) );
 }
 
 #--- get the length to fix Tlen based on soft-clip Edge part ---
@@ -533,46 +512,11 @@ sub tlen_FixTlen_with_S{
     my $reads_OB = shift;
 
     if( $reads_OB->is_fw_map ){
-        return $reads_OB->get_foreClipLen;
+        return $reads_OB->foreClipLen;
     }
     elsif( $reads_OB->is_rv_map ){
-        return $reads_OB->get_hindClipLen;
+        return $reads_OB->hindClipLen;
     }
-}
-
-#--- extract and record new read-id FS prefix ---
-sub extract_FS_readid_prefix{
-
-    my $reads_OB = shift;
-    my %parm = @_;
-    my $rg_OB = $parm{rg_OB};
-    my $Tool_Tag = $parm{Tool_Tag};
-
-    if( $reads_OB->{pid} =~ /^(.*_${Tool_Tag}rgNO(\d+)${Tool_Tag}_)(.+)$/ ){
-        $rg_OB->{rID_prefix_prev} = $1;
-        $rg_OB->{RG_NO} = $2;
-        # add tissue tag
-        my $curr_tissue_tag = ucfirst( $rg_OB->{tissue} );
-        my $prev_tissue_tag = '';
-        my $rg_info_prefix = '';
-        if( $rg_OB->{rID_prefix_prev} =~ /_${Tool_Tag}ts(.+)${Tool_Tag}(.+)$/ ){
-            $prev_tissue_tag = $1;
-            $rg_info_prefix = $2;
-        }
-        else{ # no tissue tag added before
-            $rg_info_prefix = $rg_OB->{rID_prefix_prev};
-        }
-        # construct current read-id prefix
-        $rg_OB->{rID_prefix} = "_${Tool_Tag}ts$curr_tissue_tag$prev_tissue_tag${Tool_Tag}$rg_info_prefix";
-    }
-    else{
-        warn_and_exit "<ERROR>\tUnrecognized read-id prefix ($reads_OB->{pid}) from $rg_OB->{tissue} bam file:\n"
-                            ."\t$rg_OB->{bam_OB}->{filepath}\n";
-    }
-
-    # inform
-    stout_and_sterr "[INFO]\tExtract and update reads-id prefix of reads group $rg_OB->{RG_ID}:\n"
-                         ."\tfrom $rg_OB->{rID_prefix_prev} to $rg_OB->{rID_prefix}\n";
 }
 
 #--- return digested MD tag ---
@@ -623,7 +567,7 @@ sub fuseCigarMD{
         my ($len, $Ctag) = ($CIGAR =~ /^(\d+)(\D)/);
         # check
         unless( defined $len && defined $Ctag ){
-            warn_and_exit "<ERROR>\tcannot recognize cigar of this reads.\n".Dumper($reads_OB);
+            cluck_and_exit "<ERROR>\tcannot recognize cigar of this reads.\n".Dumper($reads_OB);
         }
         # shorten cigar
         $CIGAR =~ s/^\d+\D//;
@@ -662,7 +606,7 @@ sub fuseCigarMD{
                         $len--;
                     }
                     else{
-                        warn_and_exit "<ERROR>\tbad 'M' part: Cigar($len$Ctag), MD tag (@{$MDAf->[0]}).\n".Dumper($reads_OB);
+                        cluck_and_exit "<ERROR>\tbad 'M' part: Cigar($len$Ctag), MD tag (@{$MDAf->[0]}).\n".Dumper($reads_OB);
                     }
                 }
             }
@@ -676,7 +620,7 @@ sub fuseCigarMD{
                 if(           $MDAf->[0]->[0]  ne 'del'
                     || length($MDAf->[0]->[1]) != $len
                 ){
-                    warn_and_exit "<ERROR>\tbad 'D' part: Cigar($len$Ctag), MD tag (@{$MDAf->[0]}).\n".Dumper($reads_OB);
+                    cluck_and_exit "<ERROR>\tbad 'D' part: Cigar($len$Ctag), MD tag (@{$MDAf->[0]}).\n".Dumper($reads_OB);
                 }
                 # update
                 $mDetail[-1]->{str} = $MDAf->[0]->[1];
@@ -763,7 +707,7 @@ sub get_pos_allele{
     my $no_warn = $parm{no_warn};
 
     # initialize allele_OB
-    my $allele_OB = BioFuse::BioInfo::Objects::AlleleOnReads_OB->new( chr => $chr, pos => $pos, rOBmLen => $reads_OB->get_mReadLen );
+    my $allele_OB = BioFuse::BioInfo::Objects::Allele::AlleleOnReads_OB->new( chr => $chr, pos => $pos, rOBmLen => $reads_OB->mReadLen );
        $allele_OB->loadInfo( refBase => $refBase ) if( defined $refBase );
 
     # unmap check
@@ -786,7 +730,7 @@ sub get_pos_allele{
     # attributes
     my $mpos = $reads_OB->{mpos};
     my $rSeq = uc($reads_OB->{rseq});
-    my $mlen = $reads_OB->get_mReadLen;
+    my $mlen = $reads_OB->mReadLen;
     my $qSeq = $reads_OB->{baseQ};
     my $CIGAR = $reads_OB->{cigar};
     # fuse Cigar and MD-tag info, the later might lack
@@ -928,6 +872,69 @@ sub printSAM{
     return join("\t", map {($reads_OB->{$_})} @SAM_fields );
 }
 
+#--- find rg_OB based on rg_id ---
+sub find_rgOB{
+    my $reads_OB = shift;
+    my %parm = @_;
+    my $rgid2rgOB_Href = $parm{rgid2rgOB_Href};
+
+    if(    !defined $reads_OB->{rg_id}
+        || !exists $rgid2rgOB_Href->{$reads_OB->{rg_id}}
+      ){
+        cluck_and_exit "<ERROR>\tCan not get available RG_ID from reads $reads_OB->{pid}/$reads_OB->{endNO}\n";
+    }
+    else{
+        $reads_OB->{rg_OB} = $rgid2rgOB_Href->{$reads_OB->{rg_id}};
+        return $rgid2rgOB_Href->{$reads_OB->{rg_id}};
+    }
+}
+
+#--- update the maximum read length of its rg_OB ---
+sub update_rgOB_maxRlen{
+    my $reads_OB = shift;
+    my $rg_OB = $reads_OB->{rg_OB};
+    my $endNO = $reads_OB->{endNO};
+    $rg_OB->{read_Len}->{$endNO} = max( $rg_OB->{read_Len}->{$endNO}, $reads_OB->{rlen} );
+}
+
+#--- extract and record new read-id FS prefix ---
+sub update_rid_RGprefix{
+    my $reads_OB = shift;
+    my %parm = @_;
+    my $Tool_Tag = $parm{Tool_Tag};
+
+    my $rg_OB = $reads_OB->{rg_OB};
+    if( $reads_OB->{pid} =~ /^(.*_${Tool_Tag}rgNO(\d+)${Tool_Tag}_)(.+)$/ ){
+        $rg_OB->{rID_prefix_prev} = $1;
+        $rg_OB->{RG_NO} = $2;
+        # add tissue tag
+        my $curr_tissue_tag = ucfirst( $rg_OB->{tissue} );
+        my $prev_tissue_tag = '';
+        my $rg_info_prefix = '';
+        if( $rg_OB->{rID_prefix_prev} =~ /_${Tool_Tag}ts(.+)${Tool_Tag}(.+)$/ ){
+            $prev_tissue_tag = $1;
+            $rg_info_prefix = $2;
+        }
+        else{ # no tissue tag added before
+            $rg_info_prefix = $rg_OB->{rID_prefix_prev};
+        }
+        # construct current read-id prefix
+        $rg_OB->{rID_prefix} = "_${Tool_Tag}ts$curr_tissue_tag$prev_tissue_tag${Tool_Tag}$rg_info_prefix";
+    }
+    else{
+        cluck_and_exit "<ERROR>\tUnrecognized read-id prefix ($reads_OB->{pid}) from $rg_OB->{tissue} bam file:\n"
+                            ."\t$rg_OB->{bam_OB}->{filepath}\n";
+    }
+
+    # inform
+    stout_and_sterr "[INFO]\tExtract and update reads-id prefix of reads group $rg_OB->{RG_ID}:\n"
+                         ."\tfrom $rg_OB->{rID_prefix_prev} to $rg_OB->{rID_prefix}\n";
+}
+
+#!!!!!!!!!!!!!#
+# deprecated! #
+#!!!!!!!!!!!!!#
+
 #--- get allele at given position ---
 # snv: single base matched ref/alt base
 # ins: seq inserted behind 'pos'
@@ -948,7 +955,7 @@ sub get_pos_allele_v1_BaseOnCigar{
     my $mseg = $reads_OB->{mseg};
     my $mpos = $reads_OB->{mpos};
     my $rseq = uc($reads_OB->{rseq});
-    my $mlen = $reads_OB->get_mReadLen;
+    my $mlen = $reads_OB->mReadLen;
     my $baseq = $reads_OB->{baseQ};
     my $CIGAR = $reads_OB->{cigar};
 
@@ -979,7 +986,7 @@ sub get_pos_allele_v1_BaseOnCigar{
         my ($len, $type) = ($CIGAR =~ /^(\d+)(\D)/);
         # check
         unless( defined $len && defined $type ){
-            warn_and_exit "<ERROR>\tcannot recognize cigar of this reads.\n"
+            cluck_and_exit "<ERROR>\tcannot recognize cigar of this reads.\n"
                                 ."\t$reads_OB->{pid},end-$reads_OB->{endNO},$reads_OB->{mseg},$reads_OB->{mpos},$reads_OB->{cigar}\n";
         }
         # shorten cigar

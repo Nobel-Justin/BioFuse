@@ -1,9 +1,9 @@
-package BioFuse::BioInfo::Objects::ReadsGroup_OB;
+package BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB;
 
 use strict;
 use warnings;
 use File::Basename qw/ dirname /;
-use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
+use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Dist::DistStat qw/ engineer_Ntimes_SD_evaluation /;
 
@@ -17,10 +17,10 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::Objects::ReadsGroup_OB';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB';
 #----- version --------
-$VERSION = "0.03";
-$DATE = '2018-12-25';
+$VERSION = "0.04";
+$DATE = '2019-05-25';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -32,13 +32,23 @@ my @functoion_list = qw/
                         load_reads_for_ins_evalue
                         evalue_ins
                         test_3p_overlap
-                        get_RGid
-                        get_stat_file_prefix
-                        get_report_structure
-                        generate_report
+                        RG_ID
+                        file_prefix
+                        report_format
+                        write_report
                         load_report
-                        generate_insDistLog
+                        write_insDistLog
                      /;
+
+#--- structure of object
+# rg -> RG_ID = $RG_ID
+# rg -> RG_NO = $RG_NO
+# rg -> LB_ID = $LB_ID
+# rg -> bam_OB = $bam_OB
+# rg -> tissue = $tissue
+# rg -> rID_prefix = $rID_prefix
+# rg -> read_Len = {1=>,2=>}
+# rg -> affix = {};
 
 #--- construction of object ---
 sub new{
@@ -54,6 +64,7 @@ sub new{
     $rg->{rID_prefix_prev} = undef;
     $rg->{RG_NO} = undef;
     $rg->{read_Len} = {1=>0, 2=>0};
+    $rg->{affix} = {};
     # for insert size evalue
     $rg->{Ins_Stat} = {};
     $rg->{pr_forIns_count} = 0;
@@ -79,6 +90,33 @@ sub new{
     return $rg;
 }
 
+#--- set RG NO. ---
+sub set_RG_NO{
+    my $rg = shift;
+    my %parm = @_;
+    $rg->{RG_NO} = $parm{RG_NO};
+}
+
+#--- set rID_prefix ---
+sub set_rID_prefix{
+    my $rg = shift;
+    my %parm = @_;
+    $rg->{rID_prefix} = $parm{rID_prefix};
+}
+
+#--- add affix ---
+sub addAffix{
+    my $rg = shift;
+    my %parm = @_;
+    $rg->{affix}->{$_} = $parm{$_} for keys %parm;
+}
+
+#--- return bam object ---
+sub bam_OB{
+    my $rg = shift;
+    return $rg->{bam_OB};
+}
+
 #--- extract and record new read-id FS prefix ---
 sub load_reads_for_ins_evalue{
 
@@ -102,7 +140,7 @@ sub load_reads_for_ins_evalue{
     if( exists $rg->{pr_info_forIns}->{$reads_OB->{pid}} ){
         # check mapping orientation
         unless( $reads_OB->is_rv_map ){
-            warn_and_exit "<ERROR>\tMapping orientation mistake of properly-mapped paired-end $reads_OB->{pid}.\n"
+            cluck_and_exit "<ERROR>\tMapping orientation mistake of properly-mapped paired-end $reads_OB->{pid}.\n"
                                 ."\t$rg->{bam_OB}->{filepath}\n";
         }
         # for check duplication
@@ -184,13 +222,13 @@ sub test_3p_overlap{
 }
 
 #--- return read group ID ---
-sub get_RGid{
+sub RG_ID{
     my $rg = shift;
     return $rg->{RG_ID};
 }
 
 #--- get prefix of stat file of RG ---
-sub get_stat_file_prefix{
+sub file_prefix{
     my $rg = shift;
     return "$rg->{tissue}.RG_NO-$rg->{RG_NO}";
 }
@@ -199,7 +237,7 @@ sub get_stat_file_prefix{
 # type = text, just output
 # type = bool, yes:no
 # type = rbool, no:yes
-sub get_report_structure{
+sub report_format{
     return  [   # tag                type and hierarchical keys
                 [ 'Tissue',          { type => 'text', keyAref => ['tissue']                 } ],
                 [ 'RG_ID',           { type => 'text', keyAref => ['RG_ID']                  } ],
@@ -224,17 +262,16 @@ sub get_report_structure{
 }
 
 #--- write RG report ---
-sub generate_report{
-
+sub write_report{
     my $rg = shift;
     my %parm = @_;
     my $folder = $parm{folder};
 
     # aim file
-    my $rgStatFilePrefix = $rg->get_stat_file_prefix;
+    my $rgStatFilePrefix = $rg->file_prefix;
     $rg->{report} = File::Spec->catfile($folder, "$rgStatFilePrefix.$rg->{reportPostfix}");
     # structure of report
-    my $structure_Aref = &get_report_structure;
+    my $structure_Aref = $rg->report_format;
     # output
     open (RGRT, Try_GZ_Write($rg->{report})) || die "fail generate RG report: $!\n";
     for my $lineinfo_Aref (@$structure_Aref){
@@ -251,10 +288,8 @@ sub generate_report{
 
 #--- load RG report to reconstruct RG_OB ---
 sub load_report{
-
     my $rg = shift;
     my %parm = @_;
-
     $rg->{report} = $parm{rg_report};
 
     # read report
@@ -262,11 +297,11 @@ sub load_report{
     my %info_pool = map{ (split /[\s\:]+/)[0,1] } <RGRT>;
     close RGRT;
     # structure of report
-    my $structure_Aref = &get_report_structure;
+    my $structure_Aref = &report_format;
     for my $lineinfo_Aref (@$structure_Aref){
         my $tag = $lineinfo_Aref->[0];
         unless( exists $info_pool{$tag} ){
-            warn_and_exit "<ERROR>\tMiss tag $tag in RG report.\n"
+            cluck_and_exit "<ERROR>\tMiss tag $tag in RG report.\n"
                                 ."\t$rg->{report}\n";
         }
         my $value = $info_pool{$tag};
@@ -278,23 +313,23 @@ sub load_report{
         $AimAttribute->{ $hkeys_Aref->[-1] } = $value;
     }
     # remains
-    my $rgStatFilePrefix = $rg->get_stat_file_prefix;
+    my $rgStatFilePrefix = $rg->file_prefix;
     $rg->{insDistLog} = File::Spec->catfile( dirname($rg->{report}), "$rgStatFilePrefix.$rg->{insDistLogPostfix}" );
     # file check
     unless( -e $rg->{insDistLog} ){
-        warn_and_exit "<ERROR>\tCannot find the insert size distribution file of RG $rg->{RG_ID}\n";
+        cluck_and_exit "<ERROR>\tCannot find the insert size distribution file of RG $rg->{RG_ID}\n";
     }
 }
 
 #--- write distribution of ins ---
-sub generate_insDistLog{
+sub write_insDistLog{
 
     my $rg = shift;
     my %parm = @_;
     my $folder = $parm{folder};
 
     # aim file
-    my $rgStatFilePrefix = $rg->get_stat_file_prefix;
+    my $rgStatFilePrefix = $rg->file_prefix;
     $rg->{insDistLog} = File::Spec->catfile($folder, "$rgStatFilePrefix.$rg->{insDistLogPostfix}");
     open (DIST, Try_GZ_Write($rg->{insDistLog})) || die "fail generate ins Dist of RG: $!\n";
     print DIST "#ins\tcount\n";

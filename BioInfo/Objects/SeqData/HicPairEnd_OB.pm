@@ -1,6 +1,6 @@
-package BioFuse::BioInfo::Objects::HicPairEnd_OB;
+package BioFuse::BioInfo::Objects::SeqData::HicPairEnd_OB;
 
-use BioFuse::BioInfo::Objects::PairEnd_OB; # inheritance
+use BioFuse::BioInfo::Objects::SeqData::PairEnd_OB; # inheritance
 
 use strict;
 use warnings;
@@ -13,12 +13,12 @@ require Exporter;
 #----- systemic variables -----
 our (@ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
-@ISA = qw(Exporter BioFuse::BioInfo::Objects::PairEnd_OB);
+@ISA = qw(Exporter BioFuse::BioInfo::Objects::SeqData::PairEnd_OB);
 @EXPORT = qw();
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::Objects::HicPairEnd_OB';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::HicPairEnd_OB';
 #----- version --------
 $VERSION = "0.08";
 $DATE = '2019-03-11';
@@ -42,13 +42,13 @@ my @functoion_list = qw/
                      /;
 
 #--- structure of object
-# basis, BioFuse::BioInfo::Objects::PairEnd_OB
+# basis, BioFuse::BioInfo::Objects::SeqData::PairEnd_OB
 
 #--- construction of object ---
 sub new{
     my $type = shift;
 
-    my $pe_OB = BioFuse::BioInfo::Objects::PairEnd_OB->new( @_ );
+    my $pe_OB = BioFuse::BioInfo::Objects::SeqData::PairEnd_OB->new( @_ );
 
     bless($pe_OB);
     return $pe_OB;
@@ -62,7 +62,7 @@ sub get_rEndWholeAlignJudge{
     return join( '', map {
                             ($_->get_AlignJudge)
                          }
-                     @{ $pe_OB->get_reads_OB( reads_end => $parm{rEnd} ) }
+                     @{ $pe_OB->rOB_Af( reads_end => $parm{rEnd} ) }
                 );
 }
 
@@ -72,7 +72,7 @@ sub get_rEndWholeSuppHaplo{
     my %parm = @_;
 
     my %rWholeHap;
-    for my $reads_OB ( @{ $pe_OB->get_reads_OB( reads_end => $parm{rEnd} ) } ){
+    for my $reads_OB ( @{ $pe_OB->rOB_Af( reads_end => $parm{rEnd} ) } ){
         my $rAlignHapHref = $reads_OB->get_SuppHaploHref;
         push @{ $rWholeHap{$_} }, @{ $rAlignHapHref->{$_} } for keys %$rAlignHapHref;
     }
@@ -89,10 +89,10 @@ sub isInValidPair{
     my $maxCloseAlignDist = $parm{maxCloseAlignDist} || 1E3;
     my $skipCloseAlign  = $parm{skipCloseAlign} || 0;
 
-    my $rOB_sortAref = $pe_OB->get_sorted_reads_OB(rEndAref => [1,2], onlyMap => 1);
+    my $rOB_sortAref = $pe_OB->sorted_rOB_Af(rEndAref => [1,2], onlyMap => 1);
     my $rOB_a = $rOB_sortAref->[0];
     my $rOB_b = $rOB_sortAref->[-1];
-    if($rOB_a->get_mseg ne $rOB_b->get_mseg){
+    if($rOB_a->mseg ne $rOB_b->mseg){
         return 0;
     }
     else{
@@ -101,8 +101,8 @@ sub isInValidPair{
                  && $rOB_a->is_closeAlign(test_rOB => $rOB_b, distance => $maxCloseAlignDist)
                )
             ||   # check fragment index
-               (    binarySearch(query => $rOB_a->get_mpos, array => $chr2enzymePosHf->{$rOB_a->get_mseg})
-                 == binarySearch(query => $rOB_b->get_mpos, array => $chr2enzymePosHf->{$rOB_b->get_mseg})
+               (    binarySearch(query => $rOB_a->mpos, array => $chr2enzymePosHf->{$rOB_a->mseg})
+                 == binarySearch(query => $rOB_b->mpos, array => $chr2enzymePosHf->{$rOB_b->mseg})
                )
         ){
             my $fw_a = $rOB_a->is_fw_map;
@@ -136,10 +136,10 @@ sub testLinkRefSeg{
     my %refSegHref = (a => $parm{a_refSegHref});
     $refSegHref{b} = $parm{b_refSegHref} if exists $parm{b_refSegHref};
     # test refseg
-    my $rOB_Af = $pe_OB->get_sorted_reads_OB(chrSortHref => $chrSortHref, chrSortKey  => $chrSortKey);
+    my $rOB_Af = $pe_OB->sorted_rOB_Af(chrSortHref => $chrSortHref, chrSortKey  => $chrSortKey);
     my %testResult;
     for my $i (0,-1){
-        my $mseg = $rOB_Af->[$i]->get_mseg;
+        my $mseg = $rOB_Af->[$i]->mseg;
         for my $ab (keys %refSegHref){
             if(exists $refSegHref{$ab}{$mseg}){
                 $testResult{$i}{$ab}{isNeed} = 1;
@@ -193,8 +193,8 @@ sub dEndSameHapJudge{
     my %parm = @_;
     my $maxCloseAlignDist = $parm{maxCloseAlignDist};
 
-    my $R1_rOB_Aref = $pe_OB->get_reads_OB( reads_end => 1 );
-    my $R2_rOB_Aref = $pe_OB->get_reads_OB( reads_end => 2 );
+    my $R1_rOB_Aref = $pe_OB->rOB_Af( reads_end => 1 );
+    my $R2_rOB_Aref = $pe_OB->rOB_Af( reads_end => 2 );
 
     # at least one end must have 'UK' alignment
     # else, keep dEnd
@@ -227,7 +227,7 @@ sub sEndSoloHapJudge{
     my $shEnd = $parm{shEnd}; # solo-haplo
     my $maxCloseAlignDist = $parm{maxCloseAlignDist};
 
-    my @shEnd_HasHap_rOB = grep $_->has_SuppHaplo, @{$pe_OB->get_reads_OB(reads_end => $shEnd)};
+    my @shEnd_HasHap_rOB = grep $_->has_SuppHaplo, @{$pe_OB->rOB_Af(reads_end => $shEnd)};
     if(      @shEnd_HasHap_rOB >= 2
         && ! $shEnd_HasHap_rOB[0]->is_closeAlign(test_rOB => $shEnd_HasHap_rOB[-1], distance => $maxCloseAlignDist)
     ){
@@ -250,8 +250,8 @@ sub sEndInterHapJudge{
     my $uhEnd = $parm{uhEnd}; # unkonwn-haplo
     my $maxCloseAlignDist = $parm{maxCloseAlignDist};
 
-    my $mh_rOB_Aref = $pe_OB->get_reads_OB(reads_end => $mhEnd);
-    my $uh_rOB_Aref = $pe_OB->get_reads_OB(reads_end => $uhEnd); # much likely to have only one alignment
+    my $mh_rOB_Aref = $pe_OB->rOB_Af(reads_end => $mhEnd);
+    my $uh_rOB_Aref = $pe_OB->rOB_Af(reads_end => $uhEnd); # much likely to have only one alignment
     my $doSelectBool = 0; # might select
     if(    scalar(@$mh_rOB_Aref) > 1 # have SP
         && $mh_rOB_Aref->[0]->has_SuppHaplo # both alignments have supported haplotype
@@ -288,7 +288,7 @@ sub dEndInterHapJudge{
     # prepare hapID -> reads_OB
     my %hapID2rOB;
     for my $rEnd (1, 2){
-        my $rOB_Aref = $pe_OB->get_reads_OB(reads_end => $rEnd);
+        my $rOB_Aref = $pe_OB->rOB_Af(reads_end => $rEnd);
         for my $rOB ( @$rOB_Aref ){
             for my $hapID (keys %{$rOB->get_SuppHaploHref}){ # auto-skip 'UK'
                 push @{ $hapID2rOB{$hapID} }, $rOB;
@@ -334,7 +334,7 @@ sub dEndInterHapJudge{
 sub addHapIDtoReadsOptfd{
     my $pe_OB = shift;
     my %parm = @_;
-    $_->addHapIDtoOptfd for @{ $pe_OB->get_reads_OB( reads_end => $parm{reads_end} ) };
+    $_->addHapIDtoOptfd for @{ $pe_OB->rOB_Af( reads_end => $parm{reads_end} ) };
 }
 
 1; ## tell the perl script the successful access of this module.

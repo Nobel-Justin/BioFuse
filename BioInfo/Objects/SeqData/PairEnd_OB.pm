@@ -1,10 +1,10 @@
-package BioFuse::BioInfo::Objects::PairEnd_OB;
+package BioFuse::BioInfo::Objects::SeqData::PairEnd_OB;
 
 use strict;
 use warnings;
 use List::Util qw/ min first /;
 use Data::Dumper;
-use BioFuse::Util::Log qw/ warn_and_exit /;
+use BioFuse::Util::Log qw/ cluck_and_exit /;
 use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen /;
 use BioFuse::Util::Sort qw/ sortByStrAndSubNum /;
 
@@ -18,10 +18,10 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::Objects::PairEnd_OB';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::PairEnd_OB';
 #----- version --------
-$VERSION = "0.08";
-$DATE = '2019-02-11';
+$VERSION = "0.09";
+$DATE = '2019-05-25';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -31,10 +31,10 @@ $EMAIL = 'wenlongkxm@gmail.com';
 my @functoion_list = qw/
                         new
                         load_reads_OB
-                        get_pid
-                        get_peIdx
-                        get_reads_OB
-                        get_sorted_reads_OB
+                        pid
+                        peIdx
+                        rOB_Af
+                        sorted_rOB_Af
                         tryDiscardAlign
                         test_need_RefSeg
                         test_pair_RefSeg
@@ -46,16 +46,16 @@ my @functoion_list = qw/
 
 #--- structure of object
 # pe_OB -> {reads_OB} -> {1/2} = [ $reads_OB(mapped-1), $reads_OB(mapped-2) ... ]
-# pe_OB -> {pe_Idx} = $pe_Idx
+# pe_OB -> {peIdx} = $peIdx
 
 #--- construction of object ---
 sub new{
     my $type = shift;
     my %parm = @_;
-    my $pe_Idx = $parm{pe_Idx} || 0; # this is for short-name of the pe-id
+    my $peIdx = $parm{peIdx} || 0; # this is for short-name of the pe-id
 
     my $pe_OB = {};
-    $pe_OB->{pe_Idx} = $pe_Idx;
+    $pe_OB->{peIdx} = $peIdx;
 
     bless($pe_OB);
     return $pe_OB;
@@ -63,29 +63,28 @@ sub new{
 
 #--- load reads OB ---
 sub load_reads_OB{
-
     my $pe_OB = shift;
     my %parm = @_;
     my $reads_OB = $parm{reads_OB};
 
-    my $reads_end = $reads_OB->get_endNO;
+    my $reads_end = $reads_OB->endNO;
     push @{$pe_OB->{reads_OB}->{$reads_end}}, $reads_OB;
 }
 
 #--- return pid ---
-sub get_pid{
+sub pid{
     my $pe_OB = shift;
-    return $pe_OB->{reads_OB}->{1}->[0]->get_pid;
+    return $pe_OB->{reads_OB}->{1}->[0]->pid;
 }
 
 #--- return pe-idx ---
-sub get_peIdx{
+sub peIdx{
     my $pe_OB = shift;
-    return $pe_OB->{pe_Idx};
+    return $pe_OB->{peIdx};
 }
 
 #--- return array-ref of given reads-end ---
-sub get_reads_OB{
+sub rOB_Af{
     my $pe_OB = shift;
     my %parm = @_;
     my $reads_end = $parm{reads_end};
@@ -95,7 +94,7 @@ sub get_reads_OB{
 
 #--- return sorted reads OB array-ref ---
 # ascending sort chr,pos
-sub get_sorted_reads_OB{
+sub sorted_rOB_Af{
     my $pe_OB = shift;
     my %parm = @_;
     my $rEndAref = $parm{rEndAref} || [1,2]; # [1,2] or [1] or [2]
@@ -106,13 +105,13 @@ sub get_sorted_reads_OB{
     # get rOB of required rEnd
     ## if set, only select mapped
     my @reads_OB = grep ! $onlyMap || ! $_->is_unmap,
-                   map  { ( @{ $pe_OB->get_reads_OB(reads_end => $_) } ) }
+                   map  { ( @{ $pe_OB->rOB_Af(reads_end => $_) } ) }
                    @$rEndAref;
     # chr,pos ascending sort
     @reads_OB = sort {
                     sortByStrAndSubNum(
-                        Str_a => $a->get_mseg, Num_a => $a->get_mpos,
-                        Str_b => $b->get_mseg, Num_b => $b->get_mpos,
+                        Str_a => $a->mseg, Num_a => $a->mpos,
+                        Str_b => $b->mseg, Num_b => $b->mpos,
                         SortHref => $chrSortHref,
                         SortKey  => $chrSortKey
                     )
@@ -122,14 +121,14 @@ sub get_sorted_reads_OB{
 }
 
 #--- try to dicard alignment of certain scenario ---
-# see function 'judgeAlign' in BioFuse::BioInfo::Objects::Reads_OB
+# see function 'judgeAlign' in BioFuse::BioInfo::Objects::SeqData::Reads_OB
 sub tryDiscardAlign{
     my $pe_OB = shift;
     # which alignment to discard and whether have remains
     my %discIdx;
     my %hasRemains;
     for my $rEnd (1,2){
-        my $rOB_Af = $pe_OB->get_reads_OB(reads_end => $rEnd);
+        my $rOB_Af = $pe_OB->rOB_Af(reads_end => $rEnd);
         for my $i (0 .. @$rOB_Af-1){
             next if $rOB_Af->[$i]->is_unmap; # skip unmap
             if($rOB_Af->[$i]->judgeAlign(@_)){
@@ -143,7 +142,7 @@ sub tryDiscardAlign{
     # if both R1 and R2 have remain alignment, do discard.
     if($hasRemains{1} && $hasRemains{2}){
         for my $rEnd (1,2){
-            my $rOB_Af = $pe_OB->get_reads_OB(reads_end => $rEnd);
+            my $rOB_Af = $pe_OB->rOB_Af(reads_end => $rEnd);
             splice(@$rOB_Af, $_, 1) for @{$discIdx{$rEnd}};
         }
         return 1;
@@ -159,11 +158,11 @@ sub test_need_RefSeg{
     my %parm = @_;
     my $refSegHref = $parm{refSegHref};
 
-    my $rOB_Af = $pe_OB->get_reads_OB(reads_end => $parm{reads_end});
+    my $rOB_Af = $pe_OB->rOB_Af(reads_end => $parm{reads_end});
     my $cnt_Hf = {isNeed=>0, noNeed=>0};
     for my $i (0 .. @$rOB_Af-1){
         next if $rOB_Af->[$i]->is_unmap; # skip unmap
-        my $mseg = $rOB_Af->[$i]->get_mseg;
+        my $mseg = $rOB_Af->[$i]->mseg;
         if(exists $refSegHref->{$mseg}){
             $cnt_Hf->{isNeed}++;
         }
@@ -183,7 +182,7 @@ sub test_pair_RefSeg{
 
     # parameters
     unless(exists $parm{a_refSegHref}){
-        warn_and_exit "<ERROR>\tlacks 'a_refSegHref' parameter in func 'test_pair_RefSeg' of pe_OB.\n";
+        cluck_and_exit "<ERROR>\tlacks 'a_refSegHref' parameter in func 'test_pair_RefSeg' of pe_OB.\n";
     }
     my %refSegHref = (a => $parm{a_refSegHref});
     $refSegHref{b} = $parm{b_refSegHref} if exists $parm{b_refSegHref};
@@ -229,11 +228,11 @@ sub onlyKeep_need_RefSeg{
     my %parm = @_;
     my $refSegHref = $parm{refSegHref};
 
-    my $rOB_Af = $pe_OB->get_reads_OB(reads_end => $parm{reads_end});
+    my $rOB_Af = $pe_OB->rOB_Af(reads_end => $parm{reads_end});
     my @discIdx;
     for my $i (0 .. @$rOB_Af-1){
         next if $rOB_Af->[$i]->is_unmap; # skip unmap
-        my $mseg = $rOB_Af->[$i]->get_mseg;
+        my $mseg = $rOB_Af->[$i]->mseg;
         unless(exists $refSegHref->{$mseg}){
             unshift @discIdx, $i;
         }
@@ -251,7 +250,7 @@ sub makePrimeAlignment{
 
     my @rEnd = $parm{reads_end} ? ($parm{reads_end}) : (1,2);
     for my $rEnd (@rEnd){
-        my $rOB_Af = $pe_OB->get_reads_OB(reads_end => $rEnd);
+        my $rOB_Af = $pe_OB->rOB_Af(reads_end => $rEnd);
         my $primeAlign = first { !$_->is_2ndmap && !$_->is_suppmap } @$rOB_Af;
         # cannot find prime alignment, so take the first alignment and make it
         unless(defined $primeAlign){
@@ -268,7 +267,7 @@ sub discardAbnormalSP{
 
     my $removeSPbool = 0;
     for my $rEnd (1,2){
-        my $rOB_Aref = $pe_OB->get_reads_OB(reads_end => $rEnd);
+        my $rOB_Aref = $pe_OB->rOB_Af(reads_end => $rEnd);
         # only deal with reads-end has two alignments
         next if( scalar(@$rOB_Aref) != 2 );
         # which is SP (supplementary) and FA (first-align)
@@ -277,16 +276,16 @@ sub discardAbnormalSP{
         my $SP_rOB = $rOB_Aref->[$SP_i];
         my $FA_rOB = $rOB_Aref->[$FA_i];
         if( $FA_rOB->is_suppmap ){
-            warn_and_exit "<ERROR>\tWrong PE-r$rEnd having two supplementary alignments.\n"
+            cluck_and_exit "<ERROR>\tWrong PE-r$rEnd having two supplementary alignments.\n"
                                 ."\t".Dumper($pe_OB)."\n";
         }
         #------------------------#
         # filter sum of mReadLen #
         #------------------------#
-        my $SP_mLen = $SP_rOB->get_mReadLen;
-        my $FA_mLen = $FA_rOB->get_mReadLen;
+        my $SP_mLen = $SP_rOB->mReadLen;
+        my $FA_mLen = $FA_rOB->mReadLen;
         my $mReadLenSum = $SP_mLen + $FA_mLen;
-        my $origReadlen = $FA_rOB->get_rlen;
+        my $origReadlen = $FA_rOB->rlen;
         if(    $mReadLenSum < $origReadlen * 0.8
             || $mReadLenSum > $origReadlen * 1.2
         ){
@@ -297,10 +296,10 @@ sub discardAbnormalSP{
         #-------------------------------#
         # filter overlap of mapped part #
         #-------------------------------#
-        my $SP_fClipL = $SP_rOB->get_foreClipLen(clipType => 'SH');
-        my $SP_hClipL = $SP_rOB->get_hindClipLen(clipType => 'SH');
-        my $FA_fClipL = $FA_rOB->get_foreClipLen(clipType => 'SH');
-        my $FA_hClipL = $FA_rOB->get_hindClipLen(clipType => 'SH');
+        my $SP_fClipL = $SP_rOB->foreClipLen(clipType => 'SH');
+        my $SP_hClipL = $SP_rOB->hindClipLen(clipType => 'SH');
+        my $FA_fClipL = $FA_rOB->foreClipLen(clipType => 'SH');
+        my $FA_hClipL = $FA_rOB->hindClipLen(clipType => 'SH');
         my @SP_mRange = ( $SP_fClipL + 1, $origReadlen - $SP_hClipL );
         my @FA_mRange = ( $FA_fClipL + 1, $origReadlen - $FA_hClipL );
         # alignment orientation diff?

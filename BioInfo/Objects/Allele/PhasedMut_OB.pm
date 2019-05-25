@@ -1,4 +1,4 @@
-package BioFuse::BioInfo::Objects::PhasedMut_OB;
+package BioFuse::BioInfo::Objects::Allele::PhasedMut_OB;
 
 use strict;
 use warnings;
@@ -15,7 +15,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::Objects::PhasedMut_OB';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::Allele::PhasedMut_OB';
 #----- version --------
 $VERSION = "0.10";
 $DATE = '2018-10-31';

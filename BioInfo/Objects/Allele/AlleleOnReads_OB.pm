@@ -1,4 +1,4 @@
-package BioFuse::BioInfo::Objects::AlleleOnReads_OB;
+package BioFuse::BioInfo::Objects::Allele::AlleleOnReads_OB;
 
 use strict;
 use warnings;
@@ -15,7 +15,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()]);
 
-$MODULE_NAME = 'BioFuse::BioInfo::Objects::AlleleOnReads_OB';
+$MODULE_NAME = 'BioFuse::BioInfo::Objects::Allele::AlleleOnReads_OB';
 #----- version --------
 $VERSION = "0.03";
 $DATE = '2018-11-14';
