@@ -28,52 +28,52 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
 my @functoion_list = qw/
-                        ne
-                        pi
-                        endN
-                        mse
-                        mpo
-                        map
-                        rle
-                        mReadLe
-                        mRefLe
-                        lenFromCiga
-                        barc_10
-                        optfd_st
-                        add_str_to_optf
-                        optfd_has_rege
-                        judgeAlig
-                        is_proper_ma
-                        is_fw_ma
-                        is_rv_ma
-                        is_unma
-                        is_2ndma
-                        free_2ndma
-                        is_suppma
-                        free_suppma
-                        is_du
-                        is_mltma
-                        is_good_ciga
-                        is_softcli
-                        is_hardcli
-                        is_cli
-                        has_MDta
-                        is_closeAlig
-                        foreClipLe
-                        hindClipLe
-                        biClipLe
-                        tlen_FixTlen_with_
-                        digestMDta
-                        fuseCigarM
-                        getNearAltDis
-                        get_pos_allel
-                        printSA
-                        printF
-                        find_rgO
-                        add_RGrIDprefToPi
-                        update_rgOB_maxRle
-                        update_rid_RGprefi
-                        get_pos_allele_v1_BaseOnCiga
+                        new
+                        pid
+                        endNO
+                        mseg
+                        mpos
+                        mapQ
+                        rlen
+                        mReadLen
+                        mRefLen
+                        lenFromCigar
+                        barc_10x
+                        optfd_str
+                        add_str_to_optfd
+                        optfd_has_regex
+                        judgeAlign
+                        is_proper_map
+                        is_fw_map
+                        is_rv_map
+                        is_unmap
+                        is_2ndmap
+                        free_2ndmap
+                        is_suppmap
+                        free_suppmap
+                        is_dup
+                        is_mltmap
+                        is_good_cigar
+                        is_softclip
+                        is_hardclip
+                        is_clip
+                        has_MDtag
+                        is_closeAlign
+                        foreClipLen
+                        hindClipLen
+                        biClipLen
+                        tlen_FixTlen_with_S
+                        digestMDtag
+                        fuseCigarMD
+                        getNearAltDist
+                        get_pos_allele
+                        printSAM
+                        printFQ
+                        find_rgOB
+                        add_RGrIDprefToPid
+                        update_rgOB_maxRlen
+                        update_rid_RGprefix
+                        get_pos_allele_v1_BaseOnCigar
                      /;
 
 #--- structure of object
@@ -913,7 +913,7 @@ sub add_RGrIDprefToPid{
 #--- update the maximum read length of its rg_OB ---
 sub update_rgOB_maxRlen{
     my $reads_OB = shift;
-    $reads_OB->{rg_OB}->update_rLen(endNO => $reads_OB->{endNO}, rLen => $reads_OB->{rlen});
+    $reads_OB->{rg_OB}->update_maxRlen(endNO => $reads_OB->{endNO}, rLen => $reads_OB->{rlen});
 }
 
 #--- extract and record new read-id FS prefix ---

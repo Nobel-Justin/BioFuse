@@ -2,6 +2,7 @@ package BioFuse::BioInfo::Objects::Sample::Sample_OB;
 
 use strict;
 use warnings;
+use Data::Dumper;
 use BioFuse::Util::Log qw/ cluck_and_exit /;
 
 require Exporter;
@@ -120,7 +121,7 @@ sub note{
 sub addBam{
     my $sample = shift;
     my %parm = @_;
-    push @{ $sample->{bam} }, $parm{bam_OB};
+    push @{ $sample->{bam} }, $parm{bam};
 }
 
 #--- return Array-ref of sample's bam ---

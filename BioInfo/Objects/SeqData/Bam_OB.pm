@@ -83,7 +83,7 @@ sub new{
     $bam->{tissue} = $parm{tissue} || undef;
     $bam->{rgOB} = {};
 
-    $bam->{filepath} = abs_path $bam->{filepath} if defined $bam->{filepath};
+    # $bam->{filepath} = abs_path $bam->{filepath} if defined $bam->{filepath};
 
     bless($bam);
     return $bam;
@@ -269,8 +269,6 @@ sub load_reads_for_ReadsGroup{
     my $rgNeedReads = $bam->rg_count_need_reads_ForIns;
     return if( $rgNeedReads == 0 );
 
-    # to store the pid
-    my $tissue = $bam->{tissue};
     # FLAG: -f 0x2 (P), -F 0x100(sd) + 0x400(d) + 0x800(sp) = 0xD00
     open (BAM,"$samtools view -f 0x2 -F 0xD00 $bam->{filepath} |") || die"fail read bam: $!\n";
     while(<BAM>){
@@ -291,7 +289,7 @@ sub load_reads_for_ReadsGroup{
     close BAM;
 
     # inform
-    stout_and_sterr "[INFO]\tLoad paired-end info for reads group (only_SoftClip:$only_SoftClip) from bam file.\n"
+    stout_and_sterr "[INFO]\tload paired-end info for reads group (only_SoftClip:$only_SoftClip) from bam file.\n"
                          ."\t$bam->{filepath}\n";
 }
 
@@ -327,12 +325,12 @@ sub pick_rgOB{
                 ($RG_ID, $LB_ID) = ($1, $2);
             }
             else{
-                cluck_and_exit "<ERROR>\tCannot get RG_ID or LB_ID from header line $. of  bam file:\n".
+                cluck_and_exit "<ERROR>\tCannot get RG_ID or LB_ID from header.\n".
                                       "\t$bam->{filepath}\n";
             }
             # check recurrence
             if( exists $rgid2rgOB_Href->{$RG_ID} ){
-                cluck_and_exit "<ERROR>\tThe RG_ID $RG_ID from header line $. of $bam->{tissue} bam file is recurrent.\n".
+                cluck_and_exit "<ERROR>\tThe RG_ID $RG_ID of bam file is recurrent.\n".
                                       "\t$bam->{filepath}\n";
             }
             # create reads group object (rg_OB)
@@ -349,13 +347,13 @@ sub pick_rgOB{
             # future updates 
         }
         else{
-            cluck_and_exit "<ERROR>\tThe $bam->{tissue} bam file lacks reads group info.\n".
+            cluck_and_exit "<ERROR>\tbam file lacks reads group info.\n".
                                   "\t$bam->{filepath}\n";
         }
     }
 
     # inform
-    stout_and_sterr "[INFO]\tCreate reads group objects from $bam->{tissue} bam file.\n"
+    stout_and_sterr "[INFO]\tcreate reads group objects from bam file.\n"
                          ."\t$bam->{filepath}\n";
 }
 
@@ -619,7 +617,7 @@ sub smartBam_PEread{
     }
     # inform
     stout_and_sterr "[INFO]\t".`date`
-                         ."\tTotally, load $pe_Count PE-reads from $mark bam.\n" unless $quiet;
+                         ."\ttotally, load $pe_Count PE-reads from $mark bam.\n" unless $quiet;
 }
 
 1; ## tell the perl script the successful access of this module.

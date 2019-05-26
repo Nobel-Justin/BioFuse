@@ -5,6 +5,7 @@ use warnings;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Util::Log qw/ stout_and_sterr cluck_and_exit /;
 use BioFuse::Util::Sys qw/ file_exist trible_run_for_success /;
+use BioFuse::BioInfo::Objects::Segment::RefSeg_OB;
 
 require Exporter;
 
@@ -26,7 +27,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::FASTA';
 #----- version --------
 $VERSION = "0.33";
-$DATE = '2019-05-24';
+$DATE = '2019-05-26';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -171,6 +172,8 @@ sub read_Fai{
         $cHf->{$id} = BioFuse::BioInfo::Objects::Segment::RefSeg_OB->new(id=>$id, length=>$length);
     }
     close FAI;
+    # inform
+    stout_and_sterr "[INFO]\tload fai to refseg objects ok.\n";
 }
 
 1; ## tell the perl script the successful access of this module.

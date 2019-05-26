@@ -2,6 +2,7 @@ package BioFuse::BioInfo::Objects::SeqData::FastQ_OB;
 
 use strict;
 use warnings;
+use Cwd qw/ abs_path /;
 use Data::Dumper;
 use BioFuse::Util::Log qw/ cluck_and_exit /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
@@ -56,7 +57,7 @@ sub new{
     $fq->{tissue} = $parm{tissue} || undef;
     $fq->{rgOB} = {};
 
-    $fq->{filepath} = abs_path $fq->{filepath} if defined $fq->{filepath};
+    # $fq->{filepath} = abs_path $fq->{filepath} if defined $fq->{filepath};
 
     bless($fq);
     return $fq;
