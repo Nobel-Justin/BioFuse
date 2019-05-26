@@ -163,7 +163,7 @@ sub header_Af{
 #--- test whether is N-sort ---
 sub isNsort{
     my $bam = shift;
-    my $HDline = first {grep /^\@HD/} @{$bam->header_Af};
+    my $HDline = first {/^\@HD/} @{$bam->header_Af};
     return $HDline =~ /SO:queryname/;
 }
 
