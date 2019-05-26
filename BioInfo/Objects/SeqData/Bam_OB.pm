@@ -187,7 +187,7 @@ sub toNsort{
 #--- test whether is C-sort ---
 sub isCsort{
     my $bam = shift;
-    my $HDline = first {grep /^\@HD/} @{$bam->header_Af};
+    my $HDline = first {/^\@HD/} @{$bam->header_Af};
     return $HDline =~ /SO:coordinate/;
 }
 
