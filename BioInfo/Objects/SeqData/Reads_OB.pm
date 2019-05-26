@@ -20,7 +20,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
 $VERSION = "0.16";
-$DATE = '2019-05-25';
+$DATE = '2019-05-26';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -28,49 +28,52 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
 my @functoion_list = qw/
-                        new
-                        pid
-                        endNO
-                        mseg
-                        mpos
-                        mapQ
-                        rlen
-                        mReadLen
-                        mRefLen
-                        lenFromCigar
-                        barc_10x
-                        optfd_str
-                        add_str_to_optfd
-                        optfd_has_regex
-                        judgeAlign
-                        is_proper_map
-                        is_fw_map
-                        is_rv_map
-                        is_unmap
-                        is_2ndmap
-                        free_2ndmap
-                        is_suppmap
-                        free_suppmap
-                        is_dup
-                        is_mltmap
-                        is_good_cigar
-                        is_softclip
-                        is_hardclip
-                        is_clip
-                        has_MDtag
-                        is_closeAlign
-                        foreClipLen
-                        hindClipLen
-                        biClipLen
-                        tlen_FixTlen_with_S
-                        digestMDtag
-                        fuseCigarMD
-                        getNearAltDist
-                        printSAM
-                        get_pos_allele
-                        find_rgOB
-                        update_rgOB_maxRlen
-                        update_rid_RGprefix
+                        ne
+                        pi
+                        endN
+                        mse
+                        mpo
+                        map
+                        rle
+                        mReadLe
+                        mRefLe
+                        lenFromCiga
+                        barc_10
+                        optfd_st
+                        add_str_to_optf
+                        optfd_has_rege
+                        judgeAlig
+                        is_proper_ma
+                        is_fw_ma
+                        is_rv_ma
+                        is_unma
+                        is_2ndma
+                        free_2ndma
+                        is_suppma
+                        free_suppma
+                        is_du
+                        is_mltma
+                        is_good_ciga
+                        is_softcli
+                        is_hardcli
+                        is_cli
+                        has_MDta
+                        is_closeAlig
+                        foreClipLe
+                        hindClipLe
+                        biClipLe
+                        tlen_FixTlen_with_
+                        digestMDta
+                        fuseCigarM
+                        getNearAltDis
+                        get_pos_allel
+                        printSA
+                        printF
+                        find_rgO
+                        add_RGrIDprefToPi
+                        update_rgOB_maxRle
+                        update_rid_RGprefi
+                        get_pos_allele_v1_BaseOnCiga
                      /;
 
 #--- structure of object
@@ -462,7 +465,6 @@ sub foreClipLen{
     # lack the required clip type
     return 0;
 }
-
 
 #--- return hind-clip length of given type ---
 ## default 'S'
@@ -872,6 +874,18 @@ sub printSAM{
     return join("\t", map {($reads_OB->{$_})} @SAM_fields );
 }
 
+#--- print reads in FastQ format ---
+sub printFQ{
+    my $reads_OB = shift;
+    my $rSeq = $reads_OB->{rseq}; # initialize
+    my $bQul = $reads_OB->{baseQ};
+    if($reads_OB->is_rv_map){
+        ($rSeq = reverse uc($rSeq)) =~ tr/ACGT/TGCA/;
+        $bQul  = reverse $bQul;
+    }
+    return join("\n", "\@$reads_OB->{pid}/$reads_OB->{endNO}", $rSeq, '+', $bQul);
+}
+
 #--- find rg_OB based on rg_id ---
 sub find_rgOB{
     my $reads_OB = shift;
@@ -889,12 +903,17 @@ sub find_rgOB{
     }
 }
 
+#--- add rg rid prefix to pid ---
+sub add_RGrIDprefToPid{
+    my $reads_OB = shift;
+    my $rg_OB = $reads_OB->{rg_OB};
+    $rg_OB->{pid} = $rg_OB->rID_prefix . $rg_OB->{pid};
+}
+
 #--- update the maximum read length of its rg_OB ---
 sub update_rgOB_maxRlen{
     my $reads_OB = shift;
-    my $rg_OB = $reads_OB->{rg_OB};
-    my $endNO = $reads_OB->{endNO};
-    $rg_OB->{read_Len}->{$endNO} = max( $rg_OB->{read_Len}->{$endNO}, $reads_OB->{rlen} );
+    $reads_OB->{rg_OB}->update_rLen(endNO => $reads_OB->{endNO}, rLen => $reads_OB->{rlen});
 }
 
 #--- extract and record new read-id FS prefix ---

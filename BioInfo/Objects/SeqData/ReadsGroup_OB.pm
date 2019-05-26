@@ -3,6 +3,7 @@ package BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB;
 use strict;
 use warnings;
 use File::Basename qw/ dirname /;
+use List::Util qw/ max /;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Dist::DistStat qw/ engineer_Ntimes_SD_evaluation /;
@@ -20,7 +21,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB';
 #----- version --------
 $VERSION = "0.04";
-$DATE = '2019-05-25';
+$DATE = '2019-05-26';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -29,10 +30,20 @@ $EMAIL = 'wenlongkxm@gmail.com';
 #--------- functions in this pm --------#
 my @functoion_list = qw/
                         new
+                        RG_ID
+                        LB_ID
+                        RG_NO
+                        set_RG_NO
+                        rID_prefix
+                        set_rID_prefix
+                        maxRlen_Hf
+                        update_maxRlen
+                        affix
+                        addAffix
+                        bam
                         load_reads_for_ins_evalue
                         evalue_ins
                         test_3p_overlap
-                        RG_ID
                         file_prefix
                         report_format
                         write_report
@@ -44,10 +55,10 @@ my @functoion_list = qw/
 # rg -> RG_ID = $RG_ID
 # rg -> RG_NO = $RG_NO
 # rg -> LB_ID = $LB_ID
-# rg -> bam_OB = $bam_OB
+# rg -> bam = $bam
 # rg -> tissue = $tissue
 # rg -> rID_prefix = $rID_prefix
-# rg -> read_Len = {1=>,2=>}
+# rg -> maxRlen = {1=>,2=>}
 # rg -> affix = {};
 
 #--- construction of object ---
@@ -58,13 +69,17 @@ sub new{
     my $rg = {};
     $rg->{RG_ID}  = $parm{RG_ID};
     $rg->{LB_ID}  = $parm{LB_ID};
-    $rg->{bam_OB} = $parm{bam_OB};
-    $rg->{tissue} = $parm{bam_OB}->{tissue};
+    $rg->{RG_NO} = undef;
+    $rg->{affix} = {};
+    # reads
+    $rg->{maxRlen} = {1=>0, 2=>0};
     $rg->{rID_prefix} = undef;
     $rg->{rID_prefix_prev} = undef;
-    $rg->{RG_NO} = undef;
-    $rg->{read_Len} = {1=>0, 2=>0};
-    $rg->{affix} = {};
+    # bam
+    if(exists $parm{bam}){
+        $rg->{bam} = $parm{bam};
+        $rg->{tissue} = $parm{bam}->tissue || 'U'; # Unknown
+    }
     # for insert size evalue
     $rg->{Ins_Stat} = {};
     $rg->{pr_forIns_count} = 0;
@@ -90,6 +105,24 @@ sub new{
     return $rg;
 }
 
+#--- return reads group ID ---
+sub RG_ID{
+    my $rg = shift;
+    return $rg->{RG_ID};
+}
+
+#--- return library ID ---
+sub LB_ID{
+    my $rg = shift;
+    return $rg->{LB_ID};
+}
+
+#--- return reads group NO ---
+sub RG_NO{
+    my $rg = shift;
+    return $rg->{RG_NO};
+}
+
 #--- set RG NO. ---
 sub set_RG_NO{
     my $rg = shift;
@@ -97,11 +130,41 @@ sub set_RG_NO{
     $rg->{RG_NO} = $parm{RG_NO};
 }
 
+#--- return rID_prefix ---
+sub rID_prefix{
+    my $rg = shift;
+    return $rg->{rID_prefix};
+}
+
 #--- set rID_prefix ---
 sub set_rID_prefix{
     my $rg = shift;
     my %parm = @_;
-    $rg->{rID_prefix} = $parm{rID_prefix};
+    my $toolTag = $parm{toolTag} || 'BF'; # default as 'BioFuse'
+    $rg->{rID_prefix} =  "_$toolTag"
+                        .($rg->{tissue}?"ts$rg->{tissue}":'')
+                        ."rgNO$rg->{RG_NO}"
+                        ."${toolTag}_";
+}
+
+#--- return Hash-ref of max rlen ---
+sub maxRlen_Hf{
+    my $rg = shift;
+    return $rg->{maxRlen};
+}
+
+#--- update max rlen ---
+sub update_maxRlen{
+    my $rg = shift;
+    my %parm = @_;
+    $rg->{maxRlen}->{$parm{endNO}} = max($rg->{maxRlen}->{$parm{endNO}}, $parm{rLen});
+}
+
+#--- return affix of given key ---
+sub affix{
+    my $rg = shift;
+    my %parm = @_;
+    return $rg->{affix}->{$parm{key}};
 }
 
 #--- add affix ---
@@ -112,9 +175,9 @@ sub addAffix{
 }
 
 #--- return bam object ---
-sub bam_OB{
+sub bam{
     my $rg = shift;
-    return $rg->{bam_OB};
+    return $rg->{bam};
 }
 
 #--- extract and record new read-id FS prefix ---
@@ -141,7 +204,7 @@ sub load_reads_for_ins_evalue{
         # check mapping orientation
         unless( $reads_OB->is_rv_map ){
             cluck_and_exit "<ERROR>\tMapping orientation mistake of properly-mapped paired-end $reads_OB->{pid}.\n"
-                                ."\t$rg->{bam_OB}->{filepath}\n";
+                                ."\t$rg->{bam}->{filepath}\n";
         }
         # for check duplication
         my $preads_OB = $rg->{pr_info_forIns}->{$reads_OB->{pid}};
@@ -211,20 +274,13 @@ sub evalue_ins{
 
 #--- whether certain pr of this RG are PCW ---
 sub test_3p_overlap{
-
     my $rg = shift;
     my %parm = @_;
     my $perct_cutoff = $parm{perct_cutoff} || 0.2;
 
     $rg->{end_3p_overlap} = (   $rg->{eligible}
-                                && $rg->{end_3p_overlap} / $rg->{pr_forIns_count} > $perct_cutoff
-                               ) ? 1 : 0;
-}
-
-#--- return read group ID ---
-sub RG_ID{
-    my $rg = shift;
-    return $rg->{RG_ID};
+                             && $rg->{end_3p_overlap} / $rg->{pr_forIns_count} > $perct_cutoff
+                            ) ? 1 : 0;
 }
 
 #--- get prefix of stat file of RG ---
@@ -246,8 +302,8 @@ sub report_format{
                 [ 'Eligible',        { type => 'bool', keyAref => ['eligible']               } ],
                 [ '#_of_colt_PE',    { type => 'text', keyAref => ['pr_forIns_count']        } ],
                 [ '#_of_used_PE',    { type => 'text', keyAref => ['pr_forIns_count_eng3sd'] } ],
-                [ 'MaxRlen-end1',    { type => 'text', keyAref => ['read_Len', '1']          } ],
-                [ 'MaxRlen-end2',    { type => 'text', keyAref => ['read_Len', '2']          } ],
+                [ 'MaxRlen-end1',    { type => 'text', keyAref => ['maxRlen', '1']          } ],
+                [ 'MaxRlen-end2',    { type => 'text', keyAref => ['maxRlen', '2']          } ],
                 [ 'Ins-mean',        { type => 'text', keyAref => ['Ins_mean']               } ],
                 [ 'Ins-sd',          { type => 'text', keyAref => ['Ins_sd']                 } ],
                 [ 'Ins-peakValue',   { type => 'text', keyAref => ['Ins_peak', 'value']      } ],
@@ -257,7 +313,7 @@ sub report_format{
                 [ 'rid-prefixCurr',  { type => 'text', keyAref => ['rID_prefix']             } ], 
                 [ 'rid-prefixPrev',  { type => 'text', keyAref => ['rID_prefix_prev']        } ], 
                 [ 'prime3overlap',   { type => 'bool', keyAref => ['end_3p_overlap']         } ],
-                [ 'BamFile',         { type => 'text', keyAref => ['bam_OB', 'filepath']     } ]
+                [ 'BamFile',         { type => 'text', keyAref => ['bam', 'filepath']     } ]
             ];
 }
 

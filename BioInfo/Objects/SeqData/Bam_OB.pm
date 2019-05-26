@@ -26,7 +26,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
 $VERSION = "0.13";
-$DATE = '2019-05-25';
+$DATE = '2019-05-26';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -40,6 +40,8 @@ my @functoion_list = qw/
                         addTool
                         filepath
                         tag
+                        tissue
+                        rgOB_Hf
                         header_Af
                         isNsort
                         toNsort
@@ -51,8 +53,8 @@ my @functoion_list = qw/
                         write
                         load_reads_for_ReadsGroup
                         rg_count_need_reads_ForIns
-                        extract_ReadsGroup_OB
-                        add_ReadsGroup_OBs
+                        pick_rgOB
+                        add_rgOB
                         get_region_depth
                         delete_regionDepthFile
                         get_region_alt_vcf_gz
@@ -130,6 +132,18 @@ sub filepath{
 sub tag{
     my $bam = shift;
     return $bam->{tag};
+}
+
+#--- return tissue ---
+sub tissue{
+    my $bam = shift;
+    return $bam->{tissue};
+}
+
+#--- return Hash-ref bam's rgOB ---
+sub rgOB_Hf{
+    my $bam = shift;
+    return $bam->{rgOB};
 }
 
 #--- return refer of SAM header content array ---
@@ -248,7 +262,7 @@ sub load_reads_for_ReadsGroup{
     my $only_SoftClip  = $parm{only_SoftClip};
     my $pr_DropProb    = $parm{pr_DropProb} || 0;
     my $pr_AimCount    = $parm{pr_AimCount} || 10000;
-    my $Tool_Tag       = $parm{Tool_Tag} || '__NULL__';
+    my $Tool_Tag       = $parm{Tool_Tag} || 'BF';
     my $samtools       = $parm{samtools} || $bam->{tools}->{samtools};
 
     # still has reads group to load reads?
@@ -296,9 +310,8 @@ sub rg_count_need_reads_ForIns{
     return $count;
 }
 
-#--- extract reads group and create related objects ---
-sub extract_ReadsGroup_OB{
-
+#--- pick reads group and create related objects ---
+sub pick_rgOB{
     my $bam = shift;
     my %parm = @_;
     my $rgid2rgOB_Href = $parm{rgid2rgOB_Href};
@@ -323,9 +336,9 @@ sub extract_ReadsGroup_OB{
                                       "\t$bam->{filepath}\n";
             }
             # create reads group object (rg_OB)
-            $rgid2rgOB_Href->{$RG_ID} = BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB->new( bam => $bam, RG_ID => $RG_ID, LB_ID => $LB_ID );
+            $rgid2rgOB_Href->{$RG_ID} = BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB->new(bam => $bam, RG_ID => $RG_ID, LB_ID => $LB_ID);
             # link the rg_OB with the bam
-            $bam->add_ReadsGroup_OBs( rgOB_Aref => [ $rgid2rgOB_Href->{$RG_ID} ] );
+            $bam->add_rgOB(rgOB => $rgid2rgOB_Href->{$RG_ID});
         }
     }
     close BAMHEADER;
@@ -347,10 +360,10 @@ sub extract_ReadsGroup_OB{
 }
 
 #--- add reads group object(s) to this bam ---
-sub add_ReadsGroup_OBs{
+sub add_rgOB{
     my $bam = shift;
     my %parm = @_;
-    $bam->{rgOB}->{$_->RG_ID} = $_ for @{$parm{rgOB_Aref}};
+    $bam->{rgOB}->{$parm{rgOB}->RG_ID} = $parm{rgOB};
 }
 
 #--- get depth of certain region ---
