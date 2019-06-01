@@ -29,10 +29,10 @@ $EMAIL = 'wenlongkxm@gmail.com';
 my @functoion_list = qw/
                         new
                         id
+                        set_length
                         length
-                        addNote
+                        set_note
                         note
-                        setTmpFile
                      /;
 
 #--- structure of object
@@ -48,7 +48,6 @@ sub new{
 
     my $refseg = {};
     $refseg->{id} = $parm{id};
-    $refseg->{length} = $parm{length};
 
     bless($refseg);
     return $refseg;
@@ -60,6 +59,13 @@ sub id{
     return $refseg->{id};
 }
 
+#--- set refseg's length ---
+sub set_length{
+    my $refseg = shift;
+    my %parm = @_;
+    $refseg->{length} = $parm{length};
+}
+
 #--- get refseg's length ---
 sub length{
     my $refseg = shift;
@@ -67,7 +73,7 @@ sub length{
 }
 
 #--- set refseg's notes ---
-sub addNote{
+sub set_note{
     my $refseg = shift;
     my %parm = @_;
     $refseg->{note} = $parm{note};
@@ -79,68 +85,4 @@ sub note{
     return $refseg->{note} || 'N/A';
 }
 
-#--- set temp file ---
-sub setTmpFile{
-    my $refseg = shift;
-    my %parm = @_;
-    $refseg->{tmp} = $parm{file};
-}
-
-#--- start writing tmp file ---
-sub startWriteTmp{
-    my $refseg = shift;
-    # check
-    cluck_and_exit "<ERROR>\tthe write file-handle of refseg tmp-file already exists.\n".Dumper($refseg) if exists $refseg->{tmpFH};
-    # open fh
-    open ($refseg->{tmpFH},Try_GZ_Write($refseg->{tmp})) || cluck_and_exit "fail writing: $!\n".Dumper($refseg);
-}
-
-#--- write contect to tmp file ---
-sub writeTmp{
-    my $refseg = shift;
-    my %parm = @_;
-    print {$refseg->{tmpFH}} $parm{content};
-}
-
-#--- close file-handle to stop writing ---
-sub stop_write{
-    my $refseg = shift;
-    close  $refseg->{tmpFH} if exists $refseg->{tmpFH};
-    delete $refseg->{tmpFH};
-}
-
 1; ## tell the perl script the successful access of this module.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
