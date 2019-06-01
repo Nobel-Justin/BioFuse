@@ -27,7 +27,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 #--------- functions in this pm --------#
 my @functoion_list = qw/
                         new
-                        addNote
+                        set_note
                         addSample
                      /;
 
@@ -49,7 +49,7 @@ sub new{
 }
 
 #--- set patient's notes ---
-sub addNote{
+sub set_note{
     my $patient = shift;
     my %parm = @_;
     $patient->{note} = $parm{note};

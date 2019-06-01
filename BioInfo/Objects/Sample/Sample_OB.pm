@@ -33,7 +33,7 @@ my @functoion_list = qw/
                         patient
                         setTissue
                         tissue
-                        addNote
+                        set_note
                         note
                         addBam
                         bam
@@ -105,7 +105,7 @@ sub tissue{
 }
 
 #--- set sample's notes ---
-sub addNote{
+sub set_note{
     my $sample = shift;
     my %parm = @_;
     $sample->{note} = $parm{note};
