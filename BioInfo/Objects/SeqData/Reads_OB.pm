@@ -38,7 +38,8 @@ my @functoion_list = qw/
                         mReadLen
                         mRefLen
                         lenFromCigar
-                        barc_10x
+                        barcode
+                        add_BarcToPid
                         optfd_str
                         add_str_to_optfd
                         optfd_has_regex
@@ -246,20 +247,38 @@ sub lenFromCigar{
     return $len;
 }
 
-#--- return 10x-barcode of this reads ---
-sub barc_10x{
+#--- return barcode of this reads ---
+sub barcode{
     my $reads_OB = shift;
+    my %parm = @_;
+    my $barcSAMtag = $parm{barcSAMtag} || 'BX:Z:'; # default is 10x-barcode
+    my $barcPidPrf = $parm{barcPidPrf} || ':__BARC__:';
 
     if(    defined $reads_OB->{optfd}
-        && $reads_OB->{optfd} =~ /BX:Z:(\S+)/
+        && $reads_OB->{optfd} =~ /$barcSAMtag(\S+)/
     ){
         return $1;
     }
-    elsif( $reads_OB->{pid} =~ /BC:([^:]+)/ ){
+    elsif( $reads_OB->{pid} =~ /$barcPidPrf([^:]+)/ ){
         return $1;
     }
     else{
-        cluck_and_exit "<ERROR>\tCannot confirm 10x-barcode of reads $reads_OB->{pid} end-$reads_OB->{endNO}.\n";
+        cluck_and_exit "<ERROR>\tcannot confirm 10x-barcode of reads\n".Dumper($reads_OB);
+    }
+}
+
+#--- update pid with barcode postfix
+sub add_BarcToPid{
+    my $reads_OB = shift;
+    my %parm = @_;
+    my $barcSAMtag = $parm{barcSAMtag} || 'BX:Z:'; # default is 10x-barcode
+    my $barcPidPrf = $parm{barcPidPrf} || ':__BARC__:';
+
+    if($reads_OB->{pid} !~ /$barcPidPrf/){
+        $reads_OB->{pid} = $reads_OB->{pid} . $barcPidPrf . $reads_OB->barcode(barcSAMtag=>$barcSAMtag, barcPidPrf=>$barcPidPrf);
+    }
+    else{
+        cluck_and_exit "<ERROR>\tthis reads likely already has barcode in pid\n".Dumper($reads_OB);
     }
 }
 
