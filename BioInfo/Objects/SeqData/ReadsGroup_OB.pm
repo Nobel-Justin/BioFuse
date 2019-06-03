@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB';
 #----- version --------
-$VERSION = "0.04";
-$DATE = '2019-05-26';
+$VERSION = "0.05";
+$DATE = '2019-06-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -41,6 +41,7 @@ my @functoion_list = qw/
                         affix
                         addAffix
                         bam
+                        RG_para
                         load_reads_for_ins_evalue
                         evalue_ins
                         test_3p_overlap
@@ -178,6 +179,13 @@ sub addAffix{
 sub bam{
     my $rg = shift;
     return $rg->{bam};
+}
+
+#--- return RG para used in BWA sampe/mem ---
+sub RG_para{
+    my $rg = shift;
+    my %parm = @_;
+    return '@RG\tID:'.$rg->RG_ID.'\tLB:'.$rg->LB_ID.'\tPL:ILLUMINA\tCN:NULL\tPU:'.$rg->RG_ID.'\tSM:'.$parm{sampleID};
 }
 
 #--- extract and record new read-id FS prefix ---

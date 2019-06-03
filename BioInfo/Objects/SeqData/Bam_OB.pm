@@ -25,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
-$VERSION = "0.13";
-$DATE = '2019-05-26';
+$VERSION = "0.15";
+$DATE = '2019-06-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -37,6 +37,7 @@ my @functoion_list = qw/
                         new
                         verify_bam
                         verify_index
+                        delete_file
                         addTool
                         filepath
                         tag
@@ -47,6 +48,8 @@ my @functoion_list = qw/
                         toNsort
                         isCsort
                         toCsort
+                        toIndex
+                        toFixmate
                         start_read
                         start_write
                         stop_write
@@ -92,9 +95,7 @@ sub new{
 #--- verify bam file ---
 sub verify_bam{
     my $bam = shift;
-
     $bam->{filepath} = abs_path $bam->{filepath};
-
     if( ! file_exist(filePath => $bam->{filepath}) ){
         cluck_and_exit "<ERROR>\tCannot find bam:\n"
                             ."\t$bam->{filepath}\n";
@@ -104,7 +105,6 @@ sub verify_bam{
 #--- verify index (bai file) ---
 sub verify_index{
     my $bam = shift;
-
      my $bai_filepath1 = $bam->{filepath} . '.bai';
     (my $bai_filepath2 = $bam->{filepath}) =~ s/bam$/bai/;
     if(    ! file_exist(filePath => $bai_filepath1)
@@ -113,6 +113,16 @@ sub verify_index{
         cluck_and_exit "<ERROR>\tCannot find index bai file of bam:\n"
                             ."\t$bam->{filepath}\n";
     }
+}
+
+#--- delete files ---
+sub delete_file{
+    my $bam = shift;
+    `rm -f $bam->{filepath}` if -e $bam->{filepath};
+     my $bai_filepath1 = $bam->{filepath} . '.bai';
+    (my $bai_filepath2 = $bam->{filepath}) =~ s/bam$/bai/;
+    `rm -f $bai_filepath1` if -e $bai_filepath1;
+    `rm -f $bai_filepath2` if -e $bai_filepath2;
 }
 
 #--- add tool ---
@@ -206,6 +216,34 @@ sub toCsort{
     stout_and_sterr "[INFO]\ttoCsort bam ok.\n"
                          ."\torigBam: $bam->{filepath}\n"
                          ."\tsortBam: $cSortBam->{filepath}\n";
+}
+
+#--- index this bam if is C-sort ---
+sub toIndex{
+    my $bam = shift;
+    my %parm = @_;
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+
+    # check
+    cluck_and_exit "<ERROR>\tbam is not C-sort.\n".Dumper($bam) unless $bam->isCsort;
+    my $cmd = "$samtools index $bam->{filepath}";
+    trible_run_for_success($cmd, 'indexBam', {esdo_Nvb=>1});
+    stout_and_sterr "[INFO]\tindex bam ok.\n"
+                         ."\tbam: $bam->{filepath}\n";
+}
+
+#--- output fixmate bam ---
+sub toFixmate{
+    my $bam = shift;
+    my %parm = @_;
+    my $fixmateBam = $parm{fixmateBam};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+
+    my $cmd = "$samtools fixmate -O bam $bam->{filepath} $fixmateBam->{filepath}";
+    trible_run_for_success($cmd, 'fixmateBam', {esdo_Nvb=>1});
+    stout_and_sterr "[INFO]\ttoFixmate bam ok.\n"
+                         ."\torigBam: $bam->{filepath}\n"
+                         ."\tsortBam: $fixmateBam->{filepath}\n";
 }
 
 #--- open file-handle to start reading ---

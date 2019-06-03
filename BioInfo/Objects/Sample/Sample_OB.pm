@@ -17,8 +17,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Sample::Sample_OB';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2019-05-23';
+$VERSION = "0.02";
+$DATE = '2019-06-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -27,6 +27,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 #--------- functions in this pm --------#
 my @functoion_list = qw/
                         new
+                        id
                         setType
                         type
                         setPatient
@@ -59,6 +60,12 @@ sub new{
 
     bless($sample);
     return $sample;
+}
+
+#--- return sample id ---
+sub id{
+    my $sample = shift;
+    return $sample->{id};
 }
 
 #--- set sample type ---
