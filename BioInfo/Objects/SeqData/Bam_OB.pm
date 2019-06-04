@@ -50,6 +50,8 @@ my @functoion_list = qw/
                         toCsort
                         toIndex
                         toFixmate
+                        merge
+                        toMarkdup
                         start_read
                         start_write
                         stop_write
@@ -233,17 +235,56 @@ sub toIndex{
 }
 
 #--- output fixmate bam ---
+# requires samtools v1.9+
+# -m: Add mate score tag
 sub toFixmate{
     my $bam = shift;
     my %parm = @_;
     my $fixmateBam = $parm{fixmateBam};
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
-    my $cmd = "$samtools fixmate -O bam $bam->{filepath} $fixmateBam->{filepath}";
+    my $cmd = "$samtools fixmate -m $bam->{filepath} $fixmateBam->{filepath}";
     trible_run_for_success($cmd, 'fixmateBam', {esdo_Nvb=>1});
     stout_and_sterr "[INFO]\ttoFixmate bam ok.\n"
                          ."\torigBam: $bam->{filepath}\n"
                          ."\tsortBam: $fixmateBam->{filepath}\n";
+}
+
+#--- merge several bams ---
+## this bam is the merged bam
+sub merge{
+    my $bam = shift;
+    my %parm = @_;
+    my $bamAf = $parm{bamAf};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+
+    # check
+    cluck_and_exit "<ERROR>\tonly one bam to merge.\n".Dumper($bamAf) if @$bamAf <= 1;
+    cluck_and_exit "<ERROR>\tnot sorted bam.\n".Dumper($_) for grep {my $bm=$_; !$bm->isNsort && !$bm->isCsort} map {$_} @$bamAf;
+
+    my @bamPath = map {$_->filepath} @$bamAf;
+    my $nSortPara = $bamAf->[0]->isNsort ? '-n' : '';
+    my $cmd = "$samtools merge $nSortPara -c -p --threads 4 $bam->{filepath} @bamPath";
+    trible_run_for_success($cmd, 'mergeBam', {esdo_Nvb=>1});
+    # inform
+    stout_and_sterr "[INFO]\tSamTools merge bam ok.\n"
+                         ."\tbam: $bam->{filepath}\n";
+}
+
+#--- output markdup bam ---
+# requires samtools v1.9+
+sub toMarkdup{
+    my $bam = shift;
+    my %parm = @_;
+    my $markdupBam = $parm{markdupBam};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+
+    my $cmd = "$samtools markdup $bam->{filepath} $markdupBam->{filepath}";
+    trible_run_for_success($cmd, 'markdupBam', {esdo_Nvb=>1});
+    # inform
+    stout_and_sterr "[INFO]\tSamTools markdup bam ok.\n"
+                         ."\torigBam:  $bam->{filepath}\n"
+                         ."\tmkdupBam: $markdupBam->{filepath}\n";
 }
 
 #--- open file-handle to start reading ---
