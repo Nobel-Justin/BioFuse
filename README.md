@@ -180,26 +180,33 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/SeqData/Bam_OB.pm
 ### BioFuse::BioInfo::Objects::SeqData::Bam_OB
-### VERSION = "0.13"
+### VERSION = "0.15"
 - new
 - verify_bam
 - verify_index
+- delete_file
 - addTool
 - filepath
 - tag
+- tissue
+- rgOB_Hf
 - header_Af
 - isNsort
 - toNsort
 - isCsort
 - toCsort
+- toIndex
+- toFixmate
+- merge
+- toMarkdup
 - start_read
 - start_write
 - stop_write
 - write
 - load_reads_for_ReadsGroup
 - rg_count_need_reads_ForIns
-- extract_ReadsGroup_OB
-- add_ReadsGroup_OBs
+- pick_rgOB
+- add_rgOB
 - get_region_depth
 - delete_regionDepthFile
 - get_region_alt_vcf_gz
@@ -221,6 +228,19 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - dEndInterHapJudge
 - addHapIDtoReadsOptfd
 
+## BioInfo/Objects/SeqData/FastQ_OB.pm
+### BioFuse::BioInfo::Objects::SeqData::FastQ_OB
+### VERSION = "0.01"
+- new
+- filepath
+- tag
+- rgOB_Hf
+- start_read
+- start_write
+- stop_write
+- write
+- add_rgOB
+
 ## BioInfo/Objects/SeqData/Reads_OB.pm
 ### BioFuse::BioInfo::Objects::SeqData::Reads_OB
 ### VERSION = "0.16"
@@ -234,7 +254,8 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - mReadLen
 - mRefLen
 - lenFromCigar
-- barc_10x
+- barcode
+- add_BarcToPid
 - optfd_str
 - add_str_to_optfd
 - optfd_has_regex
@@ -264,23 +285,32 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - getNearAltDist
 - get_pos_allele
 - printSAM
+- printFQ
 - find_rgOB
+- add_RGrIDprefToPid
 - update_rgOB_maxRlen
 - update_rid_RGprefix
 - get_pos_allele_v1_BaseOnCigar
 
 ## BioInfo/Objects/SeqData/ReadsGroup_OB.pm
 ### BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB
-### VERSION = "0.04"
+### VERSION = "0.05"
 - new
+- RG_ID
+- LB_ID
+- RG_NO
 - set_RG_NO
+- rID_prefix
 - set_rID_prefix
+- maxRlen_Hf
+- update_maxRlen
+- affix
 - addAffix
-- bam_OB
+- bam
+- RG_para
 - load_reads_for_ins_evalue
 - evalue_ins
 - test_3p_overlap
-- RG_ID
 - file_prefix
 - report_format
 - write_report
@@ -412,13 +442,10 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 ### VERSION = "0.01"
 - new
 - id
+- set_length
 - length
-- addNote
+- set_note
 - note
-- setTmpFile
-- startWriteTmp
-- writeTmp
-- stop_write
 
 ## BioInfo/Objects/Allele/AlleleOnReads_OB.pm
 ### BioFuse::BioInfo::Objects::Allele::AlleleOnReads_OB
@@ -469,15 +496,16 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/Sample/Sample_OB.pm
 ### BioFuse::BioInfo::Objects::Sample::Sample_OB
-### VERSION = "0.01"
+### VERSION = "0.02"
 - new
+- id
 - setType
 - type
 - setPatient
 - patient
 - setTissue
 - tissue
-- addNote
+- set_note
 - note
 - addBam
 - bam
@@ -487,7 +515,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 ### BioFuse::BioInfo::Objects::Sample::Patient_OB
 ### VERSION = "0.01"
 - new
-- addNote
+- set_note
 - addSample
 
 ## BioInfo/FASTA/GetNonNBed.pm
@@ -518,6 +546,11 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - deal_window_depth_info
 - get_ctrl_copyR
 - get_givenWinItvalMeanDepth
+
+## BioInfo/Alignment/BWA.pm
+### BioFuse::BioInfo::Alignment::BWA
+### VERSION = "0.01"
+- PEfqToSortBam
 
 ## BioInfo/Position.pm
 ### BioFuse::BioInfo::Position
