@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Cwd qw/ abs_path /;
 use Data::Dumper;
-use List::Util qw/ first /;
+use List::Util qw/ first sum min max /;
 use BioFuse::Util::Sys qw/ trible_run_for_success file_exist reset_folder /;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::BioInfo::Objects::SeqData::Reads_OB;
@@ -25,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
-$VERSION = "0.15";
-$DATE = '2019-06-03';
+$VERSION = "0.16";
+$DATE = '2019-06-06';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -60,6 +60,7 @@ my @functoion_list = qw/
                         rg_count_need_reads_ForIns
                         pick_rgOB
                         add_rgOB
+                        get_regionCovStat
                         get_region_depth
                         delete_regionDepthFile
                         get_region_alt_vcf_gz
@@ -441,6 +442,68 @@ sub add_rgOB{
     my $bam = shift;
     my %parm = @_;
     $bam->{rgOB}->{$parm{rgOB}->RG_ID} = $parm{rgOB};
+}
+
+#--- get coverage/depth stat of given region ---
+sub get_regionCovStat{
+    my $bam = shift;
+    my %parm = @_;
+    my $refsegID = $parm{refsegID};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+    my $minMQ = $parm{minMQ} || 0;
+    my $minBQ = $parm{minBQ} || 0;
+    my $origLen = $parm{origLen};
+    my $circExtl = $parm{circExtl} || 0; # for such as circular virus
+    my $availLen = $parm{availLen} || 0; # for such as non-N region of virus
+    my $minDepth = $parm{minDepth} || 1; # pos less than such depth will be skipped
+
+    my $statHf = { coverage => 0,
+                   meanDepth => 0,
+                   accuDepPt => {10 => 0, 30 => 0, 50 => 0, 100 => 0}
+                 };
+
+    # pos depth
+    my %pos2depth;
+    open (DEPTH, "$samtools depth -a -q $minBQ -Q $minMQ -r $refsegID $bam->{filepath} |") || die "fail samtools depth: $!\n";
+    while (<DEPTH>){
+        my ($pos, $depth) = (split)[1,2];
+        $pos2depth{$pos} = $depth;
+    }
+    close DEPTH;
+    # sometimes, no depth info obtained
+    ## e.g., all alignments in the bam are duplicated
+    return $statHf unless keys %pos2depth;
+    # do for circular extend part
+    if($circExtl){
+        for my $i (1 .. $circExtl){
+            $pos2depth{$i} += $pos2depth{ $origLen + $i };
+            delete $pos2depth{ $origLen + $i };
+        }
+    }
+    # filter pos and 
+    my @accuDepth = sort {$a<=>$b} keys %{$statHf->{accuDepPt}};
+    for my $pos (sort {$a<=>$b} keys %pos2depth){
+        my $depth = $pos2depth{$pos};
+        # accumulate depth
+        my $i = first {$depth >= $accuDepth[$_]} (0 .. $#accuDepth);
+        if(defined $i){
+            $statHf->{accuDepPt}->{$accuDepth[$_]}++ for ($i .. $#accuDepth);
+        }
+        # minDepth filter
+        delete $pos2depth{$pos} if $depth < $minDepth;
+    }
+    # get accu-depth-perct
+    for my $depth (@accuDepth){
+        my $basicLen = $availLen || $origLen;
+        $statHf->{accuDepPt}->{$depth} = sprintf "%0.4f", min($statHf->{accuDepPt}->{$depth}, $basicLen) / $basicLen;
+    }
+    # mean depth
+    my $basicPosCount = scalar(keys %pos2depth) || 1;
+    $statHf->{meanDepth} = sprintf "%0.2f", sum(values %pos2depth) / $basicPosCount;
+    # coverage
+    $statHf->{coverage}  = sprintf "%0.4f", $basicPosCount / $origLen;
+
+    return $statHf;
 }
 
 #--- get depth of certain region ---
