@@ -51,3 +51,5 @@ my $usage = "
 if("$module"->para_alert){
 	warn_and_exit $usage;
 }
+
+"$module"->GTFtoGenePSL;
