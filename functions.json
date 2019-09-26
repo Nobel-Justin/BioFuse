@@ -38,5 +38,13 @@
       "_comments" : "get BED of genetic regions from PSL annotation, such CDS, UTR",
       "module" : "BioFuse::BioInfo::GeneAnno::PSLtoBED",
       "main_func" : "PSLtoBED"
+   },
+   "mut_fa" : {
+      "mode_NO" : 6,
+      "descp" : "get FASTA file of given mutations",
+      "_group" : "FASTA",
+      "_comments" : "get FASTA file of given mutations",
+      "module" : "BioFuse::BioInfo::FASTA::GetMutFA",
+      "main_func" : "GetMutFasta"
    }
 }

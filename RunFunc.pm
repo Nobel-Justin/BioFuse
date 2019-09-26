@@ -134,6 +134,9 @@ sub return_HELP_INFO{
         get_gpsl       $V_Href->{func}->{get_gpsl}->{descp}
         psl_seq        $V_Href->{func}->{psl_seq}->{descp}
 
+     -- Mutation
+        mut_fa         $V_Href->{func}->{mut_fa}->{descp}
+
      Version:
         V$V_Href->{Version} at $V_Href->{Date}
 

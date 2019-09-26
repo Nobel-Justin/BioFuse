@@ -11,6 +11,7 @@ use BioFuse::BioInfo::GeneAnno::GTFtoTransPSL;
 use BioFuse::BioInfo::GeneAnno::PSLtoFASTA;
 use BioFuse::BioInfo::GeneAnno::PSLtoBED;
 use BioFuse::BioInfo::FASTA::GetNonNBed;
+use BioFuse::BioInfo::FASTA::GetMutFA;
 
 #--- 
 1; ## tell the perl script the successful access of this module.
