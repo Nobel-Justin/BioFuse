@@ -150,6 +150,13 @@ sub load_mutations{
                          type => $mut{type}, gene => $mut{gene}
                        };
         push @{$V_Href->{mut}->{$mut{chr}}}, $mut_href;
+        # check diploid
+        if(    $mut{ref_cn}+$mut{alt_cn} != 2
+            || $mut{ref_cn} =~ /\D/
+            || $mut{alt_cn} =~ /\D/
+        ){
+            warn_and_exit "<ERROR>\tcannot deal with non-diploid\n$_\n";
+        }
     }
     close ML;
     # inform
