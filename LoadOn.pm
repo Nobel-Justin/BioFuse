@@ -34,8 +34,8 @@ our $V_Href = {
     #++++++++++++++#
 
     MainName => 'BioFuse.pl',
-    Version => '0.04',
-    Date => '2019-09-27',
+    Version => '0.05',
+    Date => '2019-10-05',
     AUTHOR => 'Wenlong Jia',
     EMAIL => 'wenlongkxm@gmail.com',
 

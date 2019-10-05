@@ -189,6 +189,7 @@ sub merge_mutations{
                 push @merged, { stp => $mfstp, edp => $mfedp, mut => [$mut_Hf] };
             }
         }
+        &alertDiffCN(mut_Af => $merged[-1]->{mut});
         # update
         $V_Href->{mut}->{$chr} = \@merged;
         # inform
@@ -251,71 +252,26 @@ sub add_mut_on_chr{
         my %seq;
         my $mut_Af = $grp_Hf->{mut};
         my %hap_cn;
-        # SNV
-        # for my $mut (@$mut_Af){
-        #     my $pidx = $mut->{stp} - $grp_Hf->{stp};
-        #     for my $hapNO (sort keys %{$mut->{hapinfo}}){
-        #         my $hap_Hf = $mut->{hapinfo}->{$hapNO};
-        #         next if $hap_Hf->{cn} == 0 || $hap_Hf->{type} !~ /^snv$/i;
-        #         $seq{$hapNO} = $refseq unless exists $seq{$hapNO};
-        #         &add_single_mut(type=>$hap_Hf->{type}, alt=>$hap_Hf->{allele}, pidx=>$pidx, seqSf=>\$seq{$hapNO});
-        #         $hap_cn{$hapNO} = $hap_Hf->{cn}; # update
-        #     }
-        # }
-
         # firstly SNV, then INDEL
         for my $t ('snv', '(ins)|(del)'){
             for my $mut (sort {$b->{stp}<=>$a->{stp}} @$mut_Af){
                 my $pidx = $mut->{stp} - $grp_Hf->{stp};
                 for my $hapNO (sort keys %{$mut->{hapinfo}}){
                     my $hap_Hf = $mut->{hapinfo}->{$hapNO};
-                    next if $hap_Hf->{cn} == 0 || $hap_Hf->{type} !~ /^$t$/i;
                     $seq{$hapNO} = $refseq unless exists $seq{$hapNO};
-                    &add_single_mut(type=>$hap_Hf->{type}, alt=>$hap_Hf->{allele}, pidx=>$pidx, seqSf=>\$seq{$hapNO});
                     $hap_cn{$hapNO} = $hap_Hf->{cn}; # update
+                    next if $hap_Hf->{cn} == 0 || $hap_Hf->{type} !~ /^$t$/i;
+                    &add_single_mut(type=>$hap_Hf->{type}, alt=>$hap_Hf->{allele}, pidx=>$pidx, seqSf=>\$seq{$hapNO});
                 }
             }
         }
         # output
         for my $hapNO (sort keys %seq){
             for my $cn (1 .. $hap_cn{$hapNO}){
-                print {$mfafh} ">$segName:$grp_Hf->{stp}-$grp_Hf->{edp}:$hapNO:CN$cn\n";
+                print {$mfafh} ">$segName:$grp_Hf->{stp}-$grp_Hf->{edp}:$hapNO:cn$cn\n";
                 print {$mfafh} substr($seq{$hapNO}, $_ * $linebase, $linebase)."\n" for ( 0 .. int( (length($seq{$hapNO})-1) / $linebase ) );
             }
         }
-
-
-
-        # my @SNV = grep $_->{type} =~ /^snv$/i, @$mut_Af;
-        # for my $snv (@SNV){
-        #     my $pidx = $snv->{stp} - $grp_Hf->{stp};
-        #     for my $hap (qw/h1 h2/){
-        #         next if $snv->{"${hap}_cn"} == 0;
-        #         &add_single_mut(type=>$snv->{type}, alt=>$snv->{$hap}, pidx=>$pidx, seqSf=>\$seq{$hap});
-        #     }
-        #     # &add_single_mut(type=>$snv->{type}, alt=>$snv->{h1}, pidx=>$pidx, seqSf=>\$h1_seq) if $snv->{h1_cn} != 0;
-        #     # &add_single_mut(type=>$snv->{type}, alt=>$snv->{h2}, pidx=>$pidx, seqSf=>\$h2_seq) if $snv->{h2_cn} != 0;
-        # }
-        # INDEL, reversed position
-        # my @INDEL = sort {$b->{stp}<=>$a->{stp}} grep $_->{type} =~ /^(ins)|(del)$/i, @$mut_Af;
-        # for my $indel (@INDEL){
-        #     my $pidx = $indel->{stp} - $grp_Hf->{stp};
-        #     for my $hap (qw/h1 h2/){
-        #         next if $indel->{"${hap}_cn"} == 0;
-        #         &add_single_mut(type=>$indel->{type}, alt=>$indel->{$hap}, pidx=>$pidx, seqSf=>\$seq{$hap});
-        #     }
-        #     # &add_single_mut(type=>$indel->{type}, alt=>$indel->{alt}, pidx=>$pidx, seqSf=>\$h1_seq) if $indel->{ref_cn} == 0;
-        #     # &add_single_mut(type=>$indel->{type}, alt=>$indel->{alt}, pidx=>$pidx, seqSf=>\$h2_seq) if $indel->{alt_cn} != 0;
-        # }
-        # # output
-        # for my $hap (qw/h1 h2/){
-        #     print {$mfafh} ">$segName:$grp_Hf->{stp}-$grp_Hf->{edp}:$hap\n";
-        #     print {$mfafh} substr($seq{$hap}, $_ * $linebase, $linebase)."\n" for ( 0 .. int( (length($seq{$hap})-1) / $linebase ) );
-        # }
-        # print {$mfafh} ">$segName:$grp_Hf->{stp}-$grp_Hf->{edp}:hap1\n";
-        # print {$mfafh} substr($h1_seq, $_ * $linebase, $linebase)."\n" for ( 0 .. int( (length($h1_seq)-1) / $linebase ) );
-        # print {$mfafh} ">$segName:$grp_Hf->{stp}-$grp_Hf->{edp}:hap2\n";
-        # print {$mfafh} substr($h2_seq, $_ * $linebase, $linebase)."\n" for ( 0 .. int( (length($h2_seq)-1) / $linebase ) );
     }
     # inform
     stout_and_sterr "[INFO]\toutput mutated sequences of $segName.\n";
