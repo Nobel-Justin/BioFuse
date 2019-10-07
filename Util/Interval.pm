@@ -26,8 +26,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Interval';
 #----- version --------
-$VERSION = "0.33";
-$DATE = '2018-12-04';
+$VERSION = "0.34";
+$DATE = '2019-10-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -101,20 +101,22 @@ sub intersect{
     my %parm = @_;
     my $itvAfListAf = $parm{itvAfListAf};
     my $bedFormat = $parm{bedFormat} || 0;
+    my $skipMerge = $parm{skipMerge} || 0;
 
     my $lastItscAf = [];
     # get intersection one by one
     for my $i (0 .. scalar(@$itvAfListAf)-1){
         # get sorted merged interval
-        my $mergeItvAf = &merge(itvAfListAf => [$itvAfListAf->[$i]], mergeAdjacent => !$bedFormat);
+        my $mergeItvAf =  $skipMerge
+                        ? [$itvAfListAf->[$i]] # directly use refer
+                        : &merge(itvAfListAf => [$itvAfListAf->[$i]], mergeAdjacent => !$bedFormat); # copy value in `merge` func
         # zeroBase (BED) to oneBase, if set
         if($bedFormat){
             $_->[0]++ for @$mergeItvAf;
         }
         # update intersection
         if($i == 0){
-            $lastItscAf = $mergeItvAf;
-            next;
+            $lastItscAf = [map{[@$_]} @{$mergeItvAf}]; # copy value
         }
         else{
             my @intersection;
@@ -130,9 +132,13 @@ sub intersect{
             }
             # update
             $lastItscAf = \@intersection;
-            # no intersection found
-            last unless scalar @intersection;
         }
+        # oneBase to zeroBase (BED), if set
+        if($bedFormat && $skipMerge){
+            $_->[0]-- for @$mergeItvAf; # as use refer
+        }
+        # no intersection found
+        last unless scalar @$lastItscAf;
     }
     # oneBase to zeroBase (BED), if set
     if($bedFormat){
