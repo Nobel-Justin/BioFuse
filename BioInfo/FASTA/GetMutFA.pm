@@ -8,9 +8,10 @@ use Data::Dumper;
 use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
 use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
-use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen /;
+use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen intersect /;
 use BioFuse::LoadOn;
 use BioFuse::BioInfo::FASTA qw/ read_fasta_file /;
+use BioFuse::BioInfo::BED qw/ read_bed_file /;
 
 require Exporter;
 
@@ -27,8 +28,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::FASTA::GetMutFA';
 #----- version --------
-$VERSION = "0.02";
-$DATE = '2019-10-05';
+$VERSION = "0.04";
+$DATE = '2019-10-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -59,6 +60,8 @@ sub return_HELP_INFO{
          -m  [s]  mutation list. <required>
          -o  [s]  output mutated fasta file. <required>
          -s  [i]  flanking size around mutation, minimum:200. [1000]
+         -b  [s]  region BED file to filter mutations.
+         -one     given region is one-based coordinate, not BED format. [disabled]
          -h       show this help
 
      Version:
@@ -85,13 +88,17 @@ sub Load_moduleVar_to_pubVarPool{
             ## use 'whole_genome' in BioFuse::LoadOn
             [ mut_fa => undef ],
             [ mut_list => undef ],
+            [ reg_bed => undef ],
             # option
             [ flankSize => 1000 ],
+            [ oneBase => 0 ], # one-start region, not BED
             # container
             [ mut => {} ],
+            [ reg => {} ],
             # list to abs-path
             [ ToAbsPath_Aref => [ ['mut_fa'],
                                   ['mut_list'],
+                                  ['reg_bed'],
                                   ['whole_genome']  ] ]
         );
 }
@@ -104,8 +111,10 @@ sub Get_Cmd_Options{
         "-f:s"  => \$V_Href->{whole_genome},
         "-o:s"  => \$V_Href->{mut_fa},
         "-m:s"  => \$V_Href->{mut_list},
+        "-b:s"  => \$V_Href->{reg_bed},
         # option
         "-s:i"  => \$V_Href->{flankSize},
+        "-one"  => \$V_Href->{oneBase},
         # help
         "-h|help"   => \$V_Href->{HELP},
         # for debug
@@ -128,6 +137,9 @@ sub GetMutFasta{
     # load mutations
     &load_mutations;
 
+    # filter by region if provided
+    &filer_mutations;
+
     # merge mutations with flank size
     &merge_mutations;
 
@@ -142,17 +154,18 @@ sub GetMutFasta{
 ## snv+ref  h1:ref,A,1;h2:snv,G,1
 ## ins+ref  h1:ref,A,1;h2:ins,+CC,1
 ## del+ref  h1:ref,A,1;h2:ins,-3,1  or  h1:ref,A,1;h2:ins,-AGA,1
-## cnv      change the last integer of each hap
+## cnv      single locus: change the last integer of each hap
+## cnv      region locus: h1:cnv,-,2;h2:cnv:-:3
 sub load_mutations{
     open (ML, Try_GZ_Read($V_Href->{mut_list})) || die "fail read mutation list: $!\n";
     # theme
     (my $theme_line = lc(<ML>)) =~ s/^#//;
     my @theme_tag = split /\s+/, $theme_line;
     while(<ML>){
-        next if(/^\#/);
+        next if /^\#/;
         my @info = split;
         my %mut = map{ ($theme_tag[$_],$info[$_]) } (0 .. $#theme_tag);
-        my $mut_Hf = { stp => $mut{stp}, edp => $mut{edp}, gene => $mut{gene} };
+        my $mut_Hf = { stp => $mut{stp}, edp => $mut{edp}, gene => $mut{gene}||'N/A' };
         # hapInfo
         my %hapInfo = map { my ($hapNO, $type, $allele, $cn) = split /[:,]/;
                             ($hapNO => {type => $type, allele => $allele, cn => $cn});
@@ -166,17 +179,61 @@ sub load_mutations{
     stout_and_sterr "[INFO]\tload mutation list.\n";
 }
 
+#--- only keep mutations in given region ---
+sub filer_mutations{
+    # not provided
+    return unless file_exist(filePath=>$V_Href->{reg_bed});
+
+    # load bed region, do merge
+    $V_Href->{reg} = read_bed_file(bedFile => $V_Href->{reg_bed}, nonName => 1, oneBase => $V_Href->{oneBase});
+    # inform
+    stout_and_sterr "[INFO]\tload required region.\n";
+
+    # keep mut/region in required regions
+    for my $chr (sort keys %{$V_Href->{mut}}){
+        if(!exists $V_Href->{reg}->{$chr}){
+            delete $V_Href->{mut}->{$chr};
+        }
+        else{
+            my $chrMutAf = $V_Href->{mut}->{$chr};
+            @$chrMutAf = sort {$a->{stp}<=>$b->{stp}} @$chrMutAf;
+            my $chrRegAf = $V_Href->{reg}->{$chr};
+            # check mut one by one
+            my $shift = 0;
+            for my $i (0 .. scalar(@$chrMutAf)-1){
+                my $mut = $chrMutAf->[$i+$shift];
+                # till find the first lagging region
+                shift @$chrRegAf while scalar(@$chrRegAf) != 0 && $chrRegAf->[0]->[1] < $mut->{stp};
+                # no more required regions
+                if(scalar(@$chrRegAf) == 0){
+                    splice @$chrMutAf, $i+$shift; # sweep remain mutations
+                    last;
+                }
+                # try to get overlaps region (or)
+                my $orAf = intersect(itvAfListAf => [[[$mut->{stp}, $mut->{edp}]], $chrRegAf], skipMerge => 1);
+                # deal with mutations
+                my @orMut = map {{stp=>$_->[0], edp=>$_->[1], gene=>$mut->{gene}, hapinfo=>$mut->{hapinfo}}} @$orAf;
+                splice @$chrMutAf, $i+$shift, 1, @orMut; # replace or discard
+                # update shift
+                $shift += scalar(@$orAf) - 1;
+            }
+        }
+    }
+    # inform
+    stout_and_sterr "[INFO]\tfilter mutation with required region.\n";
+}
+
 #--- merge mutations with flank size ---
 sub merge_mutations{
     for my $chr (sort keys %{$V_Href->{mut}}){
         @{$V_Href->{mut}->{$chr}} = sort {$a->{stp}<=>$b->{stp}} @{$V_Href->{mut}->{$chr}};
         my $Hf_1st = shift @{$V_Href->{mut}->{$chr}};
-        my @merged = ({ stp => $Hf_1st->{stp} - $V_Href->{flankSize},
+        my @merged = ({ stp => max($Hf_1st->{stp} - $V_Href->{flankSize}, 1),
                         edp => $Hf_1st->{edp} + $V_Href->{flankSize},
                         mut => [$Hf_1st]
                        });
         for my $mut_Hf (@{$V_Href->{mut}->{$chr}}){
-            my $mfstp = $mut_Hf->{stp} - $V_Href->{flankSize};
+            my $mfstp = max($mut_Hf->{stp} - $V_Href->{flankSize}, 1);
             my $mfedp = $mut_Hf->{edp} + $V_Href->{flankSize};
             my $ovlen = Get_Two_Seg_Olen($merged[-1]->{stp}, $merged[-1]->{edp}, $mfstp, $mfedp);
             if($ovlen){ # merge!
