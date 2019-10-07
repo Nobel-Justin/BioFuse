@@ -26,8 +26,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::PSLtoBED';
 #----- version --------
-$VERSION = "0.02";
-$DATE = '2019-05-04';
+$VERSION = "0.03";
+$DATE = '2019-10-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -68,7 +68,7 @@ sub return_HELP_INFO{
                    NOTE: available mode: trNO, longest
          -em [s]  mode to select transcript for EXON/INTRON/PROMOTER/TERMINATOR. [protein_trNO]
                    NOTE: available mode: protein_trNO, trNO, longest, merge
-         -one     output region is started from one, not BED format. [disabled]
+         -one     output region is one-based coordinate, not BED format. [disabled]
          -abp     include abnormal protein_coding transcript. [disabled]
 
          -h       show this help
