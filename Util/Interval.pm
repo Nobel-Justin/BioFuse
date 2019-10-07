@@ -108,7 +108,7 @@ sub intersect{
     for my $i (0 .. scalar(@$itvAfListAf)-1){
         # get sorted merged interval
         my $mergeItvAf =  $skipMerge
-                        ? [$itvAfListAf->[$i]] # directly use refer
+                        ? $itvAfListAf->[$i] # directly use refer
                         : &merge(itvAfListAf => [$itvAfListAf->[$i]], mergeAdjacent => !$bedFormat); # copy value in `merge` func
         # zeroBase (BED) to oneBase, if set
         if($bedFormat){
