@@ -31,7 +31,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## Util/Interval.pm
 ### BioFuse::Util::Interval
-### VERSION = "0.33"
+### VERSION = "0.34"
 - Get_Two_Seg_Olen
 - merge
 - intersect
@@ -117,7 +117,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/GeneAnno/PSLtoBED.pm
 ### BioFuse::BioInfo::GeneAnno::PSLtoBED
-### VERSION = "0.02"
+### VERSION = "0.03"
 - return_HELP_INFO
 - Load_moduleVar_to_pubVarPool
 - Get_Cmd_Options
@@ -180,7 +180,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/SeqData/Bam_OB.pm
 ### BioFuse::BioInfo::Objects::SeqData::Bam_OB
-### VERSION = "0.15"
+### VERSION = "0.16"
 - new
 - verify_bam
 - verify_index
@@ -207,6 +207,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - rg_count_need_reads_ForIns
 - pick_rgOB
 - add_rgOB
+- get_regionCovStat
 - get_region_depth
 - delete_regionDepthFile
 - get_region_alt_vcf_gz
@@ -527,6 +528,22 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - para_alert
 - GetNonNBedfromFasta
 - get_nonN_region_from_segseq
+
+## BioInfo/FASTA/GetMutFA.pm
+### BioFuse::BioInfo::FASTA::GetMutFA
+### VERSION = "0.04"
+- return_HELP_INFO
+- Load_moduleVar_to_pubVarPool
+- Get_Cmd_Options
+- para_alert
+- GetMutFasta
+- load_mutations
+- filer_mutations
+- merge_mutations
+- alertDiffCN
+- get_mut_refseq
+- add_mut_on_chr
+- add_single_mut
 
 ## BioInfo/Codon.pm
 ### BioFuse::BioInfo::Codon
