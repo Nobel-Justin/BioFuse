@@ -3,7 +3,7 @@ package BioFuse::BioInfo::FASTA::GetMutFA;
 use strict;
 use warnings;
 use Getopt::Long;
-use List::Util qw/ min max /;
+use List::Util qw/ min max any first /;
 use Data::Dumper;
 use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
 use BioFuse::Util::Sys qw/ file_exist /;
@@ -28,8 +28,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::FASTA::GetMutFA';
 #----- version --------
-$VERSION = "0.04";
-$DATE = '2019-10-07';
+$VERSION = "0.05";
+$DATE = '2019-10-22';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -60,6 +60,10 @@ sub return_HELP_INFO{
          -m  [s]  mutation list. <required>
          -o  [s]  output mutated fasta file. <required>
          -s  [i]  flanking size around mutation, minimum:200. [1000]
+         -d  [i]  minimum distance allowed between neighbor mutations. [0, disabled]
+                  check snv/ins/del
+         -da [i]  action when found distance less than '-d'. [x]
+                  'x': alert and eXit; 's': Skip latter mutation and continue.
          -b  [s]  region BED file to filter mutations.
          -one     given region is one-based coordinate, not BED format. [disabled]
          -h       show this help
@@ -92,9 +96,13 @@ sub Load_moduleVar_to_pubVarPool{
             # option
             [ flankSize => 1000 ],
             [ oneBase => 0 ], # one-start region, not BED
+            [ minMutDist => 0 ], # neighbor mutations' min distance
+            [ minMutDistAct => 'x' ],
             # container
             [ mut => {} ],
             [ reg => {} ],
+            # pre-sets
+            [ mtcd => {snv=>1,ins=>1,del=>1,mnp=>1} ], # mut type to check distance
             # list to abs-path
             [ ToAbsPath_Aref => [ ['mut_fa'],
                                   ['mut_list'],
@@ -115,6 +123,8 @@ sub Get_Cmd_Options{
         # option
         "-s:i"  => \$V_Href->{flankSize},
         "-one"  => \$V_Href->{oneBase},
+        "-d:i"  => \$V_Href->{minMutDist},
+        "-da:s" => \$V_Href->{minMutDistAct},
         # help
         "-h|help"   => \$V_Href->{HELP},
         # for debug
@@ -129,6 +139,7 @@ sub para_alert{
              || !file_exist(filePath=>$V_Href->{mut_list})
              || $V_Href->{flankSize} < 200
              || !defined $V_Href->{mut_fa}
+             || $V_Href->{minMutDist} < 0
             );
 }
 
@@ -236,6 +247,17 @@ sub merge_mutations{
             my $mfstp = max($mut_Hf->{stp} - $V_Href->{flankSize}, 1);
             my $mfedp = $mut_Hf->{edp} + $V_Href->{flankSize};
             my $ovlen = Get_Two_Seg_Olen($merged[-1]->{stp}, $merged[-1]->{edp}, $mfstp, $mfedp);
+            # alert neighbor distance
+            if($V_Href->{minMutDist} > 0){
+                my $formerMut = first { any {exists $V_Href->{mtcd}->{$_->{type}}} values %{$_->{hapinfo}} } reverse @{$merged[-1]->{mut}};
+                if(    defined $formerMut
+                    && (any{exists $V_Href->{mtcd}->{$_->{type}}} values %{$mut_Hf->{hapinfo}})
+                    && &test_mut_dist(chr => $chr, a_mut => $formerMut, b_mut => $mut_Hf) # return 1, means too near
+                ){
+                    next;
+                }
+            }
+            # merge or seperate
             if($ovlen){ # merge!
                 # $merged[-1]->{stp} = min($merged[-1]->{stp}, $mfstp); # useless
                 $merged[-1]->{edp} = max($merged[-1]->{edp}, $mfedp);
@@ -251,6 +273,30 @@ sub merge_mutations{
         $V_Href->{mut}->{$chr} = \@merged;
         # inform
         stout_and_sterr "[INFO]\tgroup mutations on $chr.\n";
+    }
+}
+
+#--- test distance of given mutations, obey the mut type ---
+sub test_mut_dist{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $chr = $parm{chr};
+    my $a_mut = $parm{a_mut};
+    my $b_mut = $parm{b_mut};
+    if(max($a_mut->{stp}, $b_mut->{stp}) - min($a_mut->{edp}, $b_mut->{edp}) < $V_Href->{minMutDist}){
+        my $warn =  "$chr neighbor mutations distance less than required ($V_Href->{minMutDist}).\n"
+                   .Data::Dumper->Dump([$a_mut,$b_mut],[qw/a_mut b_mut/]);
+        if($V_Href->{minMutDistAct} eq 'x'){
+            warn_and_exit $warn;
+        }
+        else{
+            warn $warn."skip the latter one\n";
+            return 1;
+        }
+    }
+    else{
+        return 0;
     }
 }
 

@@ -531,7 +531,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/FASTA/GetMutFA.pm
 ### BioFuse::BioInfo::FASTA::GetMutFA
-### VERSION = "0.04"
+### VERSION = "0.05"
 - return_HELP_INFO
 - Load_moduleVar_to_pubVarPool
 - Get_Cmd_Options
@@ -540,6 +540,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - load_mutations
 - filer_mutations
 - merge_mutations
+- test_mut_dist
 - alertDiffCN
 - get_mut_refseq
 - add_mut_on_chr
