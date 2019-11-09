@@ -77,7 +77,7 @@ sub length{
 #--- calc length ---
 sub calc_length{
     my $bed = shift;
-    my $ItvHref = read_bed_file(bedFile=>$bed->{filepath}, nonName=>1);
+    my $ItvHref = read_bed_file(bedFile=>$bed->{filepath}, nonName=>1, loadAsBED=>1);
     $bed->{length} = sum(map {sum(map {$_->[1]-$_->[0]} @{$ItvHref->{$_}})} keys %$ItvHref);
 }
 
