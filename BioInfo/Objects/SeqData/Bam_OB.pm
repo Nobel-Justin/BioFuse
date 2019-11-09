@@ -453,6 +453,7 @@ sub get_regionCovStat{
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
     my $minMQ = $parm{minMQ} || 0;
     my $minBQ = $parm{minBQ} || 0;
+    my $maxDP = defined $parm{maxDP} ? $parm{maxDP} : 8000;
     my $accuDepAf = $parm{accuDepAf} || [10,30,50,100];
     my $origLen = $parm{origLen};
     my $circExtl = $parm{circExtl} || 0; # for such as circular virus
@@ -466,7 +467,7 @@ sub get_regionCovStat{
                  };
 
     # samtools depth options
-    my $depthOpt = "-a -q $minBQ -Q $minMQ";
+    my $depthOpt = "-a -d $maxDP -q $minBQ -Q $minMQ";
     if($region){
         $depthOpt .= " -r $region";
     }
