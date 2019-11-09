@@ -180,7 +180,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/SeqData/Bam_OB.pm
 ### BioFuse::BioInfo::Objects::SeqData::Bam_OB
-### VERSION = "0.16"
+### VERSION = "0.17"
 - new
 - verify_bam
 - verify_index
@@ -244,7 +244,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## BioInfo/Objects/SeqData/Reads_OB.pm
 ### BioFuse::BioInfo::Objects::SeqData::Reads_OB
-### VERSION = "0.16"
+### VERSION = "0.17"
 - new
 - pid
 - endNO
@@ -260,6 +260,8 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - optfd_str
 - add_str_to_optfd
 - optfd_has_regex
+- mmCount
+- editDist
 - judgeAlign
 - is_proper_map
 - is_fw_map
@@ -564,6 +566,19 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - deal_window_depth_info
 - get_ctrl_copyR
 - get_givenWinItvalMeanDepth
+
+## BioInfo/Alignment/BamQC.pm
+### BioFuse::BioInfo::Alignment::BamQC
+### VERSION = "0.01"
+- return_HELP_INFO
+- Load_moduleVar_to_pubVarPool
+- Get_Cmd_Options
+- para_alert
+- BamQC
+- prepare
+- calcIndex
+- calcIndexFromBam
+- report
 
 ## BioInfo/Alignment/BWA.pm
 ### BioFuse::BioInfo::Alignment::BWA

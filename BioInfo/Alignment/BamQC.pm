@@ -250,7 +250,8 @@ sub report{
     print REPORT "##UniqRate(xxx)=UniqReads(xxx)/AlignReads(xxx)\n";
     print REPORT "##DupRate(xxx)=DupReads(xxx)/AlignReads(xxx)\n";
     print REPORT "##MismatchRate(xxx)=MismatchBases(xxx)/UniqBases(xxx)\n";
-    print REPORT "#index\tvalue\n";
+    print REPORT "#item\tvalue\n";
+    print REPORT "sampleID\t$V_Href->{sampleID}\n";
     my @key = ('total', (grep $_ ne 'total', sort keys %{$V_Href->{QC}}));
     for my $key (@key){
         my @index = @share_idx;
