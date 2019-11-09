@@ -46,5 +46,13 @@
       "_comments" : "get FASTA file of given mutations",
       "module" : "BioFuse::BioInfo::FASTA::GetMutFA",
       "main_func" : "GetMutFasta"
+   },
+   "bam_qc" : {
+      "mode_NO" : 7,
+      "descp" : "get QC report of given bam",
+      "_group" : "Alignment",
+      "_comments" : "get QC report of given bam, for WGS or WXS",
+      "module" : "BioFuse::BioInfo::Alignment::BamQC",
+      "main_func" : "BamQC"
    }
 }

@@ -137,6 +137,9 @@ sub return_HELP_INFO{
      -- Mutation
         mut_fa         $V_Href->{func}->{mut_fa}->{descp}
 
+     -- Alignment
+        bam_qc         $V_Href->{func}->{bam_qc}->{descp}
+
      Version:
         V$V_Href->{Version} at $V_Href->{Date}
 
