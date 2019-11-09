@@ -3,16 +3,11 @@ package BioFuse::BioInfo::Alignment::BamQC;
 use strict;
 use warnings;
 use Getopt::Long;
-use List::Util qw/ min max any first /;
 use Data::Dumper;
-use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
+use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
 use BioFuse::Util::Sys qw/ file_exist /;
-use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
-use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen intersect /;
+use BioFuse::Util::GZfile qw/ Try_GZ_Write /;
 use BioFuse::LoadOn;
-use BioFuse::BioInfo::FASTA qw/ read_fasta_file /;
-use BioFuse::BioInfo::BED qw/ read_bed_file /;
-
 use BioFuse::BioInfo::Objects::SeqData::Bam_OB;
 use BioFuse::BioInfo::Objects::SeqData::Reads_OB;
 
@@ -73,7 +68,6 @@ sub return_HELP_INFO{
      Author:
         $AUTHOR ($EMAIL)
  \n";
-          # -n  [s]  non-N region BED file of the aligment reference.
 }
 
 #--- load variant of this module to public variant (V_Href in LoadOn.pm) ---
@@ -84,7 +78,7 @@ sub Load_moduleVar_to_pubVarPool{
                 ( $_ );
             }
             else{
-                cluck_and_exit "<ERROR>\tkey $_->[0] is already in V_Href!\n";
+                warn_and_exit "<ERROR>\tkey $_->[0] is already in V_Href!\n";
             }
         }
         (
@@ -92,7 +86,6 @@ sub Load_moduleVar_to_pubVarPool{
             [ bam_path => undef ],
             [ output_dir => undef ],
             [ sampleID => undef ],
-            # [ nonN_bed => undef ],
             [ target_bed => [] ],
             [ samtools => undef ],
             # option
@@ -105,8 +98,6 @@ sub Load_moduleVar_to_pubVarPool{
             # list to abs-path
             [ ToAbsPath_Aref => [ ['bam_path'],
                                   ['output_dir'],
-                                  # ['nonN_bed'],
-                                  ['target_bed'],
                                   ['samtools']  ] ]
         );
 }
@@ -120,10 +111,11 @@ sub Get_Cmd_Options{
         "-o:s"  => \$V_Href->{output_dir},
         "-i:s"  => \$V_Href->{sampleID},
         # "-n:s"  => \$V_Href->{nonN_bed},
-        "-t:i"  => \@{$V_Href->{target_bed}},
+        "-t:s"  => \@{$V_Href->{target_bed}},
         # tools
         "-s:s"  => \$V_Href->{samtools},
         # option
+        "-d:s"  => \$V_Href->{accuDepth},
         # help
         "-h|help"   => \$V_Href->{HELP},
         # for debug
@@ -163,15 +155,17 @@ sub prepare{
     for my $bedOpt (@{$V_Href->{target_bed}}){
         my ($key, $bed) = (split /,/, $bedOpt);
         unless(defined $key && defined $bed && -e $bed){
-            cluck_and_exit "<ERROR>\tbad -t option: $bedOpt\n";
+            warn_and_exit "<ERROR>\tbad -t option: $bedOpt\n";
         }
         if(exists $V_Href->{bed}->{$key}){
-            cluck_and_exit "<ERROR>\t$key bed already exists.\n";
+            warn_and_exit "<ERROR>\t$key bed already exists.\n";
         }
         $V_Href->{bed}->{$key} = $bed;
     }
     # accumulate depth
     $V_Href->{accuDepAf} = [split /,/, $V_Href->{accuDepth}];
+    # inform
+    stout_and_sterr "[INFO]\tprepare well.\n";
 }
 
 #--- QC Index on total level ---
@@ -207,7 +201,7 @@ sub calcIndexFromBam{
         next if $reads->is_suppmap;
         # intial alignment
         $V_Href->{QC}->{$key}->{AlignReads}++;
-        $V_Href->{QC}->{$key}->{DupReads}++ unless $reads->is_dup;
+        $V_Href->{QC}->{$key}->{DupReads}++ if $reads->is_dup;
         unless($reads->is_mltmap){
             $V_Href->{QC}->{$key}->{UniqReads}++;
             $V_Href->{QC}->{$key}->{MismatchBases} += $reads->mmCount;
@@ -216,17 +210,19 @@ sub calcIndexFromBam{
     }
     close $fh;
     # ratios
-    $V_Href->{QC}->{$key}->{AlignRate} = sprintf "%.2f%", 100 * $V_Href->{QC}->{$key}->{AlignReads} / $V_Href->{QC}->{total}->{CleanReads};
-    $V_Href->{QC}->{$key}->{UniqRate}  = sprintf "%.2f%", 100 * $V_Href->{QC}->{$key}->{UniqReads}  / $V_Href->{QC}->{total}->{AlignReads};
-    $V_Href->{QC}->{$key}->{DupRate}   = sprintf "%.2f%", 100 * $V_Href->{QC}->{$key}->{DupReads}   / $V_Href->{QC}->{total}->{AlignReads};
-    $V_Href->{QC}->{$key}->{MismatchRate} = sprintf "%.2f%", 100 * $V_Href->{QC}->{$key}->{MismatchBases} / $V_Href->{QC}->{total}->{UniqBases};
+    $V_Href->{QC}->{$key}->{AlignRate} = sprintf "%.2f%%", 100 * $V_Href->{QC}->{$key}->{AlignReads} / $V_Href->{QC}->{total}->{CleanReads};
+    $V_Href->{QC}->{$key}->{UniqRate}  = sprintf "%.2f%%", 100 * $V_Href->{QC}->{$key}->{UniqReads}  / $V_Href->{QC}->{$key}->{AlignReads};
+    $V_Href->{QC}->{$key}->{DupRate}   = sprintf "%.2f%%", 100 * $V_Href->{QC}->{$key}->{DupReads}   / $V_Href->{QC}->{$key}->{AlignReads};
+    $V_Href->{QC}->{$key}->{MismatchRate} = sprintf "%.2f%%", 100 * $V_Href->{QC}->{$key}->{MismatchBases} / $V_Href->{QC}->{$key}->{UniqBases};
     # depth and coverage
     if($key ne 'total'){
         my $statHf = $V_Href->{bam}->get_regionCovStat(bed => $V_Href->{bed}->{$key}, accuDepAf => $V_Href->{accuDepAf});
         $V_Href->{QC}->{$key}->{AverageDepth} = $statHf->{meanDepth};
-        $V_Href->{QC}->{$key}->{Coverage}->{1}  = sprintf "%.2f%", 100 * $statHf->{coverage};
-        $V_Href->{QC}->{$key}->{Coverage}->{$_} = sprintf "%.2f%", 100 * $statHf->{accuDepPt}->{$_} for keys %{$statHf->{accuDepPt}};
+        $V_Href->{QC}->{$key}->{Coverage}->{1}  = sprintf "%.2f%%", 100 * $statHf->{coverage};
+        $V_Href->{QC}->{$key}->{Coverage}->{$_} = sprintf "%.2f%%", 100 * $statHf->{accuDepPt}->{$_} for keys %{$statHf->{accuDepPt}};
     }
+    # inform
+    stout_and_sterr "[INFO]\tcalculate QC index for $key.\n";
 }
 
 #--- write QC report ---
@@ -247,10 +243,16 @@ sub report{
                          AverageDepth
                          Coverage     /;
 
-    for my $key (keys %{$V_Href->{QC}}){
-        my $report = File::Spec->catfile($V_Href->{output_dir}, "$V_Href->{sampleID}.$key.BamQC.report");
-        open (REPORT, Try_GZ_Write($report)) || die "fail write output $key report file: $!\n";
-        print REPORT "#index\tvalue\n";
+    my $report = File::Spec->catfile($V_Href->{output_dir}, "$V_Href->{sampleID}.BamQC.report");
+    open (REPORT, Try_GZ_Write($report)) || die "fail write output report file: $!\n";
+    print REPORT '##'.`date`;
+    print REPORT "##AlignRate(xxx)=AlignReads(xxx)/CleanReads(total)\n";
+    print REPORT "##UniqRate(xxx)=UniqReads(xxx)/AlignReads(xxx)\n";
+    print REPORT "##DupRate(xxx)=DupReads(xxx)/AlignReads(xxx)\n";
+    print REPORT "##MismatchRate(xxx)=MismatchBases(xxx)/UniqBases(xxx)\n";
+    print REPORT "#index\tvalue\n";
+    my @key = ('total', (grep $_ ne 'total', sort keys %{$V_Href->{QC}}));
+    for my $key (@key){
         my @index = @share_idx;
         unshift @index, @total_idx if $key eq 'total';
         push @index, @target_idx if $key ne 'total';
@@ -260,11 +262,13 @@ sub report{
                 print REPORT "$idx($key)\t$keyQC_hf->{$idx}\n";
             }
             else{
-                print REPORT "$idx(>=${_}X)\t$keyQC_hf->{$idx}->{$_}\n" for sort {$a<=>$b} keys %{$keyQC_hf->{$idx}};
+                print REPORT "$idx(>=${_}X,$key)\t$keyQC_hf->{$idx}->{$_}\n" for sort {$a<=>$b} keys %{$keyQC_hf->{$idx}};
             }
         }
-        close REPORT;
     }
+    close REPORT;
+    # inform
+    stout_and_sterr "[INFO]\twrite QC report.\n";
 }
 
 #--- 
