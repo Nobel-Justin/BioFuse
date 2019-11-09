@@ -170,7 +170,7 @@ sub prepare{
         if(exists $V_Href->{bed}->{$key}){
             warn_and_exit "<ERROR>\t$key bed already exists.\n";
         }
-        $V_Href->{bed}->{$key} = BioFuse::BioInfo::Objects::Segment::BED_OB->new(filepath => abs_path($bed), tag => $key);
+        $V_Href->{bed}->{$key} = BioFuse::BioInfo::Objects::Region::BED_OB->new(filepath => abs_path($bed), tag => $key);
     }
     # accumulate depth
     $V_Href->{accuDepAf} = [split /,/, $V_Href->{accuDepth}];
