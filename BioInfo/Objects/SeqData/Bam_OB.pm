@@ -499,7 +499,7 @@ sub get_regionCovStat{
     close DEPTH;
     # sometimes, no depth info obtained
     ## e.g., all alignments in the bam are duplicated
-    return $statHf unless (keys %pos2depth && keys %depthCount);
+    return $statHf unless (keys %pos2depth || keys %depthCount);
     # do for circular extend part
     if($circExtl){
         for my $i (1 .. $circExtl){
@@ -514,7 +514,7 @@ sub get_regionCovStat{
         undef %pos2depth;
     }
     # filter pos and 
-    my @accuDepth = sort {$a<=>$b} keys %{$statHf->{accuDepPt}};
+    my @accuDepth = sort {$b<=>$a} keys %{$statHf->{accuDepPt}};
     for my $depth (keys %depthCount){
         # minDepth filter, donot take outlier into account
         if($depth < $minDepth){
@@ -524,7 +524,7 @@ sub get_regionCovStat{
         # accumulate depth
         my $i = first {$depth >= $accuDepth[$_]} (0 .. $#accuDepth);
         if(defined $i){
-            $statHf->{accuDepPt}->{$accuDepth[$_]}++ for ($i .. $#accuDepth);
+            $statHf->{accuDepPt}->{$accuDepth[$_]} += $depthCount{$depth} for ($i .. $#accuDepth);
         }
     }
     # reset basicPosCount
