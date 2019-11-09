@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
-$VERSION = "0.16";
-$DATE = '2019-05-26';
+$VERSION = "0.17";
+$DATE = '2019-11-09';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -43,6 +43,8 @@ my @functoion_list = qw/
                         optfd_str
                         add_str_to_optfd
                         optfd_has_regex
+                        mmCount
+                        editDist
                         judgeAlign
                         is_proper_map
                         is_fw_map
@@ -306,7 +308,33 @@ sub add_str_to_optfd{
 sub optfd_has_regex{
     my $reads_OB = shift;
     my %parm = @_;
-    return ($reads_OB->{optfd} =~ /$parm{regex}/);
+    return ($reads_OB->optfd_str =~ /$parm{regex}/);
+}
+
+#--- return mismatch count ---
+sub mmCount{
+    my $reads_OB = shift;
+    if($reads_OB->optfd_str =~ /XM:i:(\d+)/){
+        return $1;
+    }
+    elsif($reads_OB->optfd_str =~ /MD:Z:(\w+)/){
+        (my $md = $1) =~ s/\d//g;
+        return length($md);
+    }
+    else{
+        cluck_and_exit "<ERROR>\tCannot find mismatch count info of reads $reads_OB->{pid} end-$reads_OB->{endNO}.\n";
+    }
+}
+
+#--- return edit distance ---
+sub editDist{
+    my $reads_OB = shift;
+    if($reads_OB->optfd_str =~ /NM:i:(\d+)/){
+        return $1;
+    }
+    else{
+        cluck_and_exit "<ERROR>\tCannot find edit distance info of reads $reads_OB->{pid} end-$reads_OB->{endNO}.\n";
+    }
 }
 
 #--- do judgement on alignment ---
