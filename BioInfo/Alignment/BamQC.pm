@@ -4,12 +4,14 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Data::Dumper;
+use Cwd qw/ abs_path /;
+use BioFuse::LoadOn;
 use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
 use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Write /;
-use BioFuse::LoadOn;
 use BioFuse::BioInfo::Objects::SeqData::Bam_OB;
 use BioFuse::BioInfo::Objects::SeqData::Reads_OB;
+use BioFuse::BioInfo::Objects::Region::BED_OB;
 
 require Exporter;
 
@@ -60,6 +62,9 @@ sub return_HELP_INFO{
                   1) Format: -t 'key1:xxx.bed' -t 'key2:yyy.bed'
                   2) Please use the non-N region BED file for WGS, see func 'get_nonN'.
          -d  [s]  accumulated depth to stat for region listed in BED files. ['4,10,20']
+         -db [i]  base quality threshold in samtools depth func [0]
+         -dm [i]  mapping quality threshold in samtools depth func [0]
+         -dd [i]  maximum coverage depth in samtools depth func [8000].
          -h       show this help
 
      Version:
@@ -90,6 +95,9 @@ sub Load_moduleVar_to_pubVarPool{
             [ samtools => undef ],
             # option
             [ accuDepth => '4,10,20' ],
+            [ depthMinBQ => 0 ],
+            [ depthMinMQ => 0 ],
+            [ depthMaxDP => 8000 ],
             # container
             [ bam => undef ],
             [ bed => {} ],
@@ -110,12 +118,14 @@ sub Get_Cmd_Options{
         "-b:s"  => \$V_Href->{bam_path},
         "-o:s"  => \$V_Href->{output_dir},
         "-i:s"  => \$V_Href->{sampleID},
-        # "-n:s"  => \$V_Href->{nonN_bed},
         "-t:s"  => \@{$V_Href->{target_bed}},
         # tools
         "-s:s"  => \$V_Href->{samtools},
         # option
         "-d:s"  => \$V_Href->{accuDepth},
+        "-db:s" => \$V_Href->{depthMinBQ},
+        "-dm:s" => \$V_Href->{depthMinMQ},
+        "-dd:s" => \$V_Href->{depthMaxDP},
         # help
         "-h|help"   => \$V_Href->{HELP},
         # for debug
@@ -153,14 +163,14 @@ sub prepare{
     $V_Href->{bam}->addTool(samtools => $V_Href->{samtools});
     # bed files
     for my $bedOpt (@{$V_Href->{target_bed}}){
-        my ($key, $bed) = (split /,/, $bedOpt);
+        my ($key, $bed) = (split /:/, $bedOpt);
         unless(defined $key && defined $bed && -e $bed){
             warn_and_exit "<ERROR>\tbad -t option: $bedOpt\n";
         }
         if(exists $V_Href->{bed}->{$key}){
             warn_and_exit "<ERROR>\t$key bed already exists.\n";
         }
-        $V_Href->{bed}->{$key} = $bed;
+        $V_Href->{bed}->{$key} = BioFuse::BioInfo::Objects::Segment::BED_OB->new(filepath => abs_path($bed), tag => $key);
     }
     # accumulate depth
     $V_Href->{accuDepAf} = [split /,/, $V_Href->{accuDepth}];
@@ -173,7 +183,7 @@ sub calcIndex{
     # total level. common stats
     &calcIndexFromBam(key => 'total', viewOpt => '-F 0x100'); # 0x100 secondary alignment
     # targets
-    &calcIndexFromBam(key => $_, viewOpt => "-F 0x100 -L $V_Href->{bed}->{$_}") for keys %{$V_Href->{bed}};
+    &calcIndexFromBam(key => $_, viewOpt => '-F 0x100 -L '.$V_Href->{bed}->{$_}->filepath) for keys %{$V_Href->{bed}};
 }
 
 #--- calculate QC Indexes from bam ---
@@ -216,7 +226,8 @@ sub calcIndexFromBam{
     $V_Href->{QC}->{$key}->{MismatchRate} = sprintf "%.2f%%", 100 * $V_Href->{QC}->{$key}->{MismatchBases} / $V_Href->{QC}->{$key}->{UniqBases};
     # depth and coverage
     if($key ne 'total'){
-        my $statHf = $V_Href->{bam}->get_regionCovStat(bed => $V_Href->{bed}->{$key}, accuDepAf => $V_Href->{accuDepAf});
+        my $statHf = $V_Href->{bam}->get_regionCovStat( bed => $V_Href->{bed}->{$key}->filepath, accuDepAf => $V_Href->{accuDepAf},
+                                                        minMQ => $V_Href->{depthMinMQ}, minBQ => $V_Href->{depthMinBQ}, maxDP => $V_Href->{depthMaxDP});
         $V_Href->{QC}->{$key}->{AverageDepth} = $statHf->{meanDepth};
         $V_Href->{QC}->{$key}->{Coverage}->{1}  = sprintf "%.2f%%", 100 * $statHf->{coverage};
         $V_Href->{QC}->{$key}->{Coverage}->{$_} = sprintf "%.2f%%", 100 * $statHf->{accuDepPt}->{$_} for keys %{$statHf->{accuDepPt}};
@@ -257,6 +268,7 @@ sub report{
         my @index = @share_idx;
         unshift @index, @total_idx if $key eq 'total';
         push @index, @target_idx if $key ne 'total';
+        print REPORT "RegionSize($key)\t".$V_Href->{bed}->{$key}->length."\n" if $key ne 'total';
         my $keyQC_hf = $V_Href->{QC}->{$key};
         for my $idx (@index){
             if($idx ne 'Coverage'){
