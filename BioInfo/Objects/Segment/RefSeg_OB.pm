@@ -53,7 +53,7 @@ sub new{
     return $refseg;
 }
 
-#--- get refseg's length ---
+#--- get refseg's id ---
 sub id{
     my $refseg = shift;
     return $refseg->{id};
