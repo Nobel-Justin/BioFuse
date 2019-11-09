@@ -497,6 +497,17 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - allele2haploID
 - release_memory
 
+## BioInfo/Objects/Region/BED_OB.pm
+### BioFuse::BioInfo::Objects::Region::BED_OB
+### VERSION = "0.01"
+- new
+- filepath
+- tag
+- length
+- calc_length
+- set_note
+- note
+
 ## BioInfo/Objects/Sample/Sample_OB.pm
 ### BioFuse::BioInfo::Objects::Sample::Sample_OB
 ### VERSION = "0.02"
