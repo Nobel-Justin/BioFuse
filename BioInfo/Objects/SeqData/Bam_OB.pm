@@ -25,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
-$VERSION = "0.16";
-$DATE = '2019-06-06';
+$VERSION = "0.17";
+$DATE = '2019-11-09';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -448,60 +448,95 @@ sub add_rgOB{
 sub get_regionCovStat{
     my $bam = shift;
     my %parm = @_;
-    my $refsegID = $parm{refsegID};
+    my $region = $parm{region};
+    my $bed = $parm{bed};
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
     my $minMQ = $parm{minMQ} || 0;
     my $minBQ = $parm{minBQ} || 0;
+    my $accuDepAf = $parm{accuDepAf} || [10,30,50,100];
     my $origLen = $parm{origLen};
     my $circExtl = $parm{circExtl} || 0; # for such as circular virus
     my $availLen = $parm{availLen} || 0; # for such as non-N region of virus
     my $minDepth = $parm{minDepth} || 1; # pos less than such depth will be skipped
 
+    # return hash
     my $statHf = { coverage => 0,
                    meanDepth => 0,
-                   accuDepPt => {10 => 0, 30 => 0, 50 => 0, 100 => 0}
+                   accuDepPt => {map {($_,0)} @$accuDepAf}
                  };
 
+    # samtools depth options
+    my $depthOpt = "-a -q $minBQ -Q $minMQ";
+    if($region){
+        $depthOpt .= " -r $region";
+    }
+    elsif($bed){
+        $depthOpt .= " -b $bed";
+    }
+
     # pos depth
-    my %pos2depth;
-    open (DEPTH, "$samtools depth -a -q $minBQ -Q $minMQ -r $refsegID $bam->{filepath} |") || die "fail samtools depth: $!\n";
+    my %depthCount;
+    my $basicPosCount = 0;
+    my %pos2depth; # for circExtl
+    open (DEPTH, "$samtools depth $depthOpt $bam->{filepath} |") || die "fail samtools depth: $!\n";
     while (<DEPTH>){
         my ($pos, $depth) = (split)[1,2];
-        $pos2depth{$pos} = $depth;
+        if(    $circExtl
+            && ($pos > $origLen || $pos <= $circExtl)
+        ){
+            $pos2depth{$pos} = $depth;
+        }
+        else{
+            $depthCount{$depth}++;
+        }
+        # position count
+        if(    !$circExtl
+            || $pos <= $origLen
+        ){
+            $basicPosCount++;
+        }
     }
     close DEPTH;
     # sometimes, no depth info obtained
     ## e.g., all alignments in the bam are duplicated
-    return $statHf unless keys %pos2depth;
+    return $statHf unless (keys %pos2depth && keys %depthCount);
     # do for circular extend part
     if($circExtl){
         for my $i (1 .. $circExtl){
-            $pos2depth{$i} += $pos2depth{ $origLen + $i };
-            delete $pos2depth{ $origLen + $i };
+            my $iExt = $origLen + $i;
+            # skip if both pos are not in pos list
+            next if !exists $pos2depth{$i} || !exists $pos2depth{$iExt};
+            $pos2depth{$i} += ($pos2depth{$iExt} || 0);
+            delete $pos2depth{$iExt};
         }
+        # into depthCount
+        $depthCount{$pos2depth{$_}}++ for keys %pos2depth;
+        undef %pos2depth;
     }
     # filter pos and 
     my @accuDepth = sort {$a<=>$b} keys %{$statHf->{accuDepPt}};
-    for my $pos (sort {$a<=>$b} keys %pos2depth){
-        my $depth = $pos2depth{$pos};
+    for my $depth (keys %depthCount){
+        # minDepth filter, donot take outlier into account
+        if($depth < $minDepth){
+            delete $depthCount{$depth};
+            next;
+        }
         # accumulate depth
         my $i = first {$depth >= $accuDepth[$_]} (0 .. $#accuDepth);
         if(defined $i){
             $statHf->{accuDepPt}->{$accuDepth[$_]}++ for ($i .. $#accuDepth);
         }
-        # minDepth filter
-        delete $pos2depth{$pos} if $depth < $minDepth;
     }
+    # reset basicPosCount
+    $basicPosCount = $availLen || $basicPosCount || 1;
     # get accu-depth-perct
     for my $depth (@accuDepth){
-        my $basicLen = $availLen || $origLen;
-        $statHf->{accuDepPt}->{$depth} = sprintf "%0.4f", min($statHf->{accuDepPt}->{$depth}, $basicLen) / $basicLen;
+        $statHf->{accuDepPt}->{$depth} = sprintf "%0.4f", min($statHf->{accuDepPt}->{$depth}, $basicPosCount) / $basicPosCount;
     }
-    # mean depth
-    my $basicPosCount = scalar(keys %pos2depth) || 1;
-    $statHf->{meanDepth} = sprintf "%0.2f", sum(values %pos2depth) / $basicPosCount;
     # coverage
-    $statHf->{coverage}  = sprintf "%0.4f", $basicPosCount / $origLen;
+    $statHf->{coverage}  = sprintf "%0.4f", sum(values %depthCount) / $basicPosCount;
+    # mean depth
+    $statHf->{meanDepth} = sprintf "%0.2f", sum(map {$_*$depthCount{$_}} keys %depthCount) / $basicPosCount;
 
     return $statHf;
 }
