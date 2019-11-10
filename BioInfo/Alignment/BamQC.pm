@@ -196,7 +196,7 @@ sub calcIndexFromBam{
     # load bam
     my $fh = $V_Href->{bam}->start_read(viewOpt => $viewOpt);
     while(<$fh>){
-        my $reads = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new(ReadsLineText => $_, _rc_optfd => 1, _rc_rdstr => 1);
+        my $reads = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new(ReadsLineText => $_, _rc_optfd => 1);
         # clean reads, except of supplementary alignments
         unless($reads->is_suppmap){
             $V_Href->{QC}->{$key}->{CleanReads}++;
