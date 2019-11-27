@@ -2,6 +2,7 @@ package BioFuse::Util::FileHeader;
 
 use strict;
 use warnings;
+use BioFuse::Util::GZfile qw/ Try_GZ_Read /;
 
 require Exporter;
 
@@ -12,6 +13,7 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT = qw/
               getHeaderTag
               lineInfoToHash
+              read_headed_list
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
@@ -19,8 +21,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::FileHeader';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2018-11-24';
+$VERSION = "0.02";
+$DATE = '2019-11-25';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -30,13 +32,14 @@ $EMAIL = 'wenlongkxm@gmail.com';
 my @functoion_list = qw/
                         getHeaderTag
                         lineInfoToHash
+                        read_headed_list
                      /;
 
 #--- get tags in file header (prefixed by '#') ---
 ## use \s+ to split
 sub getHeaderTag{
     # options
-    shift if ($_[0] =~ /$MODULE_NAME/);
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
     my $header = $parm{header};
 
@@ -49,7 +52,7 @@ sub getHeaderTag{
 ## use \s+ to split
 sub lineInfoToHash{
     # options
-    shift if ($_[0] =~ /$MODULE_NAME/);
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
     my $headTagAf = $parm{headTagAf};
     my $lineInfo = $parm{lineInfo};
@@ -57,6 +60,32 @@ sub lineInfoToHash{
     my @info = split /\s+/, $lineInfo;
     my %info = map{ ($headTagAf->[$_],$info[$_]) } (0 .. scalar(@$headTagAf)-1);
     return \%info;
+}
+
+#--- load headed list and do ---
+## the list must have a header
+sub read_headed_list{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $list = $parm{list};
+    my $subrtRef = $parm{subrtRef};
+    my $subrtParmAref = $parm{subrtParmAref};
+
+    open (LIST,Try_GZ_Read($list)) || die "fail read list: $!\n";
+    my @tag = map {s/^#//; ($_)} split /\s+/, lc(<LIST>);
+    while(<LIST>){
+        next if(/^#/);
+        my @info = split;
+        my %tagmap = map{ ($tag[$_], $info[$_]) } (0 .. $#info);
+        # run sub-routine
+        if (defined $subrtRef){
+            my @parm = (tagmap => \%tagmap);
+            push @parm, @$subrtParmAref if (defined $subrtParmAref);
+            &{$subrtRef}(@parm);
+        }
+    }
+    close LIST;
 }
 
 #--- 
