@@ -133,6 +133,7 @@ sub return_HELP_INFO{
         get_tpsl       $V_Href->{func}->{get_tpsl}->{descp}
         get_gpsl       $V_Href->{func}->{get_gpsl}->{descp}
         psl_seq        $V_Href->{func}->{psl_seq}->{descp}
+        prot_dom       $V_Href->{func}->{prot_dom}->{descp}
 
      -- Mutation
         mut_fa         $V_Href->{func}->{mut_fa}->{descp}

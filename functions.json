@@ -54,5 +54,13 @@
       "_comments" : "get QC report of given bam, for WGS or WXS",
       "module" : "BioFuse::BioInfo::Alignment::BamQC",
       "main_func" : "BamQC"
+   },
+   "prot_dom" : {
+      "mode_NO" : 8,
+      "descp" : "fetch domain information from NCBI Gene database",
+      "_group" : "GeneAnno",
+      "_comments" : "fetch domain information from NCBI Gene database",
+      "module" : "BioFuse::BioInfo::GeneAnno::GetProtDomain",
+      "main_func" : "GetProtDomain"
    }
 }
