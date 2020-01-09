@@ -24,8 +24,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::GetProtDomain';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2020-01-08';
+$VERSION = "0.02";
+$DATE = '2020-01-09';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -186,8 +186,10 @@ sub ncbi_gene_query{
         if($c[$i] =~ /Gene ID:\s*(\d+)/){
             $gene_id = $1;
         }
-        # NM -> NP, always have
-        if($c[$i] =~ /(N._[\d\.]+)\s\S+\s(N._[\d\.]+)/i){
+        # [NX]M -> [NX]P, always have
+        # XM_ (mRNA), XR_ (non-coding RNA), and XP_ (protein): RefSeq pipeline
+        # NM_ (mRNA), NR_ (non-coding RNA), and NP_ (protein): RefSeq curated records
+        if($c[$i] =~ /([NX]M_[\d\.]+)\s\S+\s([NX]P_[\d\.]+)/i){
             ($rfgT, $rfgP) = ($1, $2);
         }
         # Conserved Domains (3)summary
