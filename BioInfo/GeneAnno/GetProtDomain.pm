@@ -3,6 +3,7 @@ package BioFuse::BioInfo::GeneAnno::GetProtDomain;
 use strict;
 use warnings;
 use Getopt::Long;
+use Data::Dumper;
 use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
 use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
@@ -24,8 +25,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::GetProtDomain';
 #----- version --------
-$VERSION = "0.02";
-$DATE = '2020-01-09';
+$VERSION = "0.03";
+$DATE = '2020-01-11';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -38,26 +39,32 @@ my @functoion_list = qw/
                         Get_Cmd_Options
                         para_alert
                         GetProtDomain
-                        ncbi_gene_query
+                        query_by_idList
+                        get_db_info
+                        ncbi_gene_query_protDom
+                        ensm_tran_query_protDom
+                        write_domain_tsv
                      /;
 
 #--- return HELP_INFO ---
 sub return_HELP_INFO{
  return "
-     # fetch domain information from NCBI Gene database #
+     # fetch domain information from database #
 
      Usage:   perl $V_Href->{MainName} prot_dom <[Options]>
 
      Options:
 
         # Input and Output #
-         -i  [s]  list of id. <required>
-                  ENSG/P/T id for ensembl and NM/P id for refgene.
+         -i  [s]  list of query id. <required>
+                  for ncbi: ENSG/P/T or [NX]M/P id.
+                  for ensm: ONLY ENST id.
          -o  [s]  output domain list. <required>
 
         # Options #
-         -t  [i]  maximum times to connect ncbi website. [10]
-         -v  [i]  minimum interval in second. [3]
+         -d  [s]  select database. [ncbi/ensm]
+                  ncbi: NCBI-GENE; ensm: Ensembl-Domains
+         -t  [i]  maximum try times to connect database website for one query. [10]
 
          -h       show this help
 
@@ -86,13 +93,21 @@ sub Load_moduleVar_to_pubVarPool{
             [ id_list => undef ],
             [ domain_file => undef ],
             # option
+            [ db => 'null' ], # ncbi, ensm
             [ max_try => 10 ],
             [ min_interval => 3 ],
 
             # setting
-            [ url => { prefix => 'https://www.ncbi.nlm.nih.gov/gene/?term=',
-                       postfix => '&report=full_report&format=text'  } ],
-
+            [ db_list => {ncbi => 1, ensm => 1} ],
+            [ url => { ncbi => { prefix => 'https://www.ncbi.nlm.nih.gov/gene/?term=',
+                                 postfix => '&report=full_report&format=text'  },
+                       ensm => { prefix => 'http://asia.ensembl.org/Homo_sapiens/Component/Transcript/Domains/domains?t=',
+                                 postfix => '' } } ],
+            [ ensm_header => [ 'source', 'dom_st', 'dom_ed', 'dom_desp', 'dom_acce', 'interpro' ] ],
+            # container
+            [ ncbi_gene => {} ],
+            [ ensm_tran => {} ],
+            [ failquery => [] ],
             # list to abs-path
             [ ToAbsPath_Aref => [ ['gene_list'],
                                   ['domain_file']  ] ]
@@ -107,6 +122,7 @@ sub Get_Cmd_Options{
         "-i:s"  => \$V_Href->{id_list},
         "-o:s"  => \$V_Href->{domain_file},
         # options
+        "-d:s"  => \$V_Href->{db},
         "-t:i"  => \$V_Href->{max_try},
         "-v:i"  => \$V_Href->{min_interval},
         # help
@@ -120,6 +136,7 @@ sub Get_Cmd_Options{
 sub para_alert{
     return  (   $V_Href->{HELP}
              || !file_exist(filePath=>$V_Href->{id_list})
+             || !exists $V_Href->{db_list}->{$V_Href->{db}}
              || $V_Href->{max_try} <= 0
              || $V_Href->{min_interval} <= 0
              || !defined $V_Href->{domain_file}
@@ -128,41 +145,44 @@ sub para_alert{
 
 #--- get protein domain information for genetic id ---
 sub GetProtDomain{
-    # open fh
+    # query by list
+    &query_by_idList;
+    # output
+    &write_domain_tsv;
+}
+
+#--- read id list and query one by one ---
+sub query_by_idList{
     open (IDLIST, Try_GZ_Read($V_Href->{id_list})) or die "can not read id list: $!\n";
-    open (DOM, Try_GZ_Write($V_Href->{domain_file})) or die "cannot write domain files: $!\n";
-    open (DOME,Try_GZ_Write("$V_Href->{domain_file}.error")) or die "cannot write domain error files: $!\n";
-    # header
-    my @header = qw/ id ncbi_gid ens_t ens_p rfg_t rfg_p dom_st dom_ed db_id dom_name dom_desp /;
-    print DOM join("\t", @header)."\n";
-    # id
     while(<IDLIST>){
         next if /^#/;
         chomp;
-        &ncbi_gene_query(id=>$_);
+        if($V_Href->{db} eq 'ncbi'){
+            &ncbi_gene_query_protDom(query_id => $_);
+        }
+        elsif($V_Href->{db} eq 'ensm'){
+            &ensm_tran_query_protDom(query_id => $_);
+        }
         sleep int(rand(3)) + $V_Href->{min_interval};
     }
-    # close fh
     close IDLIST;
-    close DOME;
-    close DOM;
 }
 
-#--- fetch data from website ---
-sub ncbi_gene_query{
+#--- fetch data via url ---
+sub get_db_info{
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $id = $parm{id};
+    my $url = $parm{url};
+    my $query_id = $parm{query_id};
 
-    my $url = $V_Href->{url}->{prefix} . $id . $V_Href->{url}->{postfix};
-    my $html;
+    my $dbInfo;
     my $time = $V_Href->{max_try};
     while($time){
-        # warn "$time\t$url\n" if $V_Href->{in_debug};
-        $html = urlToHtmlText(url=>$url);
-        warn "$html\n" if $V_Href->{in_debug};
-        if($html eq 'fail' || $html =~ /An error has occured/i){
+        warn "$time\t$url\n" if $V_Href->{in_debug};
+        $dbInfo = urlToHtmlText(url=>$url);
+        warn "$dbInfo\n" if $V_Href->{in_debug};
+        if($dbInfo eq 'fail' || $dbInfo =~ /An error has occured/i){
             sleep int(rand($V_Href->{max_try}-$time)) + $V_Href->{min_interval};
             $time--;
         }
@@ -170,21 +190,39 @@ sub ncbi_gene_query{
             last;
         }
     }
-    warn "$id\n$html\n" if $V_Href->{in_debug};
+    warn "$query_id\n$dbInfo\n" if $V_Href->{in_debug};
     # error
     unless($time){
-        warn "<ERROR>\tfail to fetch ncbi gene info for $id\n";
-        print DOME "$id\t$url\n";
-        return;
+        warn "<ERROR>\tfail to fetch $V_Href->{db} info for $query_id\n";
+        push @{$V_Href->{failquery}}, [$query_id, $url];
+        return 0;
     }
+    return $dbInfo;
+}
+
+#--- fetch data from ncbi gene database ---
+sub ncbi_gene_query_protDom{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $query_id = $parm{query_id};
+
+    # fetch ncbi-gene data
+    my $url = $V_Href->{url}->{ncbi}->{prefix} . $query_id . $V_Href->{url}->{ncbi}->{postfix};
+    my $dbInfo = &get_db_info(query_id => $query_id, url => $url);
+    return unless $dbInfo;
     # analysis
-    my @c = split /\n/, $html;
+    my @c = split /\n/, $dbInfo;
     my $gene_id;
     my ($rfgT, $rfgP) = qw/ - - /;
     my $last_line = '-';
     for (my $i=0; $i<=$#c; $i++){
         if($c[$i] =~ /Gene ID:\s*(\d+)/){
             $gene_id = $1;
+            if(exists $V_Href->{ncbi_gene}->{$gene_id}){
+                warn "<WARN>\t$gene_id gene has been processed.\n";
+                return;
+            }
         }
         # [NX]M -> [NX]P, always have
         # XM_ (mRNA), XR_ (non-coding RNA), and XP_ (protein): RefSeq pipeline
@@ -204,20 +242,99 @@ sub ncbi_gene_query{
             # each domain
             while($domC--){
                 1 while $c[++$i] =~ /^\s+$/; # pfam00870:
-                my ($db_id) = ($c[$i] =~ /(\S+):/);
+                my ($dom_acce) = ($c[$i] =~ /(\S+):/);
                 1 while $c[++$i] =~ /^\s+$/; # Location:95 - 289
                 my ($stp, $edp) = ($c[$i] =~ /Location:\s*(\d+)\s*-\s*(\d+)/i);
                 1 while $c[++$i] =~ /^\s+$/; # P53; P53 DNA-binding domain
                 my ($dom_name, $dom_desp) = ($c[$i] =~ /([^\s;]+);?\s*(.*)/);
                 $dom_desp ||= '-';
                 # output
-                print DOM join("\t", $id, $gene_id, $ensT, $ensP, $rfgT, $rfgP, $stp, $edp, $db_id, $dom_name, $dom_desp)."\n";
+                if(!exists $V_Href->{ncbi_gene}->{$gene_id}->{$rfgT}){
+                    $V_Href->{ncbi_gene}->{$gene_id}->{$rfgT} = { ensT => $ensT, ensP => $ensP, rfgP => $rfgP, dom => [], query_id => $query_id };
+                }
+                else{
+                    push @{$V_Href->{ncbi_gene}->{$gene_id}->{$rfgT}->{dom}}, { dom_name => $dom_name, dom_desp => $dom_desp,
+                                                                                stp => $stp, edp => $edp, dom_acce => $dom_acce };
+                }
             }
         }
         $last_line = $c[$i];
     }
     # inform
-    stout_and_sterr "[INFO]\t$_ done\n";
+    stout_and_sterr "[INFO]\t$query_id done\n";
+}
+
+#--- fetch data from ensembl database ---
+sub ensm_tran_query_protDom{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $query_id = uc($parm{query_id});
+
+    # check
+    if($query_id !~ /^ENST/i){
+        warn_and_exit "<ERROR>\tONLY ENST id allowed for database ensm. $query_id\n";
+        exit 1;
+    }
+    # fetch ensembl data
+    my $url = $V_Href->{url}->{ensm}->{prefix} . $query_id . $V_Href->{url}->{ensm}->{postfix};
+    my $dbHtml = &get_db_info(url => $url);
+    return unless $dbHtml;
+    # analysis
+    $dbHtml =~ s/(<t[hrd])/\n$1/g;
+    $dbHtml =~ s/(<\/?tr>)/\n$1/g;
+    my @c = split /\n/, $dbHtml;
+    for (my $i=0; $i<=$#c; $i++){
+        last if $c[$i] =~ /Other features/i;
+        if($c[$i] =~ /<tr>/){
+            my %info;
+            for my $j (1..6){
+                1 while $c[++$i] =~ /^\s+$/;
+                my ($info) = ($c[$i] =~ /<td[^>]+>(.+)<\/td>/);
+                $info = $1 if $info =~ /<a.+href=.+>(\S+)<\/a>/;
+                $info{$V_Href->{ensm_header}->[$j-1]} = $info;
+                # die "$info\n";
+            }
+            push @{$V_Href->{ensm_tran}->{$query_id}->{dom}}, \%info;
+        }
+    }
+    # inform
+    stout_and_sterr "[INFO]\t$query_id done\n";
+}
+
+#--- output domain info ---
+sub write_domain_tsv{
+    open (DOM, Try_GZ_Write($V_Href->{domain_file})) or die "cannot write domain files: $!\n";
+    if($V_Href->{db} eq 'ncbi'){
+        my @header = qw/ query_id ncbi_gid ens_t ens_p rfg_t rfg_p dom_st dom_ed dom_acce dom_name dom_desp /;
+        print DOM join("\t", @header)."\n";
+        for my $gene_id (sort keys %{$V_Href->{ncbi_gene}}){
+            for my $rfgT (sort keys %{$V_Href->{ncbi_gene}->{$gene_id}}){
+                my $rfgT_Hf = $V_Href->{ncbi_gene}->{$gene_id}->{$rfgT};
+                for my $dom_Hf (@{$rfgT_Hf->{dom}}){
+                    print join("\t", $rfgT_Hf->{query_id}, $gene_id,
+                                     $rfgT_Hf->{ensT}, $rfgT_Hf->{ensP},
+                                     $rfgT, $rfgT_Hf->{rfgP},
+                                     $dom_Hf->{stp}, $dom_Hf->{edp},
+                                     $dom_Hf->{dom_acce}, $dom_Hf->{dom_name}, $dom_Hf->{dom_desp}
+                               )."\n";
+                }
+            }
+        }
+    }
+    elsif($V_Href->{db} eq 'ensm'){
+        print DOM join("\t", 'ens_t', @{$V_Href->{ensm_header}})."\n";
+        for my $ensT (sort keys %{$V_Href->{ensm_tran}}){
+            for my $dom_hf (@{$V_Href->{ensm_tran}->{$ensT}->{dom}}){
+                print DOM join("\t", $ensT, map {$dom_hf->{$_}} @{$V_Href->{ensm_header}})."\n";
+            }
+        }
+    }
+    close DOM;
+    # query failed
+    open (DOME,Try_GZ_Write("$V_Href->{domain_file}.error")) or die "cannot write domain error files: $!\n";
+    print DOME join("\t",@$_)."\n" for @{$V_Href->{failquery}};
+    close DOME;
 }
 
 #--- 

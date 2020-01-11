@@ -47,9 +47,10 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 
 ## Util/FileHeader.pm
 ### BioFuse::Util::FileHeader
-### VERSION = "0.01"
+### VERSION = "0.02"
 - getHeaderTag
 - lineInfoToHash
+- read_headed_list
 
 ## Util/Random.pm
 ### BioFuse::Util::Random
@@ -135,6 +136,20 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - Get_Cmd_Options
 - para_alert
 - PSLtoFASTA
+
+## BioInfo/GeneAnno/GetProtDomain.pm
+### BioFuse::BioInfo::GeneAnno::GetProtDomain
+### VERSION = "0.03"
+- return_HELP_INFO
+- Load_moduleVar_to_pubVarPool
+- Get_Cmd_Options
+- para_alert
+- GetProtDomain
+- query_by_idList
+- get_db_info
+- ncbi_gene_query_protDom
+- ensm_tran_query_protDom
+- write_domain_tsv
 
 ## BioInfo/GeneAnno/GTFtoTransPSL.pm
 ### BioFuse::BioInfo::GeneAnno::GTFtoTransPSL
