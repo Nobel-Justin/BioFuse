@@ -229,15 +229,19 @@ sub ncbi_gene_query_protDom{
         # NM_ (mRNA), NR_ (non-coding RNA), and NP_ (protein): RefSeq curated records
         if($c[$i] =~ /([NX]M_[\d\.]+)\s\S+\s([NX]P_[\d\.]+)/i){
             ($rfgT, $rfgP) = ($1, $2);
+            $V_Href->{ncbi_gene}->{$gene_id}->{$rfgT} = { rfgP => $rfgP, dom => [], query_id => $query_id };
         }
-        # Conserved Domains (3)summary
+        # Conserved Domains (x)summary
         if($c[$i] =~ /Conserved\s*Domains\s*\((\d+)\)\s*summary/i){
             my $domC = $1;
+            my $rfgT_hf = $V_Href->{ncbi_gene}->{$gene_id}->{$rfgT};
             # ensembl id, some transcript may lack
             my ($ensP, $ensT) = qw/ - - /;
             if($last_line =~ /Related\s*Ensembl:\s*(ENSP[\d\.]+),\s*(ENST[\d\.]+)/i){
                 ($ensP, $ensT) = ($1, $2);
             }
+            $rfgT_hf->{ensT} = $ensT;
+            $rfgT_hf->{ensP} = $ensP;
             warn "$domC\n$last_line\n$ensP, $ensT\n" if $V_Href->{in_debug};
             # each domain
             while($domC--){
@@ -248,14 +252,9 @@ sub ncbi_gene_query_protDom{
                 1 while $c[++$i] =~ /^\s+$/; # P53; P53 DNA-binding domain
                 my ($dom_name, $dom_desp) = ($c[$i] =~ /([^\s;]+);?\s*(.*)/);
                 $dom_desp ||= '-';
-                # output
-                if(!exists $V_Href->{ncbi_gene}->{$gene_id}->{$rfgT}){
-                    $V_Href->{ncbi_gene}->{$gene_id}->{$rfgT} = { ensT => $ensT, ensP => $ensP, rfgP => $rfgP, dom => [], query_id => $query_id };
-                }
-                else{
-                    push @{$V_Href->{ncbi_gene}->{$gene_id}->{$rfgT}->{dom}}, { dom_name => $dom_name, dom_desp => $dom_desp,
-                                                                                stp => $stp, edp => $edp, dom_acce => $dom_acce };
-                }
+                # record
+                push @{$rfgT_hf->{dom}}, { dom_name => $dom_name, dom_desp => $dom_desp,
+                                           stp => $stp, edp => $edp, dom_acce => $dom_acce };
             }
         }
         $last_line = $c[$i];
@@ -293,7 +292,6 @@ sub ensm_tran_query_protDom{
                 my ($info) = ($c[$i] =~ /<td[^>]+>(.+)<\/td>/);
                 $info = $1 if $info =~ /<a.+href=.+>(\S+)<\/a>/;
                 $info{$V_Href->{ensm_header}->[$j-1]} = $info;
-                # die "$info\n";
             }
             push @{$V_Href->{ensm_tran}->{$query_id}->{dom}}, \%info;
         }
