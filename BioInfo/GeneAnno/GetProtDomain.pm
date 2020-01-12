@@ -312,12 +312,12 @@ sub write_domain_tsv{
             for my $rfgT (sort keys %{$V_Href->{ncbi_gene}->{$gene_id}}){
                 my $rfgT_Hf = $V_Href->{ncbi_gene}->{$gene_id}->{$rfgT};
                 for my $dom_Hf (@{$rfgT_Hf->{dom}}){
-                    print join("\t", $rfgT_Hf->{query_id}, $gene_id,
-                                     $rfgT_Hf->{ensT}, $rfgT_Hf->{ensP},
-                                     $rfgT, $rfgT_Hf->{rfgP},
-                                     $dom_Hf->{stp}, $dom_Hf->{edp},
-                                     $dom_Hf->{dom_acce}, $dom_Hf->{dom_name}, $dom_Hf->{dom_desp}
-                               )."\n";
+                    print DOM join("\t", $rfgT_Hf->{query_id}, $gene_id,
+                                         $rfgT_Hf->{ensT}, $rfgT_Hf->{ensP},
+                                         $rfgT, $rfgT_Hf->{rfgP},
+                                         $dom_Hf->{stp}, $dom_Hf->{edp},
+                                         $dom_Hf->{dom_acce}, $dom_Hf->{dom_name}, $dom_Hf->{dom_desp}
+                                  )."\n";
                 }
             }
         }
