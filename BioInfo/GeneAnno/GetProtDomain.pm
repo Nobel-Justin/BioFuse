@@ -26,7 +26,7 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::GetProtDomain';
 #----- version --------
 $VERSION = "0.03";
-$DATE = '2020-01-11';
+$DATE = '2020-01-14';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -277,7 +277,7 @@ sub ensm_tran_query_protDom{
     }
     # fetch ensembl data
     my $url = $V_Href->{url}->{ensm}->{prefix} . $query_id . $V_Href->{url}->{ensm}->{postfix};
-    my $dbHtml = &get_db_info(url => $url);
+    my $dbHtml = &get_db_info(query_id => $query_id, url => $url);
     return unless $dbHtml;
     # analysis
     $dbHtml =~ s/(<t[hrd])/\n$1/g;
