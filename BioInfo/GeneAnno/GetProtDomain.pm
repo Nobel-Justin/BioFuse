@@ -26,7 +26,7 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::GetProtDomain';
 #----- version --------
 $VERSION = "0.03";
-$DATE = '2020-01-14';
+$DATE = '2020-01-15';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -182,7 +182,11 @@ sub get_db_info{
         warn "$time\t$url\n" if $V_Href->{in_debug};
         $dbInfo = urlToHtmlText(url=>$url);
         warn "$dbInfo\n" if $V_Href->{in_debug};
-        if($dbInfo eq 'fail' || $dbInfo =~ /An error has occured/i){
+        if(   $dbInfo eq 'fail'
+           || $dbInfo =~ /An error has occured/i
+           || $dbInfo =~ /Server Exception/i
+           || $dbInfo =~ /AJAX error/i
+        ){
             sleep int(rand($V_Href->{max_try}-$time)) + $V_Href->{min_interval};
             $time--;
         }
