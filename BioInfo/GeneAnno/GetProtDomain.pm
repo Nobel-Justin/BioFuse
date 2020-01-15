@@ -225,6 +225,8 @@ sub ncbi_gene_query_protDom{
             $gene_id = $1;
             if(exists $V_Href->{ncbi_gene}->{$gene_id}){
                 warn "<WARN>\t$gene_id gene has been processed.\n";
+                # record the duplicated
+                push @{$V_Href->{failquery}}, [$query_id, "$gene_id-has-been-processed(duplicated)"];
                 return;
             }
         }
