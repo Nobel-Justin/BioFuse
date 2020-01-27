@@ -6,7 +6,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - Email:  wenlongkxm@gmail.com
 
 ## Version
-V0.09
+0.09
 
 ## Installation
 
@@ -26,3 +26,27 @@ List of additional PERL modules required:
 - [LWP::UserAgent](https://metacpan.org/pod/LWP::UserAgent)
 
 If you encounter problems, please open an issue at the [project on Github](https://github.com/Nobel-Justin/BioFuse/issues).
+
+## Commands
+
+Besides of functions as perl modules, BioFuse also provides several commands.
+
+- [get_tpsl](./manual/get_tpsl.md)
+
+  `get_tpsl` generates the transcripts PSL file from GTF file.
+
+- [get_gpsl](./manual/get_gpsl.md)
+
+  `get_gpsl` generates the gene PSL file from GTF file.
+
+- [psl_seq](./manual/psl_seq.md)
+
+  `psl_seq` generates the FASTA file of transcripts (tpsl) or genes (gpsl).
+
+- [pslToBed](./manual/pslToBed.md)
+
+  `pslToBed` generates BED of genetic regions from PSL file.
+
+- [mut_fa](./manual/mut_fa.md)
+
+  `mut_fa` generates FASTA file based on given mutations.

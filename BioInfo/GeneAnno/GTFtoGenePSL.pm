@@ -47,12 +47,12 @@ sub return_HELP_INFO{
      Options:
          -g   [s]  gtf file. <required>
          -o   [s]  gene PSL file to output. <required>
-         -rft [s]  list of refseg symbols relationship. [optional]
+         -rft [s]  TABLE-separated list of refseg symbols relationship. [optional]
                     NOTE: Generaly, the ref_seg symbols in GTP file (normally, the first column) is different from 
                           that in reference file (the '-f' parameter). So, you should specify the corresponding relationship
                           of refseg symbols between GTF file and reference file.
-                          Format:  refseg_symbol_in_gtf  \\t  refseg_symbol_in_reference
-                          e.g.,  10 \\t chr10
+                          Format:  refseg_symbol_in_gtf  refseg_symbol_in_reference
+                          e.g.,  10  chr10
          -sor [s]  select the source of gtf, can be used in multiple times. Default to accept all sources.
                     NOTE: From v75, ensembl provides the source_info stored by 'gene_source' tag.
                           It will accept the transcript whose gene_source tag contains your input.
