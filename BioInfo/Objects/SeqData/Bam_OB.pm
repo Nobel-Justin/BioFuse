@@ -25,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
-$VERSION = "0.17";
-$DATE = '2019-11-09';
+$VERSION = "0.18";
+$DATE = '2020-02-09';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -451,6 +451,7 @@ sub get_regionCovStat{
     my $region = $parm{region};
     my $bed = $parm{bed};
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+    my $notAllPos = $parm{notAllPos} || 0; # donot use '-a'
     my $minMQ = $parm{minMQ} || 0;
     my $minBQ = $parm{minBQ} || 0;
     my $maxDP = defined $parm{maxDP} ? $parm{maxDP} : 8000;
@@ -467,7 +468,10 @@ sub get_regionCovStat{
                  };
 
     # samtools depth options
-    my $depthOpt = "-a -d $maxDP -q $minBQ -Q $minMQ";
+    my $depthOpt = "-d $maxDP -q $minBQ -Q $minMQ";
+    unless($notAllPos){
+        $depthOpt .= ' -a';
+    }
     if($region){
         $depthOpt .= " -r $region";
     }
