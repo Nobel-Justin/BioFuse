@@ -28,8 +28,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Alignment::BamQC';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2019-11-09';
+$VERSION = "0.02";
+$DATE = '2020-02-09';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -183,7 +183,7 @@ sub calcIndex{
     # total level. common stats
     &calcIndexFromBam(key => 'total', viewOpt => '-F 0x100'); # 0x100 secondary alignment
     # targets
-    &calcIndexFromBam(key => $_, viewOpt => '-F 0x100 -L '.$V_Href->{bed}->{$_}->filepath) for keys %{$V_Href->{bed}};
+    &calcIndexFromBam(key => $_, viewOpt => '-F 0x100', bedOB => $V_Href->{bed}->{$_}) for keys %{$V_Href->{bed}};
 }
 
 #--- calculate QC Indexes from bam ---
@@ -193,7 +193,9 @@ sub calcIndexFromBam{
     my %parm = @_;
     my $key = $parm{key} || 'total';
     my $viewOpt = $parm{viewOpt} || '';
+    my $bedOB = $parm{bedOB} || undef;
     # load bam
+    $viewOpt .= ' -L '.$bedOB->filepath if defined $bedOB;
     my $fh = $V_Href->{bam}->start_read(viewOpt => $viewOpt);
     while(<$fh>){
         my $reads = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new(ReadsLineText => $_, _rc_optfd => 1);
@@ -226,8 +228,13 @@ sub calcIndexFromBam{
     $V_Href->{QC}->{$key}->{MismatchRate} = sprintf "%.2f%%", 100 * $V_Href->{QC}->{$key}->{MismatchBases} / $V_Href->{QC}->{$key}->{UniqBases};
     # depth and coverage
     if($key ne 'total'){
-        my $statHf = $V_Href->{bam}->get_regionCovStat( bed => $V_Href->{bed}->{$key}->filepath, accuDepAf => $V_Href->{accuDepAf},
-                                                        minMQ => $V_Href->{depthMinMQ}, minBQ => $V_Href->{depthMinBQ}, maxDP => $V_Href->{depthMaxDP});
+        my $statHf = $V_Href->{bam}->get_regionCovStat( bed => $bedOB->filepath,
+                                                        notAllPos => 1,
+                                                        availLen => $bedOB->length,
+                                                        accuDepAf => $V_Href->{accuDepAf},
+                                                        minMQ => $V_Href->{depthMinMQ},
+                                                        minBQ => $V_Href->{depthMinBQ},
+                                                        maxDP => $V_Href->{depthMaxDP} );
         $V_Href->{QC}->{$key}->{AverageDepth} = $statHf->{meanDepth};
         $V_Href->{QC}->{$key}->{Coverage}->{1}  = sprintf "%.2f%%", 100 * $statHf->{coverage};
         $V_Href->{QC}->{$key}->{Coverage}->{$_} = sprintf "%.2f%%", 100 * $statHf->{accuDepPt}->{$_} for keys %{$statHf->{accuDepPt}};
