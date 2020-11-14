@@ -71,12 +71,14 @@ sub read_headed_list{
     my $list = $parm{list};
     my $subrtRef = $parm{subrtRef};
     my $subrtParmAref = $parm{subrtParmAref};
+    my $tab_div = $parm{tab_div} || 0;
 
     open (LIST,Try_GZ_Read($list)) || die "fail read list: $!\n";
     my @tag = map {s/^#//; ($_)} split /\s+/, lc(<LIST>);
     while(<LIST>){
         next if(/^#/);
-        my @info = split;
+        chomp;
+        my @info = $tab_div ? split /\t+/ : split /\s+/;
         my %tagmap = map{ ($tag[$_], $info[$_]) } (0 .. $#info);
         # run sub-routine
         if (defined $subrtRef){
