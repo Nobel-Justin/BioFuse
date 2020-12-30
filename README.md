@@ -6,7 +6,7 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - Email:  wenlongkxm@gmail.com
 
 ## Version
-0.09
+0.10
 
 ## Installation
 
@@ -50,3 +50,7 @@ Besides of functions as perl modules, BioFuse also provides several commands.
 - [mut_fa](./manual/mut_fa.md)
 
   `mut_fa` generates FASTA file based on given mutations.
+
+- [prot_dom](./manual/prot_dom.md)
+
+  `prot_dom` fetches domain information from online database.
