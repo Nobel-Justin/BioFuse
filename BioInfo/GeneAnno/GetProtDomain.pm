@@ -26,7 +26,7 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::GeneAnno::GetProtDomain';
 #----- version --------
 $VERSION = "0.03";
-$DATE = '2020-01-15';
+$DATE = '2020-11-22';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -62,7 +62,7 @@ sub return_HELP_INFO{
          -o  [s]  output domain list. <required>
 
         # Options #
-         -d  [s]  select database. [ncbi/ensm]
+         -d  [s]  select database. <required>
                   ncbi: NCBI-GENE; ensm: Ensembl-Domains
          -t  [i]  maximum try times to connect database website for one query. [10]
 
@@ -101,7 +101,7 @@ sub Load_moduleVar_to_pubVarPool{
             [ db_list => {ncbi => 1, ensm => 1} ],
             [ url => { ncbi => { prefix => 'https://www.ncbi.nlm.nih.gov/gene/?term=',
                                  postfix => '&report=full_report&format=text'  },
-                       ensm => { prefix => 'http://asia.ensembl.org/Homo_sapiens/Component/Transcript/Domains/domains?t=',
+                       ensm => { prefix => 'http://ensembl.org/Homo_sapiens/Component/Transcript/Domains/domains?t=',
                                  postfix => '' } } ],
             [ ensm_header => [ 'source', 'dom_st', 'dom_ed', 'dom_desp', 'dom_acce', 'interpro' ] ],
             # container
