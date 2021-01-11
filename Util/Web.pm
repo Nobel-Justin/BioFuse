@@ -18,8 +18,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Web';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2019-05-03';
+$VERSION = "0.02";
+$DATE = '2021-01-10';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -37,9 +37,10 @@ sub urlToHtmlText{
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
     my $url = $parm{url};
+    my $timeout = $parm{timeout} || 30;
 
     my $uagent = LWP::UserAgent->new;
-    $uagent->timeout(10);
+    $uagent->timeout($timeout);
     $uagent->env_proxy;
     my $response = $uagent->get($url);
     if ($response->is_success) {
