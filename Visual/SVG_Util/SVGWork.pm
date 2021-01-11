@@ -19,8 +19,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Visual::SVG_Util::SVGWork';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2018-12-04';
+$VERSION = "0.02";
+$DATE = '2021-01-11';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -43,9 +43,10 @@ sub initialize_SVG_obj{
     my $bg_stroke_col = $parm{bg_stroke_col} || 'none';
     my $AUTHOR = $parm{AUTHOR} || 'anonymous';
     my $EMAIL = $parm{EMAIL} || 'test@test.com';
+    my $skip_bg = $parm{skip_bg} || 0;
 
     my $svg_obj = SVG->new( width=>$bg_width, height=>$bg_height, author=>$AUTHOR, 'author-mail'=>$EMAIL);
-    $svg_obj->rect(x=>0, y=>0, width=>$bg_width, height=>$bg_height, fill=>$bg_col, stroke=>$bg_stroke_col);
+    $svg_obj->rect(x=>0, y=>0, width=>$bg_width, height=>$bg_height, fill=>$bg_col, stroke=>$bg_stroke_col) unless $skip_bg;
     return $svg_obj;
 }
 
