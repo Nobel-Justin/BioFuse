@@ -27,8 +27,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Visual::Axis';
 #----- version --------
-$VERSION = "0.04";
-$DATE = '2018-12-04';
+$VERSION = "0.05";
+$DATE = '2021-01-12';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -44,6 +44,7 @@ my @functoion_list = qw/
 
 #--- whole work to draw Y axis ---
 #--- default: rightVertical; set rightVerti as 1 for rightVertical
+#--- note: svg_obj will be initialized when undef given
 sub show_Y_axis{
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
