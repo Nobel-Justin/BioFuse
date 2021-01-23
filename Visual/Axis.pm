@@ -27,8 +27,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Visual::Axis';
 #----- version --------
-$VERSION = "0.05";
-$DATE = '2021-01-12';
+$VERSION = "0.06";
+$DATE = '2021-01-23';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -95,7 +95,6 @@ sub show_Y_axis{
                                        EMAIL => $EMAIL
                                      );
     }
-
 
     # draw y axis
     $svg_obj->line( x1 => $axisZX + $rgtvtXshift + 1 * $rgtvtRatio,
@@ -201,6 +200,9 @@ sub show_Y_axis{
             $LegVerOuterEdgeY += ( $LegIconHeight + $LegTextIconGap ) * $legYratio;
         }
     }
+
+    # return initialized svg obj
+    return $svg_obj if !defined $parm{svg_obj};
 }
 
 #--- automatically get the resol and lab step of Y axis ---
