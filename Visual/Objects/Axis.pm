@@ -186,7 +186,7 @@ sub add_stub{
     my $axis = shift;
     my %parm = @_;
     my $stub = $parm{stub};
-    push $axis->{stub}, $stub unless any {$_==$stub} @{$axis->{stub}};
+    push @{$axis->{stub}}, $stub unless any {$_==$stub} @{$axis->{stub}};
     @{$axis->{stub}} = sort {$a<=>$b} @{$axis->{stub}};
 }
 

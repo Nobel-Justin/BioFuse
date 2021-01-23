@@ -169,10 +169,10 @@ sub getRegexRegion{
         my $match_st = $-[0];
         my $match_ed = $+[0];
         if($dismatch){
-            push $RegionAref, [$lastIdx+$offset, $lastIdx+$match_st] if $match_st;
+            push @{$RegionAref}, [$lastIdx+$offset, $lastIdx+$match_st] if $match_st;
         }
         else{
-            push $RegionAref, [$lastIdx+$match_st+$offset, $lastIdx+$match_ed];
+            push @{$RegionAref}, [$lastIdx+$match_st+$offset, $lastIdx+$match_ed];
         }
         # update
         $lastIdx += $match_ed;
@@ -180,7 +180,7 @@ sub getRegexRegion{
     }
     # last part?
     if($dismatch && length($StrTest)){
-        push $RegionAref, [$lastIdx+$offset, $lastIdx+length($StrTest)];
+        push @{$RegionAref}, [$lastIdx+$offset, $lastIdx+length($StrTest)];
     }
     return $RegionAref;
 }
