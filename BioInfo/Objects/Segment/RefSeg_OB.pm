@@ -18,8 +18,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Segment::RefSeg_OB';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2019-05-24';
+$VERSION = "0.02";
+$DATE = '2021-05-21';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -33,13 +33,15 @@ my @functoion_list = qw/
                         length
                         set_note
                         note
+                        set_seq
+                        seq
                      /;
 
 #--- structure of object
 # refseg -> id = $id
 # refseg -> length = $length
 # refseg -> note = $note
-# refseg -> tmp = $tmp
+# refseg -> seq = {orig=>orig_seq, h1=>h1_seq, .., hx=>hx_seq}
 
 #--- construction of object
 sub new{
@@ -83,6 +85,26 @@ sub set_note{
 sub note{
     my $refseg = shift;
     return $refseg->{note} || 'N/A';
+}
+
+#--- seq sequence ---
+sub set_seq{
+    my $refseg = shift;
+    my %parm = @_;
+    unless(defined $parm{seqID} && defined $parm{seq}){
+        cluck_and_exit "<ERROR>\trequires both seqID and seq.\n";
+    }
+    $refseg->{seq}->{$parm{seqID}} = $parm{seq};
+}
+
+#--- return sequence ---
+sub seq{
+    my $refseg = shift;
+    my %parm = @_;
+    unless(defined $parm{seqID} && exists $refseg->{seq}->{$parm{seqID}}){
+        cluck_and_exit "<ERROR>\tcannot find $parm{seqID} seq.\n";
+    }
+    return $refseg->{seq}->{$parm{seqID}};
 }
 
 1; ## tell the perl script the successful access of this module.
