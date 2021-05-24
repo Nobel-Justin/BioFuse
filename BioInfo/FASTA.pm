@@ -26,8 +26,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::FASTA';
 #----- version --------
-$VERSION = "0.33";
-$DATE = '2019-05-26';
+$VERSION = "0.34";
+$DATE = '2021-05-24';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -83,12 +83,14 @@ sub read_fasta_file{
 
 #--- write fa file, can extend some base at the end ---
 ## will not change the original sequence
+## create file (path given) or write via filehandle (FH given)
 sub write_fasta_file{
     # options
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
     my $seq_Sref = $parm{SeqSref};
     my $fa_file = $parm{FaFile};
+    my $fa_FH = $parm{FaFH};
     my $segname = $parm{SegName};
     my $linebase = $parm{LineBase} || 50;
     my $CL_Extend_Len = $parm{CircleExtLen} || 0;
@@ -107,19 +109,23 @@ sub write_fasta_file{
     }
 
     # create fasta file
-    open (FA,Try_GZ_Write($fa_file)) || die "fail write $fa_file: $!\n";
+    if(defined $fa_file && !defined $fa_FH){
+        open ($fa_FH,Try_GZ_Write($fa_file)) || die "fail write $fa_file: $!\n";
+    }
     if( !$split_N_bool ){
-        print FA ">$segname\n";
-        print FA substr($new_seg, $_ * $linebase, $linebase)."\n" for ( 0 .. int( (length($new_seg)-1) / $linebase ) );
+        print {$fa_FH} ">$segname\n";
+        print {$fa_FH} substr($new_seg, $_ * $linebase, $linebase)."\n" for ( 0 .. int( (length($new_seg)-1) / $linebase ) );
     }
     else{ # split N
         my @N_split_seg = split /N+/i, $new_seg;
         for (my $i = 0; $i <= $#N_split_seg; $i++){
-            print FA ">$segname-part$i\n";
-            print FA substr($N_split_seg[$i], $_ * $linebase, $linebase)."\n" for ( 0 .. int( (length($N_split_seg[$i])-1) / $linebase ) );
+            print {$fa_FH} ">$segname-part$i\n";
+            print {$fa_FH} substr($N_split_seg[$i], $_ * $linebase, $linebase)."\n" for ( 0 .. int( (length($N_split_seg[$i])-1) / $linebase ) );
         }
     }
-    close FA;
+    if(defined $fa_file && !defined $fa_FH){
+        close $fa_FH;
+    }
 }
 
 #--- construct BWA index ---
