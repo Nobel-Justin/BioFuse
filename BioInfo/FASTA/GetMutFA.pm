@@ -5,7 +5,7 @@ use warnings;
 use Getopt::Long;
 use List::Util qw/ min max any first /;
 use Data::Dumper;
-use BioFuse::Util::Log qw/ warn_and_exit stout_and_sterr /;
+use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::Util::Sys qw/ file_exist /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen intersect /;
@@ -28,8 +28,8 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::FASTA::GetMutFA';
 #----- version --------
-$VERSION = "0.05";
-$DATE = '2019-10-22';
+$VERSION = "0.06";
+$DATE = '2021-05-20';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -84,7 +84,7 @@ sub Load_moduleVar_to_pubVarPool{
                 ( $_ );
             }
             else{
-                warn_and_exit "<ERROR>\tkey $_->[0] is already in V_Href!\n";
+                cluck_and_exit "<ERROR>\tkey $_->[0] is already in V_Href!\n";
             }
         }
         (
@@ -164,10 +164,15 @@ sub GetMutFasta{
 ## ref+ref  h1:ref,A,1;h2:ref,A,1
 ## snv+ref  h1:ref,A,1;h2:snv,G,1
 ## ins+ref  h1:ref,A,1;h2:ins,+CC,1
-## del+ref  h1:ref,A,1;h2:ins,-3,1  or  h1:ref,A,1;h2:ins,-AGA,1
+## del+ref  h1:ref,A,1;h2:del,-3,1  or  h1:ref,A,1;h2:del,-AGA,1
 ## cnv      single locus: change the last integer of each hap
 ## cnv      region locus: h1:cnv,-,2;h2:cnv:-:3
 sub load_mutations{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $hapHf = $parm{hapHf} || undef; # optional
+
     open (ML, Try_GZ_Read($V_Href->{mut_list})) || die "fail read mutation list: $!\n";
     # theme
     (my $theme_line = lc(<ML>)) =~ s/^#//;
@@ -178,8 +183,11 @@ sub load_mutations{
         my %mut = map{ ($theme_tag[$_],$info[$_]) } (0 .. $#theme_tag);
         my $mut_Hf = { stp => $mut{stp}, edp => $mut{edp}, gene => $mut{gene}||'N/A' };
         # hapInfo
-        my %hapInfo = map { my ($hapNO, $type, $allele, $cn) = split /[:,]/;
-                            ($hapNO => {type => $type, allele => $allele, cn => $cn});
+        my %hapInfo = map { my ($hapID, $type, $allele, $cn) = split /[:,]/;
+                            if(defined $hapHf && !exists $hapHf->{$hapID}){ # check existence
+                                cluck_and_exit "<ERROR>\tthe hap ($hapID) does not exist.\n";
+                            }
+                            ($hapID => {type => $type, allele => $allele, cn => $cn});
                           } split /;/, $mut{hapinfo};
         $mut_Hf->{hapinfo} = \%hapInfo;
         # record mut
@@ -288,7 +296,7 @@ sub test_mut_dist{
         my $warn =  "$chr neighbor mutations distance less than required ($V_Href->{minMutDist}).\n"
                    .Data::Dumper->Dump([$a_mut,$b_mut],[qw/a_mut b_mut/]);
         if($V_Href->{minMutDistAct} eq 'x'){
-            warn_and_exit $warn;
+            cluck_and_exit $warn;
         }
         else{
             warn $warn."skip the latter one\n";
@@ -312,14 +320,14 @@ sub alertDiffCN{
         if(   scalar keys %{$mut_i_Hf->{hapinfo}}
            != scalar keys %{$mut_j_Hf->{hapinfo}}
         ){
-            warn_and_exit  "<ERROR>\tmerged mutations have different amount of haplotypes.\n"
+            cluck_and_exit  "<ERROR>\tmerged mutations have different amount of haplotypes.\n"
                           .Data::Dumper->Dump([$mut_i_Hf, $mut_j_Hf], [qw(mut_i mut_j)]);
         }
-        for my $hapNO (sort keys %{$mut_i_Hf->{hapinfo}}){
-            if(   !exists $mut_j_Hf->{hapinfo}->{$hapNO}
-               || $mut_i_Hf->{hapinfo}->{$hapNO}->{cn} != $mut_j_Hf->{hapinfo}->{$hapNO}->{cn}
+        for my $hapID (sort keys %{$mut_i_Hf->{hapinfo}}){
+            if(   !exists $mut_j_Hf->{hapinfo}->{$hapID}
+               || $mut_i_Hf->{hapinfo}->{$hapID}->{cn} != $mut_j_Hf->{hapinfo}->{$hapID}->{cn}
             ){
-                warn_and_exit  "<ERROR>\tmerged mutations have different haplotype $hapNO.\n"
+                cluck_and_exit  "<ERROR>\tmerged mutations have different haplotype $hapID.\n"
                               .Data::Dumper->Dump([$mut_i_Hf, $mut_j_Hf], [qw(mut_i mut_j)]);
             }
         }
@@ -359,20 +367,20 @@ sub add_mut_on_chr{
         for my $t ('snv', '(ins)|(del)'){
             for my $mut (sort {$b->{stp}<=>$a->{stp}} @$mut_Af){
                 my $pidx = $mut->{stp} - $grp_Hf->{stp};
-                for my $hapNO (sort keys %{$mut->{hapinfo}}){
-                    my $hap_Hf = $mut->{hapinfo}->{$hapNO};
-                    $seq{$hapNO} = $refseq unless exists $seq{$hapNO};
-                    $hap_cn{$hapNO} = $hap_Hf->{cn}; # update
+                for my $hapID (sort keys %{$mut->{hapinfo}}){
+                    my $hap_Hf = $mut->{hapinfo}->{$hapID};
+                    $seq{$hapID} = $refseq unless exists $seq{$hapID};
+                    $hap_cn{$hapID} = $hap_Hf->{cn}; # update
                     next if $hap_Hf->{cn} == 0 || $hap_Hf->{type} !~ /^$t$/i;
-                    &add_single_mut(type=>$hap_Hf->{type}, alt=>$hap_Hf->{allele}, pidx=>$pidx, seqSf=>\$seq{$hapNO});
+                    &add_single_mut(type=>$hap_Hf->{type}, alt=>$hap_Hf->{allele}, pidx=>$pidx, seqSf=>\$seq{$hapID});
                 }
             }
         }
         # output
-        for my $hapNO (sort keys %seq){
-            for my $cn (1 .. $hap_cn{$hapNO}){
-                print {$mfafh} ">$segName:$grp_Hf->{stp}-$grp_Hf->{edp}:$hapNO:cn$cn\n";
-                print {$mfafh} substr($seq{$hapNO}, $_ * $linebase, $linebase)."\n" for ( 0 .. int( (length($seq{$hapNO})-1) / $linebase ) );
+        for my $hapID (sort keys %seq){
+            for my $cn (1 .. $hap_cn{$hapID}){
+                print {$mfafh} ">$segName:$grp_Hf->{stp}-$grp_Hf->{edp}:$hapID:cn$cn\n";
+                print {$mfafh} substr($seq{$hapID}, $_ * $linebase, $linebase)."\n" for ( 0 .. int( (length($seq{$hapID})-1) / $linebase ) );
             }
         }
     }
