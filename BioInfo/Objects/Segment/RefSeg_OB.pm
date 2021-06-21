@@ -126,7 +126,7 @@ sub set_circular{
 #--- check whether circular or not ---
 sub is_circular{
     my $virus_OB = shift;
-    return $virus_OB->{circular};
+    return $virus_OB->{circular} || 0; # default 0
 }
 
 #--- set extended length specific for circular ---
@@ -146,22 +146,24 @@ sub extLen{
 sub set_seq{
     my $refseg = shift;
     my %parm = @_;
-    unless(defined $parm{seqID} && defined $parm{seq}){
-        cluck_and_exit "<ERROR>\trequires both seqID and seq.\n";
+    my $seqID = $parm{seqID} || 'orig';
+    unless(defined $parm{seq}){
+        cluck_and_exit "<ERROR>\trequires seq.\n";
     }
-    $refseg->{seq}->{$parm{seqID}} = $parm{seq};
+    $refseg->{seq}->{$seqID} = $parm{seq};
 }
 
 #--- return sequence ---
 sub seq{
     my $refseg = shift;
     my %parm = @_;
+    my $seqID = $parm{seqID} || 'orig';
     if(   !$parm{test}
-       && !(defined $parm{seqID} && exists $refseg->{seq}->{$parm{seqID}})
+       && !exists $refseg->{seq}->{$seqID}
       ){
-        cluck_and_exit "<ERROR>\tcannot find $parm{seqID} seq.\n";
+        cluck_and_exit "<ERROR>\tcannot find $seqID seq.\n";
     }
-    return $refseg->{seq}->{$parm{seqID}} || undef;
+    return $refseg->{seq}->{$seqID} || undef;
 }
 
 #--- get segment sequence based on pos/prime/strd ---
