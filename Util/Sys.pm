@@ -22,8 +22,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Sys';
 #----- version --------
-$VERSION = "0.34";
-$DATE = '2019-05-23';
+$VERSION = "0.35";
+$DATE = '2021-08-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -41,21 +41,37 @@ my @functoion_list = qw/
 sub file_exist{
     shift @_ if(@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
-    my $filePath = $parm{filePath};
+    my $filePath = $parm{filePath}; # scalar(filepath) or ref of hash/array/scalar
     my $alert = $parm{alert} || 0;
 
-    if(    !defined $filePath
-        || length($filePath) == 0
+    my $exist = 1; # initial
+    if( !defined $filePath ){
+        $exist = 0;
+    }
+    elsif( ref($filePath) ){ # ref: ARRAY HASH SCALAR
+        if( ref($filePath) eq 'ARRAY' ){
+            $exist &&= &file_exist(filePath=>$_,alert=>$alert) for @$filePath;
+        }
+        elsif( ref($filePath) eq 'HASH' ){
+            $exist &&= &file_exist(filePath=>$_,alert=>$alert) for keys %$filePath;
+        }
+        elsif( ref($filePath) eq 'SCALAR' ){
+            $exist &&= &file_exist(filePath=>$$filePath,alert=>$alert);
+        }
+        else{ # wrong type
+            $exist = 0;
+        }
+    }
+    elsif( length($filePath) == 0
         || !-e abs_path( $filePath )
         || `file $filePath` =~ /broken symbolic link/
     ){
-        cluck_and_exit "<ERROR>\tFile does not exist:\n"
-                            ."\t$filePath\n" if( $alert );
-        return 0;
+        $exist = 0;
     }
-    else{
-        return 1;
-    }
+
+    cluck_and_exit "<ERROR>\tFile does not exist:\n"
+                        ."\t$filePath\n" if( $alert && $exist == 0 );
+    return $exist;
 }
 
 #--- run shell command trible times ---
