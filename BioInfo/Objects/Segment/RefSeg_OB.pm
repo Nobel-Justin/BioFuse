@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Segment::RefSeg_OB';
 #----- version --------
-$VERSION = "0.04";
-$DATE = '2021-05-27';
+$VERSION = "0.05";
+$DATE = '2021-07-22';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -39,6 +39,7 @@ my @functoion_list = qw/
                         is_circular
                         set_extLen
                         extLen
+                        has_seqID
                         set_seq
                         seq
                         segSeq
@@ -140,6 +141,15 @@ sub set_extLen{
 sub extLen{
     my $virus_OB = shift;
     return $virus_OB->{extLen};
+}
+
+#--- check whether has given seqID ---
+sub has_seqID{
+    my $refseg = shift;
+    my %parm = @_;
+    my $seqID = $parm{seqID};
+    my $attr = $parm{attr} || 'mut'; # mut/seq/regMap
+    return (exists $refseg->{$attr}->{$seqID} ? 1 : 0);
 }
 
 #--- seq sequence ---
