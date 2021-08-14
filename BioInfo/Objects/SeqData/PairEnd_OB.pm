@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::PairEnd_OB';
 #----- version --------
-$VERSION = "0.09";
-$DATE = '2019-05-25';
+$VERSION = "0.10";
+$DATE = '2021-08-14';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -35,6 +35,7 @@ my @functoion_list = qw/
                         peIdx
                         rOB_Af
                         sorted_rOB_Af
+                        arranged_rOB_Af
                         tryDiscardAlign
                         test_need_RefSeg
                         test_pair_RefSeg
@@ -118,6 +119,37 @@ sub sorted_rOB_Af{
                 } @reads_OB;
     # return Aref
     return \@reads_OB;
+}
+
+#--- return arranged reads OB array-ref ---
+# turn: R1, R2
+# if has soft/hard-clip alignment, R1:5p, R1:3p, R2:3p, R2:5p
+sub arranged_rOB_Af{
+    my $pe_OB = shift;
+    my %parm = @_;
+    my $rEndAref = $parm{rEndAref} || [1,2]; # [1,2] or [1] or [2]
+
+    # get rOB of required rEnd
+    # only select mapped
+    my @arranged_rOB;
+    for my $rEnd (sort {$a<=>$b} @$rEndAref){ # 1,2 or 1 or 2
+        my @rOB = grep ! $_->is_unmap, @{ $pe_OB->rOB_Af(reads_end => $rEnd) };
+        if(scalar(@rOB)==1){
+            push @arranged_rOB, @rOB;
+        }
+        else{ # >1 alignment, should be soft/hard-clip mapped
+            push @arranged_rOB,  map {($_->[0])}
+                                sort { $rEnd == 1 ? $a->[1] <=> $b->[1]
+                                                  : $b->[1] <=> $a->[1]
+                                     }
+                                 map {[ $_,
+                                        $_->is_fw_map ? $_->foreClipLen(clipType => 'SH')
+                                                      : $_->hindClipLen(clipType => 'SH')
+                                      ]} @rOB;
+        }
+    }
+    # return Aref
+    return \@arranged_rOB;
 }
 
 #--- try to dicard alignment of certain scenario ---
