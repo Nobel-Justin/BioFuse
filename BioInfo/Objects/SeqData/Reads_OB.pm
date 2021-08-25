@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
-$VERSION = "0.17";
-$DATE = '2019-11-09';
+$VERSION = "0.18";
+$DATE = '2021-08-24';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -37,6 +37,7 @@ my @functoion_list = qw/
                         rlen
                         mReadLen
                         mRefLen
+                        cigar
                         lenFromCigar
                         barcode
                         add_BarcToPid
@@ -228,6 +229,12 @@ sub mRefLen{
                                - $reads_OB->lenFromCigar(type=>'I');
     }
     return $reads_OB->{mRefLen};
+}
+
+#--- return cigar ---
+sub cigar{
+    my $reads_OB = shift;
+    return $reads_OB->{cigar};
 }
 
 #--- get length of given type from Cigar ---
