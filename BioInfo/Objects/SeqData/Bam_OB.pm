@@ -25,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
-$VERSION = "0.18";
-$DATE = '2020-02-09';
+$VERSION = "0.19";
+$DATE = '2021-08-24';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -294,13 +294,14 @@ sub start_read{
     my %parm = @_;
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
     my $viewOpt = $parm{viewOpt} || '';
+    my $viewReg = $parm{viewReg} || '';
 
     # check existence
     unless(file_exist(filePath => $bam->filepath)){
         cluck_and_exit "<ERROR>\tCannot find bam\n".Dumper($bam);
     }
     # open fh
-    open (my $readFH,"$samtools view $viewOpt $bam->{filepath} |") || die "fail reading: $!\n".Dumper($bam);
+    open (my $readFH,"$samtools view $viewOpt $bam->{filepath} $viewReg |") || die "fail reading: $!\n".Dumper($bam);
 
     return $readFH;
 }
