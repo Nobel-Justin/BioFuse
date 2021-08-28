@@ -2,7 +2,7 @@ package BioFuse::BioInfo::Objects::SeqData::PairEnd_OB;
 
 use strict;
 use warnings;
-use List::Util qw/ min first /;
+use List::Util qw/ min first max /;
 use Data::Dumper;
 use BioFuse::Util::Log qw/ cluck_and_exit /;
 use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen /;
@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::PairEnd_OB';
 #----- version --------
-$VERSION = "0.10";
-$DATE = '2021-08-14';
+$VERSION = "0.11";
+$DATE = '2021-08-26';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -36,6 +36,7 @@ my @functoion_list = qw/
                         rOB_Af
                         sorted_rOB_Af
                         arranged_rOB_Af
+                        maxClipLen
                         tryDiscardAlign
                         test_need_RefSeg
                         test_pair_RefSeg
@@ -98,7 +99,8 @@ sub rOB_Af{
 sub sorted_rOB_Af{
     my $pe_OB = shift;
     my %parm = @_;
-    my $rEndAref = $parm{rEndAref} || [1,2]; # [1,2] or [1] or [2]
+    my $rEndAref = $parm{rEndAref}; # [1,2] or [1] or [2]
+       $rEndAref = [keys %{$pe_OB->{reads_OB}}] if !defined $rEndAref;
     my $onlyMap  = $parm{onlyMap} || 0;
     my $chrSortHref = $parm{chrSortHref} || undef;
     my $chrSortKey  = $parm{chrSortKey} || undef;
@@ -127,7 +129,8 @@ sub sorted_rOB_Af{
 sub arranged_rOB_Af{
     my $pe_OB = shift;
     my %parm = @_;
-    my $rEndAref = $parm{rEndAref} || [1,2]; # [1,2] or [1] or [2]
+    my $rEndAref = $parm{rEndAref}; # [1,2] or [1] or [2]
+       $rEndAref = [keys %{$pe_OB->{reads_OB}}] if !defined $rEndAref;
 
     # get rOB of required rEnd
     # only select mapped
@@ -150,6 +153,16 @@ sub arranged_rOB_Af{
     }
     # return Aref
     return \@arranged_rOB;
+}
+
+#--- return the max clip length (given type) of all rOB
+sub maxClipLen{
+    my $pe_OB = shift;
+    my %parm = @_;
+    my $clipType = $parm{clipType} || 'S';
+    return max
+           map{ $_->maxClipLen(clipType=>$clipType) }
+           @{$pe_OB->sorted_rOB_Af(onlyMap=>1)};
 }
 
 #--- try to dicard alignment of certain scenario ---

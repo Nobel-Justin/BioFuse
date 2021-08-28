@@ -563,6 +563,15 @@ sub biClipLen{
             + $reads_OB->hindClipLen( clipType => $clipType ) );
 }
 
+#--- return max clip length of given type ---
+sub maxClipLen{
+    my $reads_OB = shift;
+    my %parm = @_;
+    my $clipType = $parm{clipType} || 'S';
+    return max( $reads_OB->foreClipLen( clipType => $clipType ),
+                $reads_OB->hindClipLen( clipType => $clipType ) );
+}
+
 #--- get the length to fix Tlen based on soft-clip Edge part ---
 sub tlen_FixTlen_with_S{
     my $reads_OB = shift;
