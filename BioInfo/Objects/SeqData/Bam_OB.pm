@@ -25,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
-$VERSION = "0.19";
-$DATE = '2021-08-24';
+$VERSION = "0.20";
+$DATE = '2021-11-15';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -66,6 +66,7 @@ my @functoion_list = qw/
                         get_region_alt_vcf_gz
                         get_pos_marker_stat
                         get_allele_marker_stat
+                        get_bam_stats
                         smartBam_PEread
                      /;
 
@@ -647,6 +648,24 @@ sub get_region_alt_vcf_gz{
                      "($bcftools index $vcfgz)";
     # run
     trible_run_for_success( $hetSNP_cmd, $cmd_name );
+}
+
+#--- get bam stats from samtools ---
+sub get_bam_stats{
+    my $bam = shift;
+    my %parm = @_;
+    my $statsFile = $parm{statsFile};
+    my $opt = $parm{opt} || undef;
+    my $bed = $parm{bed} || undef;
+    my $cmd_name = $parm{cmd_name} || 'get_bam_stats';
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+    # commands
+    my $bamStats_cmd =  "$samtools stats ";
+                       .(defined $opt ? "$opt " : '')
+                       .(defined $bed ? "-t $bed " : '')
+                       ."$bam->{filepath} > $statsFile";
+    # run
+    trible_run_for_success( $bamStats_cmd, $cmd_name );
 }
 
 #--- do stat on marker at given position ---
