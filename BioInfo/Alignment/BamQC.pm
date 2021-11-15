@@ -60,7 +60,7 @@ sub return_HELP_INFO{
          -i  [s]  sample ID. <required>
          -s  [s]  samtools path. <required>
          -bq [s]  accumulated base quality to stat. ['20,30']
-         -t  [s]  target region BED file, can be used multiple times. <required>
+         -t  [s]  target region BED file, can be used multiple times.
                   1) Format: -t 'key1:xxx.bed' -t 'key2:yyy.bed'
                   2) Please use the non-N region BED file for WGS, see func 'get_nonN'.
          -d  [s]  accumulated depth to stat for region listed in BED files. ['4,10,20']

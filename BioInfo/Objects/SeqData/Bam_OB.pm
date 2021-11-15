@@ -660,7 +660,7 @@ sub get_bam_stats{
     my $cmd_name = $parm{cmd_name} || 'get_bam_stats';
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
     # commands
-    my $bamStats_cmd =  "$samtools stats ";
+    my $bamStats_cmd =  "$samtools stats "
                        .(defined $opt ? "$opt " : '')
                        .(defined $bed ? "-t $bed " : '')
                        ."$bam->{filepath} > $statsFile";
