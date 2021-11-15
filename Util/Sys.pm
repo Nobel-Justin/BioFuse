@@ -22,8 +22,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Sys';
 #----- version --------
-$VERSION = "0.35";
-$DATE = '2021-08-03';
+$VERSION = "0.36";
+$DATE = '2021-10-12';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -129,7 +129,7 @@ sub reset_folder{
     shift @_ if(@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
     my $folder = $parm{folder};
-    `rm -rf $folder`;
+    `rm -rf $folder` if -e $folder;
     `mkdir -p $folder`;
 }
 
