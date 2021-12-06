@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::PairEnd_OB';
 #----- version --------
-$VERSION = "0.11";
-$DATE = '2021-08-26';
+$VERSION = "0.12";
+$DATE = '2021-11-30';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -33,6 +33,8 @@ my @functoion_list = qw/
                         load_reads_OB
                         pid
                         peIdx
+                        rg_id
+                        rg_OB
                         rOB_Af
                         sorted_rOB_Af
                         arranged_rOB_Af
@@ -83,6 +85,18 @@ sub pid{
 sub peIdx{
     my $pe_OB = shift;
     return $pe_OB->{peIdx};
+}
+
+#--- return reads group ID ---
+sub rg_id{
+    my $pe_OB = shift;
+    return $pe_OB->{reads_OB}->{1}->[0]->rg_id;
+}
+
+#--- return reads group OB ---
+sub rg_OB{
+    my $pe_OB = shift;
+    return $pe_OB->{reads_OB}->{1}->[0]->rg_OB;
 }
 
 #--- return array-ref of given reads-end ---
