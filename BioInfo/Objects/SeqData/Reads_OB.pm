@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
-$VERSION = "0.18";
-$DATE = '2021-08-24';
+$VERSION = "0.19";
+$DATE = '2021-11-30';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -34,6 +34,8 @@ my @functoion_list = qw/
                         mseg
                         mpos
                         mapQ
+                        rg_id
+                        rg_OB
                         rlen
                         mReadLen
                         mRefLen
@@ -199,6 +201,29 @@ sub mpos{
 sub mapQ{
     my $reads_OB = shift;
     return $reads_OB->{mapQ};
+}
+
+#--- return reads group ID ---
+sub rg_id{
+    my $reads_OB = shift;
+    if(!defined $reads_OB->{rg_id}){
+        cluck_and_exit "<ERROR>\tCan not find rg_id of reads $reads_OB->{pid}/$reads_OB->{endNO}\n";
+    }
+    else{
+        return $reads_OB->{rg_id};
+    }
+}
+
+#--- return reads group OB ---
+sub rg_OB{
+    my $reads_OB = shift;
+    if(!defined $reads_OB->{rg_OB}){
+        cluck_and_exit "<ERROR>\tCan not find rg_OB of reads $reads_OB->{pid}/$reads_OB->{endNO}\n".
+                              "\tPlease use 'find_rgOB' func of reads OB.\n";
+    }
+    else{
+        return $reads_OB->{rg_OB};
+    }
 }
 
 #--- return read length ---
