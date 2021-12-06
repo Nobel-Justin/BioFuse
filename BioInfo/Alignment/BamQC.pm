@@ -30,7 +30,7 @@ my ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Alignment::BamQC';
 #----- version --------
 $VERSION = "0.03";
-$DATE = '2020-11-15';
+$DATE = '2021-11-15';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
