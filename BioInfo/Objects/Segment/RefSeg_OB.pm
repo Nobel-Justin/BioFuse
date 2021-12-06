@@ -55,10 +55,10 @@ my @functoion_list = qw/
 
 #--- structure of object
 # refseg -> id = $id
-# refseg -> length = $length
+# refseg -> length = $length, this is the original length
 # refseg -> note = $note
 # virus_OB -> circular = 0(no)/1(yes)
-# virus_OB -> extLen = $extLen
+# virus_OB -> extLen = $extLen, this is just the extended path length
 # refseg -> seq = {orig=>orig_seq, h1=>h1_seq, .., hx=>hx_seq}
 # refseg -> regMap = {h1=>[{oSt=>origStp,oEd=>origEdp,hSt=>hapStp,hEd=>hapEdp},..,], h2=>[]}
 # refseg -> mut -> seqID -> stp -> {edp=>S, type=>S, ref=>S, allele=>S, discard=>0/1, comment=>S}
