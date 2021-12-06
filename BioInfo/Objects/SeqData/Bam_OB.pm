@@ -25,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
-$VERSION = "0.20";
-$DATE = '2021-11-15';
+$VERSION = "0.21";
+$DATE = '2021-12-05';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -60,6 +60,7 @@ my @functoion_list = qw/
                         rg_count_need_reads_ForIns
                         pick_rgOB
                         add_rgOB
+                        reads_count
                         get_regionCovStat
                         get_region_depth
                         delete_regionDepthFile
@@ -101,8 +102,7 @@ sub verify_bam{
     my $bam = shift;
     $bam->{filepath} = abs_path $bam->{filepath};
     if( ! file_exist(filePath => $bam->{filepath}) ){
-        cluck_and_exit "<ERROR>\tCannot find bam:\n"
-                            ."\t$bam->{filepath}\n";
+        cluck_and_exit "<ERROR>\tCannot find bam:\n".Dumper($bam);
     }
 }
 
@@ -298,9 +298,7 @@ sub start_read{
     my $viewReg = $parm{viewReg} || '';
 
     # check existence
-    unless(file_exist(filePath => $bam->filepath)){
-        cluck_and_exit "<ERROR>\tCannot find bam\n".Dumper($bam);
-    }
+    $bam->verify_bam;
     # open fh
     open (my $readFH,"$samtools view $viewOpt $bam->{filepath} $viewReg |") || die "fail reading: $!\n".Dumper($bam);
 
@@ -446,6 +444,40 @@ sub add_rgOB{
     $bam->{rgOB}->{$parm{rgOB}->RG_ID} = $parm{rgOB};
 }
 
+#--- count reads of given region ---
+sub reads_count{
+    my $bam = shift;
+    my %parm = @_;
+    my $region = $parm{region};
+    my $bed = $parm{bed};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+    my $onlyPropMap = $parm{onlyPropMap} || 0; # only properly mapped
+    my $skipSuppMap = $parm{skipSuppMap} || 0; # skip supplement/second alignment
+    my $skipDupRead = $parm{skipDupRead} || 0; # skip PCR duplicated reads
+    my $minMQ = defined $parm{minMQ} ? $parm{minMQ} : 30; # # mapping quality
+    my $maxClipRatio = $parm{maxClipRatio} || 0; # Sofe/Hart-clip part ratio
+
+    # check existence
+    $bam->verify_bam;
+
+    # read bam
+    my $reads_count = 0;
+    my $viewOpt  = "-q $minMQ";
+       $viewOpt .= "-f 0x2" if $onlyPropMap;
+       $viewOpt .= "-F 0x900" if $skipSuppMap; # -F 0x800 + 0x100
+       $viewOpt .= "-F 0x400" if $skipDupRead;
+    my $viewReg  = $region ? $region : (-e $bed ? "-L $bed" : "");
+    my $fh = $bam->start_read(samtools=>$samtools, viewOpt=>$viewOpt, viewReg=>$viewReg);
+    while(<$fh>){
+        my $reads_OB = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new(ReadsLineText => $_);
+        next if $maxClipRatio == 0 && $reads_OB->is_clip;
+        $reads_count++ if ($reads_OB->biClipLen / $reads_OB->rlen) <= $maxClipRatio;
+    }
+    close $fh;
+
+    return $reads_count;
+}
+
 #--- get coverage/depth stat of given region ---
 sub get_regionCovStat{
     my $bam = shift;
@@ -462,6 +494,9 @@ sub get_regionCovStat{
     my $circExtl = $parm{circExtl} || 0; # for such as circular virus
     my $availLen = $parm{availLen} || 0; # for such as non-N region of virus
     my $minDepth = $parm{minDepth} || 1; # pos less than such depth will be skipped
+
+    # check existence
+    $bam->verify_bam;
 
     # return hash
     my $statHf = { coverage => 0,
@@ -565,11 +600,10 @@ sub get_region_depth{
         cluck_and_exit "bam->get_region_depth( refseg=>?, st_pos=>?, ed_pos=>?, out_prefix=>?)\n";
     }
 
-    unless( defined($samtools) && -e $samtools ){
-        cluck_and_exit "<ERROR>:\tCannot locate samtools in function bam->get_region_depth().\n";
-    }
+    # check existence
+    $bam->verify_bam;
 
-    my $bamForDepth = $bam->{filepath};
+    my $bamPathForDepth = $bam->{filepath};
     my $viewRegParm = "$region_refseg:$region_st_pos-$region_ed_pos";
 
     # filter soft-clip
@@ -577,17 +611,17 @@ sub get_region_depth{
         my $tmp_bam = "$outFilePrefix.noSoftClip.bam";
         my $tmpbam_cmd = "( $samtools view $bam->{filepath} $viewRegParm | awk '\$6 !~ /S/' | $samtools view -S -b -o $tmp_bam - ) && ( $samtools index $tmp_bam )";
         trible_run_for_success($tmpbam_cmd, 'tmpNoSoftClipBam', {esdo_Nvb=>1});
-        $bamForDepth = $tmp_bam;
+        $bamPathForDepth = $tmp_bam;
     }
 
     # get depth
     $bam->{regionDepthFile} = "$outFilePrefix.depth.gz";
-    my $depth_cmd = "( $samtools depth -a -r $viewRegParm -q $min_baseQ -Q $min_mapQ $bamForDepth | gzip -c > $bam->{regionDepthFile} )";
+    my $depth_cmd = "( $samtools depth -a -r $viewRegParm -q $min_baseQ -Q $min_mapQ $bamPathForDepth | gzip -c > $bam->{regionDepthFile} )";
     trible_run_for_success($depth_cmd, 'bamDepth', {esdo_Nvb=>1});
 
     # sweep
-    if( $bamForDepth ne $bam->{filepath} ){
-        `rm -rf $bamForDepth`;
+    if( $bamPathForDepth ne $bam->{filepath} ){
+        `rm -rf $bamPathForDepth`;
     }
 }
 
@@ -599,7 +633,6 @@ sub delete_regionDepthFile{
 
 #--- get mutation vcf.gz in certain region ---
 sub get_region_alt_vcf_gz{
-
     my $bam = shift;
     my %parm = @_;
     my $vcfgz = $parm{vcfgz};
@@ -618,6 +651,9 @@ sub get_region_alt_vcf_gz{
     my $min_alleleDepth = $parm{min_alleleDepth} || 5;
     my $min_strdDepth = $parm{min_strdDepth} || 2;
     my $only_hetAlt = $parm{only_hetAlt} || 0;
+
+    # check existence
+    $bam->verify_bam;
 
     # commands
     my $hetSNP_cmd = "($samtools mpileup -t 'DP,AD,ADF,ADR,SP,INFO/AD,INFO/ADF,INFO/ADR'".
@@ -659,6 +695,8 @@ sub get_bam_stats{
     my $bed = $parm{bed} || undef;
     my $cmd_name = $parm{cmd_name} || 'get_bam_stats';
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+    # check existence
+    $bam->verify_bam;
     # commands
     my $bamStats_cmd =  "$samtools stats "
                        .(defined $opt ? "$opt " : '')
