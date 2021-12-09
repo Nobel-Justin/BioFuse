@@ -5,7 +5,7 @@ use warnings;
 use Cwd qw/ abs_path /;
 use Data::Dumper;
 use List::Util qw/ first sum min max /;
-use BioFuse::Util::Sys qw/ trible_run_for_success file_exist reset_folder /;
+use BioFuse::Util::Sys qw/ trible_run_for_success file_exist reset_folder remove_folder /;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::BioInfo::Objects::SeqData::Reads_OB;
 use BioFuse::BioInfo::Objects::SeqData::PairEnd_OB;
@@ -26,7 +26,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
 $VERSION = "0.21";
-$DATE = '2021-12-05';
+$DATE = '2021-12-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -51,6 +51,7 @@ my @functoion_list = qw/
                         toIndex
                         toFixmate
                         merge
+                        merge_and_sort
                         toMarkdup
                         start_read
                         start_write
@@ -188,11 +189,19 @@ sub toNsort{
     my $nSortBam = $parm{nSortBam};
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
+    # already Nsort?
+    if($bam->isNsort){
+        `cp $bam->{filepath} $nSortBam->{filepath}`;
+        stout_and_sterr "[INFO]\torigBam is already Nsort bam, Just Copy the bam file.\n"
+                             ."\torigBam: $bam->{filepath}\n"
+                             ."\tsortBam: $nSortBam->{filepath}\n";
+    }
+    # do Nsort
     my $sortTmpFolder = $nSortBam->filepath . '-nSortTmpFolder';
     reset_folder(folder => $sortTmpFolder);
     my $cmd = "$samtools sort --threads 4 -n -m 1G -T $sortTmpFolder/nSort -o $nSortBam->{filepath} $bam->{filepath}";
     trible_run_for_success($cmd, 'nSortBam', {esdo_Nvb=>1});
-    `rm -rf $sortTmpFolder`;
+    remove_folder(folder => $sortTmpFolder);
     stout_and_sterr "[INFO]\ttoNsort bam ok.\n"
                          ."\torigBam: $bam->{filepath}\n"
                          ."\tsortBam: $nSortBam->{filepath}\n";
@@ -212,11 +221,19 @@ sub toCsort{
     my $cSortBam = $parm{cSortBam};
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
+    # already Csort?
+    if($bam->isCsort){
+        `cp $bam->{filepath} $cSortBam->{filepath}`;
+        stout_and_sterr "[INFO]\torigBam is already Csort bam, Just Copy the bam file.\n"
+                             ."\torigBam: $bam->{filepath}\n"
+                             ."\tsortBam: $cSortBam->{filepath}\n";
+    }
+    # do Csort
     my $sortTmpFolder = $cSortBam->filepath . '-cSortTmpFolder';
     reset_folder(folder => $sortTmpFolder);
     my $cmd = "$samtools sort --threads 4 -m 1G -T $sortTmpFolder/nSort -o $cSortBam->{filepath} $bam->{filepath}";
     trible_run_for_success($cmd, 'cSortBam', {esdo_Nvb=>1});
-    `rm -rf $sortTmpFolder`;
+    remove_folder(folder => $sortTmpFolder);
     stout_and_sterr "[INFO]\ttoCsort bam ok.\n"
                          ."\torigBam: $bam->{filepath}\n"
                          ."\tsortBam: $cSortBam->{filepath}\n";
@@ -260,16 +277,52 @@ sub merge{
     my $bamAf = $parm{bamAf};
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
-    # check
+    # more than one bam
     cluck_and_exit "<ERROR>\tonly one bam to merge.\n".Dumper($bamAf) if @$bamAf <= 1;
-    cluck_and_exit "<ERROR>\tnot sorted bam.\n".Dumper($_) for grep {my $bm=$_; !$bm->isNsort && !$bm->isCsort} map {$_} @$bamAf;
-
+    # should be sorted by the same index (N or C)
+    if($bamAf->[0]->isNsort){
+        cluck_and_exit "<ERROR>\tnot N-sorted bam.\n".Dumper($_) for grep {my $bm=$_; !$bm->isNsort} map {$_} @$bamAf;
+    }
+    elsif($bamAf->[0]->isCsort){
+        cluck_and_exit "<ERROR>\tnot C-sorted bam.\n".Dumper($_) for grep {my $bm=$_; !$bm->isCsort} map {$_} @$bamAf;
+    }
+    else{
+        cluck_and_exit "<ERROR>\tnot sorted bam.\n".Dumper($bamAf->[0]);
+    }
+    # do merge
     my @bamPath = map {$_->filepath} @$bamAf;
     my $nSortPara = $bamAf->[0]->isNsort ? '-n' : '';
-    my $cmd = "$samtools merge $nSortPara -c -p --threads 4 $bam->{filepath} @bamPath";
+    my $cmd = "$samtools merge $nSortPara -f -c -p --threads 4 $bam->{filepath} @bamPath";
     trible_run_for_success($cmd, 'mergeBam', {esdo_Nvb=>1});
     # inform
-    stout_and_sterr "[INFO]\tSamTools merge bam ok.\n"
+    stout_and_sterr "[INFO]\tSamTools merge BAMs ok.\n"
+                         ."\tbam: $bam->{filepath}\n";
+}
+
+#--- merge several bams and N/C-sort---
+## this bam is the final merged-sorted bam
+sub merge_and_sort{
+    my $bam = shift;
+    my %parm = @_;
+    my $bamAf = $parm{bamAf};
+    my $sortBy = $parm{sortBy}; # 'N' or 'C'
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+
+    # temp merged bam
+    my $tmp_mergeBam = BioFuse::BioInfo::Objects::SeqData::Bam_OB->new(filepath => $bam->filepath.'tmp_merge.bam', tag => 'tmp_mergeBam');
+    $tmp_mergeBam->merge(bamAf => $bamAf, samtools => $samtools);
+    # sort
+    if($sortBy =~ /^C$/i){
+        $tmp_mergeBam->toCsort(cSortBam => $bam, samtools => $samtools);
+    }
+    elsif($sortBy =~ /^N$/i){
+        $tmp_mergeBam->toNsort(nSortBam => $bam, samtools => $samtools);
+    }
+    else{
+        cluck_and_exit "<ERROR>\twrong sortBy opt: $sortBy. Should be 'N' or 'C'.\n";
+    }
+    # inform
+    stout_and_sterr "[INFO]\tSamTools merge BAMs and sort ok.\n"
                          ."\tbam: $bam->{filepath}\n";
 }
 
