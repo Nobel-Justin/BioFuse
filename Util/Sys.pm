@@ -15,6 +15,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
               trible_run_for_success
               check_java_version
               reset_folder
+              remove_folder
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
@@ -22,8 +23,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Sys';
 #----- version --------
-$VERSION = "0.36";
-$DATE = '2021-10-12';
+$VERSION = "0.37";
+$DATE = '2021-12-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -35,6 +36,7 @@ my @functoion_list = qw/
                         trible_run_for_success
                         check_java_version
                         reset_folder
+                        remove_folder
                      /;
 
 #--- verify existence of file/softlink
@@ -129,8 +131,16 @@ sub reset_folder{
     shift @_ if(@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
     my $folder = $parm{folder};
-    `rm -rf $folder` if -e $folder;
+    &remove_folder(folder => $folder);
     `mkdir -p $folder`;
+}
+
+#--- try to `rm -rf` given folder path ---
+sub remove_folder{
+    shift @_ if(@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $folder = $parm{folder};
+    `rm -rf $folder` if -e $folder;
 }
 
 1; ## tell the perl script the successful access of this module.
