@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
-$VERSION = "0.19";
-$DATE = '2021-11-30';
+$VERSION = "0.20";
+$DATE = '2021-12-09';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -32,7 +32,9 @@ my @functoion_list = qw/
                         pid
                         endNO
                         mseg
+                        p_mseg
                         mpos
+                        p_mpos
                         mapQ
                         rg_id
                         rg_OB
@@ -46,13 +48,18 @@ my @functoion_list = qw/
                         optfd_str
                         add_str_to_optfd
                         optfd_has_regex
+                        update_optfd
                         mmCount
                         editDist
+                        alignScore
                         judgeAlign
                         is_proper_map
                         is_fw_map
+                        is_p_fw_map
                         is_rv_map
+                        is_p_rv_map
                         is_unmap
+                        is_p_unmap
                         is_2ndmap
                         free_2ndmap
                         is_suppmap
@@ -75,6 +82,9 @@ my @functoion_list = qw/
                         get_pos_allele
                         printSAM
                         printFQ
+                        update_attr
+                        set_flag
+                        unset_flag
                         find_rgOB
                         add_RGrIDprefToPid
                         update_rgOB_maxRlen
@@ -103,6 +113,7 @@ my @functoion_list = qw/
 # reads_OB -> rg_id = $rg_id
 # reads_OB -> rg_OB = $rg_OB
 # reads_OB -> endNO = $endNO
+# reads_OB -> AS = $AS, alignment score
 
 #--- construction of object ---
 sub new{
@@ -191,10 +202,22 @@ sub mseg{
     return $reads_OB->{mseg};
 }
 
+#--- return mapped segment name of the paired end ---
+sub p_mseg{
+    my $reads_OB = shift;
+    return $reads_OB->{p_mseg};
+}
+
 #--- return mapped position ---
 sub mpos{
     my $reads_OB = shift;
     return $reads_OB->{mpos};
+}
+
+#--- return mapped position of the paired end ---
+sub p_mpos{
+    my $reads_OB = shift;
+    return $reads_OB->{p_mpos};
 }
 
 #--- return mapping quality ---
@@ -343,6 +366,16 @@ sub optfd_has_regex{
     return ($reads_OB->optfd_str =~ /$parm{regex}/);
 }
 
+#--- update optfd ---
+## !! note: Z, Printable string, including space (\S cannot fix this, so far)
+sub update_optfd{
+    my $reads_OB = shift;
+    my %parm = @_;
+    my $tag = $parm{tag};
+    my $value = $parm{value};
+    $reads_OB->optfd_str =~ s/\b$tag\S+\b/$tag$value/;
+}
+
 #--- return mismatch count ---
 sub mmCount{
     my $reads_OB = shift;
@@ -366,6 +399,21 @@ sub editDist{
     }
     else{
         cluck_and_exit "<ERROR>\tCannot find edit distance info of reads $reads_OB->{pid} end-$reads_OB->{endNO}.\n";
+    }
+}
+
+#--- return alignment score ---
+sub alignScore{
+    my $reads_OB = shift;
+    if(defined $reads_OB->{AS}){
+        return $reads_OB->{AS};
+    }
+    if($reads_OB->optfd_str =~ /AS:i:(\d+)/){
+        $reads_OB->{AS} = $1;
+        return $1;
+    }
+    else{
+        return 0;
     }
 }
 
@@ -406,16 +454,34 @@ sub is_fw_map{
     return !($reads_OB->{flag} & 0x4) && !($reads_OB->{flag} & 0x10);
 }
 
+#--- test whether its paired end is forward-mapped ---
+sub is_p_fw_map{
+    my $reads_OB = shift;
+    return !($reads_OB->{flag} & 0x8) && !($reads_OB->{flag} & 0x20);
+}
+
 #--- test whether it is reversed-mapped ---
 sub is_rv_map{
     my $reads_OB = shift;
     return !($reads_OB->{flag} & 0x4) && ($reads_OB->{flag} & 0x10);
 }
 
+#--- test whether its paired end is reversed-mapped ---
+sub is_p_rv_map{
+    my $reads_OB = shift;
+    return !($reads_OB->{flag} & 0x8) && ($reads_OB->{flag} & 0x20);
+}
+
 #--- test whether it is un-mapped ---
 sub is_unmap{
     my $reads_OB = shift;
     return $reads_OB->{flag} & 0x4;
+}
+
+#--- test whether its paired end is un-mapped ---
+sub is_p_unmap{
+    my $reads_OB = shift;
+    return $reads_OB->{flag} & 0x8;
 }
 
 #--- test whether it is 0x100, secondary alignment ---
@@ -972,6 +1038,31 @@ sub printFQ{
         $bQul  = reverse $bQul;
     }
     return join("\n", "\@$reads_OB->{pid}/$reads_OB->{endNO}", $rSeq, '+', $bQul);
+}
+
+#---- update attribute ---
+sub update_attr{
+    my $reads_OB = shift;
+    my %parm = @_;
+    $reads_OB->{ $parm{attr_id} } = $parm{value};
+}
+
+#---- set flag ---
+sub set_flag{
+    my $reads_OB = shift;
+    my %parm = @_;
+    $parm{flag_Af} = [$parm{flag}] if !defined $parm{flag_Af};
+    $reads_OB->{flag} |= $_ for @{$parm{flag_Af}};
+}
+
+#---- unset flag ---
+sub unset_flag{
+    my $reads_OB = shift;
+    my %parm = @_;
+    $parm{flag_Af} = [$parm{flag}] if !defined $parm{flag_Af};
+    for (@{$parm{flag_Af}}){
+        $reads_OB->{flag} -= $_ if $reads_OB->{flag} & $_;
+    }
 }
 
 #--- find rg_OB based on rg_id ---
