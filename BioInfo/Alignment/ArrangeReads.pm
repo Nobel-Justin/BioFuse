@@ -110,7 +110,7 @@ sub SelectRefsegForReads{
             # go on: different scenarios
             if( $endsMap{1} xor $endsMap{2} ){ # _1/_2, one has map (may have unmap simultaneously), another are all unmap
                 $outBam->write(content=>$_->printSAM."\n")
-                    for grep ($_->mseg eq $max_AS_refseg[0] || $_->p_mseg eq $max_AS_refseg[0]),
+                    for grep {$_->mseg eq $max_AS_refseg[0] || $_->p_mseg eq $max_AS_refseg[0]}
                         map {@{$rOB_Af{$_}}} (1,2);
             }
             else{ # _1 and _2 both have map (may have unmap simultaneously)
@@ -121,13 +121,13 @@ sub SelectRefsegForReads{
                 my @msegBiEnd = sort {$refseg2AS{$b}<=>$refseg2AS{$a}} grep exists $end2mseg{2}{$_}, keys %{$end2mseg{1}};
                 if(@msegBiEnd != 0){
                     $outBam->write(content=>$_->printSAM."\n")
-                        for grep ($_->mseg eq $msegBiEnd[0] || $_->p_mseg eq $msegBiEnd[0]),
+                        for grep {$_->mseg eq $msegBiEnd[0] || $_->p_mseg eq $msegBiEnd[0]}
                             map {@{$rOB_Af{$_}}} (1,2);
                 }
                 else{ # each refseg has just one end map, swap ends?
                     if(defined $keepRefsegID || !$swapAlignEnds){ # not allowed when keepRefsegID is set, or disabled
                         $outBam->write(content=>$_->printSAM."\n")
-                            for grep ($_->mseg eq $max_AS_refseg[0] || $_->p_mseg eq $max_AS_refseg[0]),
+                            for grep {$_->mseg eq $max_AS_refseg[0] || $_->p_mseg eq $max_AS_refseg[0]}
                                 map {@{$rOB_Af{$_}}} (1,2);
                     }
                     else{ # do swap!
