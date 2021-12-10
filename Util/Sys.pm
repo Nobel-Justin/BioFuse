@@ -3,6 +3,7 @@ package BioFuse::Util::Sys;
 use strict;
 use warnings;
 use Cwd qw/ abs_path /;
+use Data::Dumper;
 use BioFuse::Util::Log qw/ cluck_and_exit /;
 require Exporter;
 
@@ -71,8 +72,7 @@ sub file_exist{
         $exist = 0;
     }
 
-    cluck_and_exit "<ERROR>\tFile does not exist:\n"
-                        ."\t$filePath\n" if( $alert && $exist == 0 );
+    cluck_and_exit "<ERROR>\tFile does not exist:\n".Dumper($filePath) if( $alert && $exist == 0 );
     return $exist;
 }
 
