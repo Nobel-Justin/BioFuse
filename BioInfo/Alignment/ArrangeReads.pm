@@ -44,19 +44,19 @@ sub ArrangeReadsAmongRefseg{
     my $skipSuppMap = $parm{skipSuppMap} || 0; # skip supplement/second alignment
     my $skipDupRead = $parm{skipDupRead} || 0; # skip PCR duplicated reads
     my $skipPEunmap = $parm{skipPEunmap} || 0; # skip PE-reads that both unmap
-    # current refseg need to keep SQ of bam header
-    ## for mapped reads, only keep alignment on this 'current refseg'
-    my $currRefsegID = $parm{currRefsegID} || undef;
+    # refseg need to keep SQ of bam header
+    ## for mapped reads, only keep alignment on this refseg
+    my $keepRefsegID = $parm{keepRefsegID} || undef;
     # swap when PE ends map to diff-refseg respectively
     my $swapAlignEnds = $parm{swapAlignEnds} || 0;
-    # !! effective when currRefsegID is not provided
-       $swapAlignEnds = 0 if defined $currRefsegID;
+    # !! effective when keepRefsegID is not provided
+       $swapAlignEnds = 0 if defined $keepRefsegID;
 
     # start writing
     $outBam->start_write;
     # header
-    if(defined $currRefsegID){
-        $outBam->write(content=>$_) for grep !/^\@SQ/ || /\sSN:$currRefsegID\s/, @{$nSortBam->header_Af};
+    if(defined $keepRefsegID){
+        $outBam->write(content=>$_) for grep !/^\@SQ/ || /\sSN:$keepRefsegID\s/, @{$nSortBam->header_Af};
     }
     else{
         $outBam->write(content=>$_) for @{$nSortBam->header_Af};
@@ -79,12 +79,12 @@ sub SelectRefsegForReads{
     my $pe_OB_poolAf = $parm{pe_OB_poolAf};
     my $outBam = $parm{outBam}; # bam object
     my $skipPEunmap = $parm{skipPEunmap} || 0; # skip PE-reads that both unmap
-    # for mapped reads, only keep alignment on this 'current refseg'
-    my $currRefsegID = $parm{currRefsegID} || undef;
+    # for mapped reads, only keep alignment on this refseg
+    my $keepRefsegID = $parm{keepRefsegID} || undef;
     # swap when PE ends map to diff-refseg respectively
     my $swapAlignEnds = $parm{swapAlignEnds} || 0;
-    # !! effective when currRefsegID is not provided
-       $swapAlignEnds = 0 if defined $currRefsegID;
+    # !! effective when keepRefsegID is not provided
+       $swapAlignEnds = 0 if defined $keepRefsegID;
 
     for my $pe_OB (@$pe_OB_poolAf){
         my %rOB_Af = map{ ($_, $pe_OB->rOB_Af(reads_end=>$_)) } (1,2);
@@ -105,8 +105,8 @@ sub SelectRefsegForReads{
             # avail refseg with max alignment score
             my $max_AS = max(values %refseg2AS);
             my @max_AS_refseg = grep $refseg2AS{$_} == $max_AS, keys %refseg2AS;
-            # if currRefsegID is set, the currRefsegID must be the only refseg with max AS
-            next if defined $currRefsegID && (@max_AS_refseg != 1 || $max_AS_refseg[0] ne $currRefsegID);
+            # if keepRefsegID is set, the keepRefsegID must be the only refseg with max AS
+            next if defined $keepRefsegID && (@max_AS_refseg != 1 || $max_AS_refseg[0] ne $keepRefsegID);
             # go on: different scenarios
             if( $endsMap{1} xor $endsMap{2} ){ # _1/_2, one has map (may have unmap simultaneously), another are all unmap
                 $outBam->write(content=>$_->printSAM."\n")
@@ -125,7 +125,7 @@ sub SelectRefsegForReads{
                             map {@{$rOB_Af{$_}}} (1,2);
                 }
                 else{ # each refseg has just one end map, swap ends?
-                    if(defined $currRefsegID || !$swapAlignEnds){ # not allowed when currRefsegID is set, or disabled
+                    if(defined $keepRefsegID || !$swapAlignEnds){ # not allowed when keepRefsegID is set, or disabled
                         $outBam->write(content=>$_->printSAM."\n")
                             for grep ($_->mseg eq $max_AS_refseg[0] || $_->p_mseg eq $max_AS_refseg[0]),
                                 map {@{$rOB_Af{$_}}} (1,2);
