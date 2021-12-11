@@ -309,7 +309,8 @@ sub merge_and_sort{
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
     # temp merged bam
-    my $tmp_mergeBam = BioFuse::BioInfo::Objects::SeqData::Bam_OB->new(filepath => $bam->filepath.'tmp_merge.bam', tag => 'tmp_mergeBam');
+    my $tmp_mergeBam = BioFuse::BioInfo::Objects::SeqData::Bam_OB->new(filepath => $bam->filepath.'.tmp_merge.bam', tag => 'tmp_mergeBam');
+    $tmp_mergeBam->addTool(samtools => $samtools);
     $tmp_mergeBam->merge(bamAf => $bamAf, samtools => $samtools);
     # sort
     if($sortBy =~ /^C$/i){
@@ -321,6 +322,8 @@ sub merge_and_sort{
     else{
         cluck_and_exit "<ERROR>\twrong sortBy opt: $sortBy. Should be 'N' or 'C'.\n";
     }
+    # sweep
+    $tmp_mergeBam->delete_file;
     # inform
     stout_and_sterr "[INFO]\tSamTools merge BAMs and sort ok.\n"
                          ."\tbam: $bam->{filepath}\n";
