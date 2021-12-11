@@ -150,10 +150,10 @@ sub SelectRefsegForReads{
                             ## set Tlen as zero
                             $t_rOB->update_attr(attr_id=>'tlen', value=>0);
                             ## flags
-                            $t_rOB->  set_flag(flag=>'0x1' );
-                            $t_rOB->  set_flag(flag=>'0x20') if $m_rOB->is_rv_map;
-                            $t_rOB->unset_flag(flag=>'0x20') if $m_rOB->is_fw_map;
-                            $t_rOB->unset_flag(flag_Af=>['0x2','0x4','0x8','0x200','0x400']);
+                            $t_rOB->  set_flag(flag=>0x1 );
+                            $t_rOB->  set_flag(flag=>0x20) if $m_rOB->is_rv_map;
+                            $t_rOB->unset_flag(flag=>0x20) if $m_rOB->is_fw_map;
+                            $t_rOB->unset_flag(flag_Af=>[0x2,0x4,0x8,0x200,0x400]);
                             ## mate-end MQ
                             $t_rOB->update_optfd(tag=>'MQ:i:', value=>$m_rOB->mapQ);
                             # output
