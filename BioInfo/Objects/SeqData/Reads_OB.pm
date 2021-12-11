@@ -373,7 +373,7 @@ sub update_optfd{
     my %parm = @_;
     my $tag = $parm{tag};
     my $value = $parm{value};
-    $reads_OB->optfd_str =~ s/\b$tag\S+\b/$tag$value/;
+    $reads_OB->{optfd} =~ s/\b$tag\S+\b/$tag$value/;
 }
 
 #--- return mismatch count ---
