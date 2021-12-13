@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2021-12-09';
+$VERSION = "0.02";
+$DATE = '2021-12-13';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -47,6 +47,8 @@ sub ArrangeReadsAmongRefseg{
     # refseg need to keep SQ of bam header
     ## for mapped reads, only keep alignment on this refseg
     my $keepRefsegID = $parm{keepRefsegID} || undef;
+    # to allow the keepRefsegID is not the only refseg with max AS
+    my $keepRefNsolo = $parm{keepRefNsolo} || 0;
     # swap when PE ends map to diff-refseg respectively
     my $swapAlignEnds = $parm{swapAlignEnds} || 0;
     # !! effective when keepRefsegID is not provided
@@ -81,6 +83,8 @@ sub SelectRefsegForReads{
     my $skipPEunmap = $parm{skipPEunmap} || 0; # skip PE-reads that both unmap
     # for mapped reads, only keep alignment on this refseg
     my $keepRefsegID = $parm{keepRefsegID} || undef;
+    # to allow the keepRefsegID is not the only refseg with max AS
+    my $keepRefNsolo = $parm{keepRefNsolo} || 0;
     # swap when PE ends map to diff-refseg respectively
     my $swapAlignEnds = $parm{swapAlignEnds} || 0;
     # !! effective when keepRefsegID is not provided
@@ -105,8 +109,16 @@ sub SelectRefsegForReads{
             # avail refseg with max alignment score
             my $max_AS = max(values %refseg2AS);
             my @max_AS_refseg = grep $refseg2AS{$_} == $max_AS, keys %refseg2AS;
-            # if keepRefsegID is set, the keepRefsegID must be the only refseg with max AS
-            next if defined $keepRefsegID && (@max_AS_refseg != 1 || $max_AS_refseg[0] ne $keepRefsegID);
+            # if keepRefsegID is set
+            if(defined $keepRefsegID){
+                if($keepRefNsolo){ # allow the keepRefsegID is not the only refseg with max AS
+                    @max_AS_refseg = grep $_ eq $keepRefsegID, @max_AS_refseg;
+                    next if @max_AS_refseg == 0;
+                }
+                else{ # the keepRefsegID must be the only refseg with max AS
+                    next if @max_AS_refseg != 1 || $max_AS_refseg[0] ne $keepRefsegID;
+                }
+            }
             # go on: different scenarios
             if( $endsMap{1} xor $endsMap{2} ){ # _1/_2, one has map (may have unmap simultaneously), another are all unmap
                 $outBam->write(content=>$_->printSAM."\n")
