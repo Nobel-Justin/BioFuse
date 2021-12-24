@@ -4,14 +4,18 @@ use strict;
 use warnings;
 use Cwd qw/ abs_path /;
 use Data::Dumper;
-use List::Util qw/ first sum min max /;
+use List::Util qw/ first sum min max uniq /;
 use BioFuse::Util::Sys qw/ trible_run_for_success file_exist reset_folder remove_folder /;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
+use BioFuse::Util::GZfile qw/ Try_GZ_Write /;
+use BioFuse::BioInfo::Alignment::ReAlign qw/ GATK_ReAlign /;
+use BioFuse::BioInfo::Alignment::SAMtools qw/ SAMtool_calmd SAMtools_mpileup /;
 use BioFuse::BioInfo::Objects::SeqData::Reads_OB;
 use BioFuse::BioInfo::Objects::SeqData::PairEnd_OB;
 use BioFuse::BioInfo::Objects::SeqData::HicReads_OB;
 use BioFuse::BioInfo::Objects::SeqData::HicPairEnd_OB;
 use BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB;
+# use BioFuse::BioInfo::Objects::Allele::RefPos_OB
 
 require Exporter;
 
@@ -25,8 +29,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
-$VERSION = "0.21";
-$DATE = '2021-12-07';
+$VERSION = "0.22";
+$DATE = '2021-12-20';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -44,12 +48,16 @@ my @functoion_list = qw/
                         tissue
                         rgOB_Hf
                         header_Af
+                        reheader
                         isNsort
                         toNsort
                         isCsort
                         toCsort
                         toIndex
                         toFixmate
+                        toGATKrealn
+                        toCalMD
+                        toMpileup
                         merge
                         merge_and_sort
                         toMarkdup
@@ -66,17 +74,19 @@ my @functoion_list = qw/
                         get_region_depth
                         delete_regionDepthFile
                         get_region_alt_vcf_gz
+                        get_bam_stats
                         get_pos_marker_stat
                         get_allele_marker_stat
-                        get_bam_stats
                         smartBam_PEread
+                        get_cigarIDSC
+                        reads2fasta
                      /;
 
 #--- structure of object
 # bam -> filepath = $filepath
 # bam -> tag = $tag
 # bam -> tissue = $tissue
-# bam -> tools = {samtools => $samtools, bcftools => $bcftools}
+# bam -> tools = {samtools => $samtools, bcftools => $bcftools, gatk => $gatk_jar, java => $java}
 # bam -> write_fh = $write_fh
 # bam -> rgOB = { rgID->$rgOB }, check BioFuse::BioInfo::Objects::SeqData::ReadsGroup_OB
 # bam -> regionDepthFile = $regionDepthFile
@@ -175,6 +185,27 @@ sub header_Af{
     return \@header;
 }
 
+#--- output reheader bam ---
+sub reheader{
+    my $bam = shift;
+    my %parm = @_;
+    my $reheaderBam = $parm{reheaderBam};
+    my $headerSAM = $parm{headerSAM}; # header SAM file
+    my $headerAf = $parm{headerAf};   # or see bam_OB->header_Af func
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+
+    if(defined $headerAf){
+        $headerSAM = $reheaderBam->filepath.'.reheader.temp.header.sam';
+        open (HS,Try_GZ_Write($headerSAM)) || die "fail write $headerSAM: $!\n";
+        print HS for @$headerSAM;
+        close HS;
+    }
+
+    my $cmd = "$samtools reheader -P $headerSAM $bam->{filepath} > $reheaderBam->{filepath}";
+    trible_run_for_success($cmd, 'reheader', {esdo_Nvb=>1});
+    `rm $headerSAM` if defined $headerAf;
+}
+
 #--- test whether is N-sort ---
 sub isNsort{
     my $bam = shift;
@@ -267,6 +298,55 @@ sub toFixmate{
     stout_and_sterr "[INFO]\ttoFixmate bam ok.\n"
                          ."\torigBam: $bam->{filepath}\n"
                          ."\tsortBam: $fixmateBam->{filepath}\n";
+}
+
+#--- output gatk realn bam ---
+sub toGATKrealn{
+    my $bam = shift;
+    my %parm = @_;
+    my $relanBam = $parm{relanBam};
+    my $ref = $parm{ref};
+    my $java = $parm{java} || $bam->{tools}->{java};
+    my $gatk = $parm{gatk} || $bam->{tools}->{gatk};
+    my $jmem = $parm{jmem} || '1g';
+
+    GATK_ReAlign( ref => $ref,
+                  sBamPath => $bam->{filepath},
+                  oBamPath => $relanBam->{filepath},
+                  gatk => $gatk,
+                  java => $java,
+                  jmem => $jmem
+                );
+}
+
+#--- output samtools calmd bam ---
+sub toCalMD{
+    my $bam = shift;
+    my %parm = @_;
+    my $ref = $parm{ref};
+    my $calmdBam = $parm{calmdBam};
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+
+    SAMtool_calmd( ref => $ref,
+                   sBamPath => $bam->{filepath},
+                   oBamPath => $calmdBam->{filepath},
+                   samtools => $samtools
+                 );
+}
+
+#--- output mpileup vcf ---
+sub toMpileup{
+    my $bam = shift;
+    my %parm = @_;
+    my $ref = $parm{ref};
+    my $vcf = $parm{vcf}; # BioFuse::BioInfo::Objects::Variant::VCF_OB
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+
+    SAMtools_mpileup( ref => $ref,
+                      sBamPath => $bam->{filepath},
+                      vcfPath => $vcf->filepath,
+                      samtools => $samtools
+                    );
 }
 
 #--- merge several bams ---
@@ -914,6 +994,144 @@ sub smartBam_PEread{
     # inform
     stout_and_sterr "[INFO]\t".`date`
                          ."\ttotally, load $pe_Count PE-reads from $mark bam.\n" unless $quiet;
+}
+
+#--- collect the InDel (ID) and SoftClip (SC) info from CIGAR ---
+sub get_cigarIDSC{
+    my $bam = shift;
+    my %parm = @_;
+    my $viewOpt = $parm{viewOpt} || '-F 0x404'; # 0x400+0x004
+    my $viewReg = $parm{viewReg} || '';
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+    my $refposHf = $parm{refposHf};
+    my $cigarIDSC_Hf = $parm{cigarIDSC_Hf}; # stores InDel SoftClip info
+    my $cigarSC_Hf = $parm{cigarSC_Hf}; # only store SoftClip info, currently only 'softclip3'
+    my $min_mTD = $parm{min_mTD}; # min reads Tail Dist of mutation
+    my $readsType = $parm{readsType} || 'norm'; # norm/HiC
+
+    # objects modules
+    my $rdObjSource = {norm => 'Reads_OB',   HiC => 'HicReads_OB'};
+    my $rdObjModule = 'BioFuse::BioInfo::Objects::SeqData::' . $rdObjSource->{$readsType};
+
+    # read BAM to seek InDel and SoftClip sites
+    my $fh = $bam->start_read(samtools=>$samtools, viewOpt=>$viewOpt, viewReg=>$viewReg);
+    while(<$fh>){
+        my $rOB = $rdObjModule->new( ReadsLineText => $_, _rc_optfd => 1, _rc_rdstr => 1 );
+        # filter, must have InDel or SoftClip
+        my $CIGAR = $rOB->cigar;
+        next if $CIGAR !~ /[IDS]/ || $CIGAR =~ /[^IDSM\d]/; # no others
+        # deal mutations
+        my $ReadSeq = $rOB->rseq;
+        my $mseg = $rOB->mseg;
+        my $mPos = $rOB->mpos;
+        my $i = 0;
+        while(length($CIGAR)!=0){
+            my ($mut_pos, $mut_type, $mut_seq);
+            my ($len, $type) = ($CIGAR =~ /^(\d+)(\D)/);
+            $CIGAR =~ s/^\d+\D//;
+            if($type eq 'M'){
+                $i += $len;
+                $ReadSeq = substr($ReadSeq, $len);
+                next;
+            }
+            elsif($type eq 'I'){
+                $mut_pos = $mPos + $i - 1; # assign insertion to the forefront-pos
+                $mut_type = 'ins';
+                $mut_seq = uc(substr($ReadSeq, 0, $len));
+                $ReadSeq = substr($ReadSeq, $len);
+                next if( $i < $min_mTD || length($ReadSeq) < $min_mTD); # located at tail of this read
+            }
+            elsif($type eq 'D'){
+                $mut_pos = $mPos + $i; # assign deletion to the first pos of the deleted part
+                $i += $len;
+                $mut_type = 'del';
+                $mut_seq = 'N'; # assign the seq later
+                next if( $i < $min_mTD || length($ReadSeq) < $min_mTD); # located at tail of this read
+            }
+            elsif($type eq 'S'){
+                if( $i == 0 ){ # left prime of read
+                    $mut_pos = $mPos;
+                    $mut_type = 'softclip5';
+                }
+                else{ # right prime of read
+                    $mut_pos = $mPos + $i - 1;
+                    $mut_type = 'softclip3';
+                }
+                $i += $len;
+                $ReadSeq = substr($ReadSeq, $len);
+            }
+            # filter this site if it already has mutation
+            ## BioFuse::BioInfo::Objects::Allele::RefPos_OB
+            next if exists $refposHf->{$mut_pos} && $refposHf->{$mut_pos}->has_mutation;
+            # record the mutated pos with supporting
+            if(!exists $cigarIDSC_Hf->{$mseg}->{$mut_pos}){
+                $cigarIDSC_Hf->{$mseg}->{$mut_pos} = BioFuse::BioInfo::Objects::Allele::RefPos_OB->new(pos=>$mut_pos, refAllele=>$refposHf->{$mut_pos}->refAllele);
+            }
+            $cigarIDSC_Hf->{$mseg}->{$mut_pos}->addDepth(add=>1); # pretend to be mut_whole_depth
+            # store supporting of soft-clip for later subtraction from ref_allele_depth
+            if($type eq 'S'){
+                # only primer3 impact depth
+                if($mut_type eq 'softclip3'){
+                    $cigarSC_Hf->{$mseg}->{$mut_pos}->{$mut_type}->[0] ++;
+                    $cigarSC_Hf->{$mseg}->{$mut_pos}->{$mut_type}->[1] += 1 if $rOB->is_fw_map; # forward support
+                    $cigarSC_Hf->{$mseg}->{$mut_pos}->{$mut_type}->[2] += 1 if $rOB->is_rv_map; # reverse complemented support
+                }
+                next; # do not record softclip as mutation
+            }
+            # store insertion and deletion info
+            my $mut_id = "$mut_type,$mut_seq";
+            $cigarIDSC_Hf->{$mseg}->{$mut_pos}->addMut(mut_id=>$mut_id, depthAf=>[0,0,0,0]) if !$cigarIDSC_Hf->{$mseg}->{$mut_pos}->has_mutation(mut_id=>$mut_id);
+            $cigarIDSC_Hf->{$mseg}->{$mut_pos}->addMutDepth(mut_id=>$mut_id, add_fw=>1) if $rOB->is_fw_map; # forward support
+            $cigarIDSC_Hf->{$mseg}->{$mut_pos}->addMutDepth(mut_id=>$mut_id, add_rv=>1) if $rOB->is_rv_map; # reverse complemented support
+        }
+    }
+    close $fh;
+}
+
+#--- extract reads to fasta ---
+sub reads2fasta{
+    my $bam = shift;
+    my %parm = @_;
+    my $fasta = $parm{fasta};
+    my $viewOpt = $parm{viewOpt} || '';
+    my $viewReg = $parm{viewReg} || '';
+    my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
+    my $covPosHf = $parm{covPosHf} || {}; # key: position must cover
+    my $covPosAf = $parm{covPosAf} || []; # list:position must cover
+    my $readsType = $parm{readsType} || 'norm'; # norm/HiC
+
+    # cover pos if given
+    my @covPos = sort {$a<=>$b} uniq (keys %$covPosHf,@$covPosAf);
+    my $onlyCP = scalar @covPos; # only extract reads cover these pos
+    # check C-sort if needs
+    if(    !$bam->isCsort
+        && ($onlyCP || length($viewReg))
+    ){
+        cluck_and_exit "<ERROR>\tcovPos or viewReg provided, but bam is not C-sort.\n".Dumper($bam);
+    }
+
+    # objects modules
+    my $rdObjSource = {norm => 'Reads_OB',   HiC => 'HicReads_OB'};
+    my $rdObjModule = 'BioFuse::BioInfo::Objects::SeqData::' . $rdObjSource->{$readsType};
+
+    # read BAM to find reads
+    open (FA,Try_GZ_Write($fasta)) || die "fail write $fasta: $!\n";
+    my $fh = $bam->start_read(samtools=>$samtools, viewOpt=>$viewOpt, viewReg=>$viewReg);
+    while(<$fh>){
+        my $rOB = $rdObjModule->new(ReadsLineText => $_, _rc_rdstr => 1);
+        my $mpos = $rOB->mpos;
+        my $mlen = $rOB->mRefLen;
+        # covPos if given
+        if($onlyCP){
+            pop @covPos while (@covPos && $covPos[0] < $mpos); # rOB surpasses
+            last unless @covPos; # no pos need
+            next if $covPos[0] > $mpos+$mlen-1; # rOB falls behind
+        }
+        # output
+        print FA $rOB->printFA."\n";
+    }
+    close $fh;
+    close FA;
 }
 
 1; ## tell the perl script the successful access of this module.

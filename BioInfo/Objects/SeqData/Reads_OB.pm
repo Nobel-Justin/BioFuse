@@ -20,7 +20,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
 $VERSION = "0.20";
-$DATE = '2021-12-09';
+$DATE = '2021-12-18';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -42,6 +42,7 @@ my @functoion_list = qw/
                         mReadLen
                         mRefLen
                         cigar
+                        rseq
                         lenFromCigar
                         barcode
                         add_BarcToPid
@@ -77,11 +78,13 @@ my @functoion_list = qw/
                         biClipLen
                         tlen_FixTlen_with_S
                         digestMDtag
+                        mDetailAf
                         fuseCigarMD
                         getNearAltDist
                         get_pos_allele
                         printSAM
                         printFQ
+                        printFA
                         update_attr
                         set_flag
                         unset_flag
@@ -114,16 +117,18 @@ my @functoion_list = qw/
 # reads_OB -> rg_OB = $rg_OB
 # reads_OB -> endNO = $endNO
 # reads_OB -> AS = $AS, alignment score
+# reads_OB -> mDetailAf = [ {type => 'M/R/V/D/I/S/H/N', len => $len, str=>$str}, ... ] 
+#    note: 'str' only for 'V' and 'D'(undef if no MD_tag)
 
 #--- construction of object ---
 sub new{
     my $type = shift;
     my %parm = @_;
     my $SAMtext = $parm{ReadsLineText};
-    my $_rc_optfd = $parm{_rc_optfd};
-    my $_rc_rdstr = $parm{_rc_rdstr};
-    my $reads_end = $parm{reads_end}; # for R1 and R2 aligned respectively, e.g., Hi-C PE-reads
-    my $simpleLoad = $parm{simpleLoad} || 0; # just record reads' basic information
+    my $_rc_optfd  = $parm{_rc_optfd} || 0;
+    my $_rc_rdstr  = $parm{_rc_rdstr} || 0;
+    my $simpleLoad = $parm{simpleLoad} || 0; # only record basic-info, will disable '_rc_optfd' and '_rc_rdstr'
+    my $reads_end  = $parm{reads_end}; # for R1 and R2 aligned respectively, e.g., Hi-C PE-reads
 
     my $reads_OB = {};
     # basic infos
@@ -283,6 +288,12 @@ sub mRefLen{
 sub cigar{
     my $reads_OB = shift;
     return $reads_OB->{cigar};
+}
+
+#--- return read seq ---
+sub rseq{
+    my $reads_OB = shift;
+    return $reads_OB->{rseq};
 }
 
 #--- get length of given type from Cigar ---
@@ -703,6 +714,13 @@ sub digestMDtag{
     return \@MDtag;
 }
 
+#--- return the mDetailAf (complete map info) obtained from fuseCigarMD ---
+sub mDetailAf{
+    my $reads_OB = shift;
+    $reads_OB->fuseCigarMD unless exists $reads_OB->{mDetailAf};
+    return $reads_OB->{mDetailAf};
+}
+
 #--- fuse Cigar and MD tag to get complete map info ---
 # R: Ref, matched
 # V: snV, mismatched
@@ -712,7 +730,6 @@ sub digestMDtag{
 # H: Hard-clipped
 # N: skipped ref
 sub fuseCigarMD{
-
     my $reads_OB = shift;
     my $CIGAR = $reads_OB->{cigar};
     my $hasMD = $reads_OB->has_MDtag;
@@ -824,7 +841,6 @@ sub fuseCigarMD{
 # from the given index and prime
 # if no alteration encountered, return reads-edge distance
 sub getNearAltDist{
-
     my $reads_OB = shift;
     my %parm = @_;
     my $Bidx = $parm{Bidx};
@@ -853,7 +869,6 @@ sub getNearAltDist{
 # del: offset means moving N bases from 1st-del-pos is the 'pos', so seq deleted behind 'pos' has offset -1.
 # priority: 'preferINDEL' > snv > ins/del
 sub get_pos_allele{
-
     my $reads_OB = shift;
     my %parm = @_;
     my $chr = $parm{chr};
@@ -889,9 +904,9 @@ sub get_pos_allele{
     my $mlen = $reads_OB->mReadLen;
     my $qSeq = $reads_OB->{baseQ};
     my $CIGAR = $reads_OB->{cigar};
-    # fuse Cigar and MD-tag info, the later might lack
-    $reads_OB->fuseCigarMD unless exists $reads_OB->{mDetailAf};
-    my $mDetailAf = $reads_OB->{mDetailAf};
+    # the complete map info
+    ## fusing Cigar and MD-tag info, the later might lack
+    my $mDetailAf = $reads_OB->mDetailAf;
     my $mLastBidx = scalar(@$mDetailAf)-1;
 
     # find the pos
@@ -1038,6 +1053,16 @@ sub printFQ{
         $bQul  = reverse $bQul;
     }
     return join("\n", "\@$reads_OB->{pid}/$reads_OB->{endNO}", $rSeq, '+', $bQul);
+}
+
+#--- print reads in FastA format ---
+sub printFA{
+    my $reads_OB = shift;
+    my $rSeq = $reads_OB->{rseq}; # initialize
+    if($reads_OB->is_rv_map){
+        ($rSeq = reverse uc($rSeq)) =~ tr/ACGT/TGCA/;
+    }
+    return join("\n", "\>$reads_OB->{pid}/$reads_OB->{endNO}", $rSeq);
 }
 
 #---- update attribute ---
