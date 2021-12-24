@@ -5,7 +5,6 @@ use warnings;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Util::Log qw/ stout_and_sterr cluck_and_exit /;
 use BioFuse::Util::Sys qw/ file_exist trible_run_for_success /;
-use BioFuse::BioInfo::Objects::Segment::RefSeg_OB;
 
 require Exporter;
 
@@ -16,6 +15,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @EXPORT = qw/
               read_fasta_file
               write_fasta_file
+              FAfhFindSeq
               BWA_index_fasta
               Faidx_Dict_fasta
               read_Fai
@@ -26,8 +26,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::FASTA';
 #----- version --------
-$VERSION = "0.34";
-$DATE = '2021-05-24';
+$VERSION = "0.35";
+$DATE = '2021-12-18';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -38,6 +38,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 my @functoion_list = qw/
                         read_fasta_file
                         write_fasta_file
+                        FAfhFindSeq
                         BWA_index_fasta
                         Faidx_Dict_fasta
                         read_Fai
@@ -50,15 +51,20 @@ sub read_fasta_file{
     my %parm = @_;
     my $FaFile = $parm{FaFile};
     my $needSeg_Href = $parm{needSeg_Href};
+    # sub-routine
     my $subrtRef = $parm{subrtRef};
     my $subrtParmAref = $parm{subrtParmAref};
+    # directly save seq via this Scalar-ref
+    my $SrefToSaveSeq = $parm{SrefToSaveSeq}; # can use 'needSeg_Href' to filter
+    # to store hash (key=$segName, value=$segSeq)
+    my $Seg2Seq_Href = $parm{Seg2Seq_Href};
 
     # check fasta file existence
     cluck_and_exit "<ERROR>\tno fasta file supplied. (read_fasta_file)\n" unless defined $FaFile;
     file_exist(filePath=>$FaFile, alert=>1);
 
     # read fasta file and run sub-routine
-    open (FASTA,Try_GZ_Read($FaFile))||die "fail read FaFile: $!\n";
+    open (FASTA,Try_GZ_Read($FaFile)) || die "fail read FaFile: $!\n";
     $/=">";<FASTA>;$/="\n"; # remove '>' prefix
     while(<FASTA>){
         chomp(my $segName = $_); # remove the last "\n"
@@ -76,6 +82,15 @@ sub read_fasta_file{
             my @parm = (segName=>$segName, segSeq_Sref=>\$segSeq);
             push @parm, @$subrtParmAref if (defined $subrtParmAref);
             &{$subrtRef}(@parm);
+        }
+        # just save this seq, then leave
+        elsif(defined $SrefToSaveSeq){
+            $$SrefToSaveSeq = $segSeq;
+            last;
+        }
+        # save to hash
+        elsif(defined $Seg2Seq_Href){
+            $Seg2Seq_Href->{$segName} = $segSeq;
         }
     }
     close FASTA;
@@ -126,6 +141,31 @@ sub write_fasta_file{
     if(defined $fa_file && !defined $fa_FH){
         close $fa_FH;
     }
+}
+
+#--- read existing fasta file-handle to find one seq ---
+sub FAfhFindSeq{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $FAfh = $parm{FAfh};
+    my $needSegName = $parm{needSegName};
+
+    $/=">";<$FAfh>;$/="\n"; # remove '>' prefix
+    while(<$FAfh>){
+        chomp(my $segName = $_); # remove the last "\n"
+        $/=">";
+        chomp(my $segSeq = <$FAfh>); # remove the last '>'
+        $/="\n";
+        # skip if not needed
+        next if $segName ne $needSegName;
+        # remove all blanks
+        $segSeq =~ s/\s+//g;
+        # run sub-routine
+        return $segSeq;
+    }
+    # not found
+    cluck_and_exit "<ERROR>\tcannot find Seg ($needSegName) by Fasta file-handle ($FAfh).\n";
 }
 
 #--- construct BWA index ---
