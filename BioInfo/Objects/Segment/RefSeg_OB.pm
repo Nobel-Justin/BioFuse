@@ -7,6 +7,7 @@ use List::Util qw/ first /;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen /;
+use BioFuse::BioInfo::FASTA qw/ read_fasta_file /;
 
 require Exporter;
 
@@ -20,8 +21,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Segment::RefSeg_OB';
 #----- version --------
-$VERSION = "0.05";
-$DATE = '2021-07-22';
+$VERSION = "0.06";
+$DATE = '2021-12-17';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -40,9 +41,11 @@ my @functoion_list = qw/
                         set_extLen
                         extLen
                         has_seqID
+                        loadSeqFromFa
                         set_seq
                         seq
                         segSeq
+                        init_refpos
                         addMut
                         mutSeqHf
                         mutToSeq
@@ -57,12 +60,13 @@ my @functoion_list = qw/
 # refseg -> id = $id
 # refseg -> length = $length, this is the original length
 # refseg -> note = $note
-# virus_OB -> circular = 0(no)/1(yes)
-# virus_OB -> extLen = $extLen, this is just the extended path length
+# refseg -> circular = 0(no)/1(yes)
+# refseg -> extLen = $extLen, this is just the extended path length
 # refseg -> seq = {orig=>orig_seq, h1=>h1_seq, .., hx=>hx_seq}
 # refseg -> regMap = {h1=>[{oSt=>origStp,oEd=>origEdp,hSt=>hapStp,hEd=>hapEdp},..,], h2=>[]}
 # refseg -> mut -> seqID -> stp -> {edp=>S, type=>S, ref=>S, allele=>S, discard=>0/1, comment=>S}
 #           note: snv/ins/el/[mnp]  ins:+xx; del:-xx|-\d+
+# refseg -> refpos -> seqID = { pos => $refpos_OB, ...}
 
 #--- construction of object
 sub new{
@@ -152,6 +156,23 @@ sub has_seqID{
     return (exists $refseg->{$attr}->{$seqID} ? 1 : 0);
 }
 
+#--- load sequence from fasta --- 
+sub loadSeqFromFa{
+    my $refseg = shift;
+    my %parm = @_;
+    my $fa = $parm{fa};
+    my $segName = $parm{segName} || $refseg->id;
+    my $seqID = $parm{seqID} || 'orig';
+
+    # read fasta file
+    read_fasta_file( FaFile => $fa,
+                     needSeg_Href => {$segName=>1},
+                     SrefToSaveSeq => \$refseg->{seq}->{$seqID}
+                   );
+    # inform
+    stout_and_sterr "[INFO]\tload refseg ($segName) seq.\n";
+}
+
 #--- seq sequence ---
 sub set_seq{
     my $refseg = shift;
@@ -231,6 +252,18 @@ sub segSeq{
     ($segSeq = reverse $segSeq) =~ tr/ACGTacgt/TGCAtgca/ if $strd eq '-';
 
     return $segSeq;
+}
+
+#--- init refpos info from seq ---
+sub init_refpos{
+    my $refseg = shift;
+    my %parm = @_;
+    my $seqID = $parm{seqID} || 'orig';
+
+    my @seq = split //, $refseg->seq(seqID=>$seqID);
+    $refseg->{refpos}->{$seqID}->{$_+1} = BioFuse::BioInfo::Objects::Allele::RefPos_OB->new(pos=>$_+1, refAllele=>$seq[$_]) for 0..$#seq;
+    # inform
+    stout_and_sterr "[INFO]\tmake refpos objects of seq ($seqID).\n";
 }
 
 #--- record given mut ---
