@@ -151,9 +151,10 @@ sub FAfhFindSeq{
     my $FAfh = $parm{FAfh};
     my $needSegName = $parm{needSegName};
 
-    $/=">";<$FAfh>;$/="\n"; # remove '>' prefix
+    # $/=">";<$FAfh>;$/="\n"; # remove '>' prefix
     while(<$FAfh>){
         chomp(my $segName = $_); # remove the last "\n"
+        $segName =~ s/^>//; # remove the possible prefix '>'
         $/=">";
         chomp(my $segSeq = <$FAfh>); # remove the last '>'
         $/="\n";
