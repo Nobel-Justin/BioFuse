@@ -5,6 +5,7 @@ use warnings;
 use Data::Dumper;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::Util::Sys qw/ trible_run_for_success file_exist /;
+use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::BioInfo::FASTA qw/ FAfhFindSeq read_fasta_file /;
 use BioFuse::BioInfo::Objects::Allele::RefPos_OB;
 
@@ -26,7 +27,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Alignment::Blast';
 #----- version --------
 $VERSION = "0.01";
-$DATE = '2021-12-19';
+$DATE = '2021-12-26';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -140,17 +141,18 @@ sub BlastM0ToRefPos{
                 &dealOneQueryMapIF(query_id=>$last_query_id, @opt);
                 # sweep, release memory
                 delete $mapIF{$last_query_id};
-                # update
-                $last_query_id = $query_id;
             }
             # deal with this maping block
             &digest_m0MapBlock(m0fh=>$m0fh, query_id=>$query_id, mapIF_Hf=>\%mapIF, debug=>$debug);
+            # update
+            $last_query_id = $query_id;
         }
     }
     close $m0fh;
-    close $qyFAfh;
     # deal map info of last query_id
     &dealOneQueryMapIF(query_id=>$last_query_id, @opt) if defined $last_query_id;
+    close $qyFAfh;
+
     # inform
     stout_and_sterr "[INFO]\tload blast m0 result to refpos hash done.\n"
                          ."\tI=$blast_m0\n"
