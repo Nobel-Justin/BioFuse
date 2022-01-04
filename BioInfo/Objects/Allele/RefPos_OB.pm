@@ -18,7 +18,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Allele::RefPos_OB';
 #----- version --------
 $VERSION = "0.01";
-$DATE = '2021-12-20';
+$DATE = '2021-12-29';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -32,6 +32,7 @@ my @functoion_list = qw/
                         setRefDepth
                         addRefDepth
                         RefDepth
+                        mutDepth
                         addMut
                         addMutDepth
                         pos
@@ -45,6 +46,9 @@ my @functoion_list = qw/
                         find_bestMut
                         has_bestMut
                         copy_bestMut
+                        remove_bestMut
+                        reset_bestMut_seq
+                        bestMut_id
                         bestMut_infoStr
                         bestMut_type
                         bestMut_seq
@@ -119,16 +123,42 @@ sub RefDepth{
     my $refpos_OB = shift;
     my %parm = @_;
     my $type = $parm{type} || 'S'; # Sum/Fw/Rv
+    return $refpos_OB->{refDepth}      if $type eq 'A'; # return depth array-ref
     return $refpos_OB->{refDepth}->[0] if $type eq 'S';
     return $refpos_OB->{refDepth}->[1] if $type eq 'F';
     return $refpos_OB->{refDepth}->[2] if $type eq 'R';
+}
+
+#--- return mutation depth array-ref ---
+sub mutDepth{
+    my $refpos_OB = shift;
+    my %parm = @_;
+    my $mut_id = $parm{mut_id};
+    my $type = $parm{type} || 'S'; # Sum/Fw/Rv/Compare/Array-ref
+
+    if(!$refpos_OB->has_mutation(mut_id=>$mut_id)){
+        cluck_and_exit "<ERROR>\tcan not find mut ($mut_id) in refpos object.\n".Dumper($refpos_OB);
+    }
+    return $refpos_OB->{mutation}->{$mut_id}      if $type eq 'A'; # return depth array-ref
+    return $refpos_OB->{mutation}->{$mut_id}->[0] if $type eq 'S';
+    return $refpos_OB->{mutation}->{$mut_id}->[1] if $type eq 'F';
+    return $refpos_OB->{mutation}->{$mut_id}->[2] if $type eq 'R';
+    return $refpos_OB->{mutation}->{$mut_id}->[3] if $type eq 'C'; # ref allele depth to compare
 }
 
 #--- record mutation ---
 sub addMut{
     my $refpos_OB = shift;
     my %parm = @_;
-    $refpos_OB->{mutation}->{$parm{mut_id}} = $parm{depthAf};
+    my $mut_id = $parm{mut_id};
+    my $depthAf = $parm{depthAf};
+
+    if(!exists $refpos_OB->{mutation}->{$mut_id}){
+        $refpos_OB->{mutation}->{$mut_id} = $depthAf;
+    }
+    else{
+        $refpos_OB->{mutation}->{$mut_id}->[$_] += $depthAf->[$_] for 0 .. @$depthAf-1;
+    }
 }
 
 #--- add depth of mutation ---
@@ -138,10 +168,12 @@ sub addMutDepth{
     my $mut_id = $parm{mut_id};
     my $add_fw = $parm{add_fw} || 0;
     my $add_rv = $parm{add_rv} || 0;
+    my $add_cp = $parm{add_cp} || 0; # ref allele depth to compare
 
     $refpos_OB->{mutation}->{$mut_id}->[0] += ($add_fw + $add_rv);
     $refpos_OB->{mutation}->{$mut_id}->[1] +=  $add_fw;
     $refpos_OB->{mutation}->{$mut_id}->[2] +=  $add_rv;
+    $refpos_OB->{mutation}->{$mut_id}->[3] +=  $add_cp;
     # minimum should be zero
     $_ = max($_,0) for @{$refpos_OB->{mutation}->{$mut_id}};
 }
@@ -179,18 +211,10 @@ sub merge{
     # depth
     $refpos_OB->addDepth(add=>$donor_OB->depth);
     # refDepth
-    $refpos_OB->{refDepth}->[$_] += $donor_OB->{refDepth}->[$_] for 0 .. @{$refpos_OB->{refDepth}}-1;
+    $refpos_OB->addRefDepth(add_fw=>$donor_OB->RefDepth(type=>'F'));
+    $refpos_OB->addRefDepth(add_rv=>$donor_OB->RefDepth(type=>'R'));
     # mutation
-    my $t_mutHf = $refpos_OB->{mutation};
-    my $d_mutHf = $donor_OB->{mutation};
-    for my $mut_id (keys %$d_mutHf){
-        if(exists $t_mutHf->{$mut_id}){
-            $t_mutHf->{$mut_id}->[$_] += $d_mutHf->{$mut_id}->[$_] for 0 .. @{$t_mutHf->{$mut_id}}-1;
-        }
-        else{
-            $t_mutHf->{$mut_id} = $d_mutHf->{$mut_id};
-        }
-    }
+    $refpos_OB->addMut(mut_id=>$_, depthAf=>$donor_OB->mutDepth(mut_id=>$_,type=>'A')) for @{$donor_OB->mutList};
 }
 
 #--- has mutations ---
@@ -255,10 +279,17 @@ sub find_bestMut{
         if(    ( $sumSup < $minAltRc ) # at least so many supported reads
                # if required, both strand supported
             || ( $biStrdRC && ($fwSup < $biStrdRC || $rvSup < $biStrdRC) )
-               # must be dominant against ref-allel, for non-del
-            || ( $mut_type !~ /del/ && $sumSup <= $refSup_toCmp )
-               # must be dominant against ref-allel, for del specifically
-            || ( $mut_type =~ /del/ && $sumSup <= $refpos_OB->{refDepth}->[0] )
+        ){
+            $refpos_OB->delete_mut(mut_id=>$mut_id);
+            next;
+        }
+        elsif( # must be dominant against ref-allel
+               ( $refSup_toCmp >  0 && $sumSup <= $refSup_toCmp )
+            || ( $refSup_toCmp <= 0 && $sumSup <= $refpos_OB->RefDepth(type=>'S') )
+                 # must be dominant against ref-allel, for non-del
+            #    ( $mut_type !~ /del/ && $sumSup <= $refSup_toCmp )
+            #    # must be dominant against ref-allel, for del specifically
+            # || ( $mut_type =~ /del/ && $sumSup <= $refpos_OB->RefDepth(type=>'S') )
           ){
             next;
         }
@@ -291,6 +322,25 @@ sub copy_bestMut{
     }
     # copy
     $refpos_OB->{bestMut} = $donor_OB->{bestMut};
+}
+
+#--- remove the best mutation ---
+sub remove_bestMut{
+    my $refpos_OB = shift;
+    delete $refpos_OB->{bestMut};
+}
+
+#--- reset seq of the best mutation --
+sub reset_bestMut_seq{
+    my $refpos_OB = shift;
+    my %parm = @_;
+    $refpos_OB->{bestMut}->{mutSeq} = $parm{mut_seq};
+}
+
+#--- return type of the best mutation ---
+sub bestMut_id{
+    my $refpos_OB = shift;
+    return join(',', map {("$refpos_OB->{bestMut}->{$_}")} qw/ mutType mutSeq/);
 }
 
 #--- return type of the best mutation ---
