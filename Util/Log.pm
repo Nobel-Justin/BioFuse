@@ -23,8 +23,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Log';
 #----- version --------
-$VERSION = "0.33";
-$DATE = '2021-12-21';
+$VERSION = "0.34";
+$DATE = '2021-12-28';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -78,7 +78,7 @@ sub alignDisplay{
     my $contentAf = $parm{contentAf};
     my $prefix = $parm{prefix} || '';
     my $colGap = $parm{colGap} || 3;
-    my $fillEmpty = $parm{fillEmpty} || 0;
+    my $fillEmpty = $parm{fillEmpty};
     my $alignTo = $parm{alignTo} || 'H'; # Head/Tail
 
     # width of each column
@@ -99,8 +99,16 @@ sub alignDisplay{
         my $rowStr = $prefix;
         for my $idx (0 .. $#colWidth){
             # check
-            &cluck_and_exit ("<ERROR>\tlack ".($idx+1)." column in row:\n".Dumper($rowAf)) if !defined $rowAf->[$idx] && !$fillEmpty;
-            $rowStr .= sprintf("%$alignSign$colWidth[$idx]s", $rowAf->[$idx]||'');
+            my $value;
+            if(defined $rowAf->[$idx]){
+                $value = $rowAf->[$idx];
+            }
+            else{
+                &cluck_and_exit ("<ERROR>\tlack ".($idx+1)." column in row:\n".Dumper($rowAf)) if !defined $fillEmpty;
+                $value = $fillEmpty;
+            }
+            
+            $rowStr .= sprintf("%$alignSign$colWidth[$idx]s", $value);
         }
         push @display, $rowStr;
     }
