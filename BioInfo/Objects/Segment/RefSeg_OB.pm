@@ -22,7 +22,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Segment::RefSeg_OB';
 #----- version --------
 $VERSION = "0.06";
-$DATE = '2021-12-17';
+$DATE = '2021-12-31';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -46,6 +46,9 @@ my @functoion_list = qw/
                         seq
                         segSeq
                         init_refpos
+                        refpos_mergeExt
+                        normInDelMut
+                        filter_refpos
                         addMut
                         mutSeqHf
                         mutToSeq
@@ -96,7 +99,17 @@ sub set_length{
 #--- get refseg's length ---
 sub length{
     my $refseg = shift;
-    return $refseg->{length};
+    my %parm = @_;
+    my $seqID = $parm{seqID};
+
+    if(    defined $seqID
+        && defined $refseg->{seq}->{$seqID}
+    ){
+        return CORE::length($refseg->{seq}->{$seqID});
+    }
+    else{
+        return $refseg->{length};
+    }
 }
 
 #--- set refseg's notes ---
@@ -259,11 +272,172 @@ sub init_refpos{
     my $refseg = shift;
     my %parm = @_;
     my $seqID = $parm{seqID} || 'orig';
+    my $refposHf = $parm{refposHf}; # may be other refpos hash
+       $refposHf = \%{$refseg->{refpos}->{$seqID}} if !defined $refposHf; # internal refpos hash
 
     my @seq = split //, $refseg->seq(seqID=>$seqID);
-    $refseg->{refpos}->{$seqID}->{$_+1} = BioFuse::BioInfo::Objects::Allele::RefPos_OB->new(pos=>$_+1, refAllele=>$seq[$_]) for 0..$#seq;
+    $refposHf->{$_+1} = BioFuse::BioInfo::Objects::Allele::RefPos_OB->new(pos=>$_+1, refAllele=>$seq[$_]) for 0..$#seq;
     # inform
     stout_and_sterr "[INFO]\tmake refpos objects of seq ($seqID).\n";
+}
+
+#--- merge the pos info of the extended part ---
+## user could provide other refpos hash belongs to this refpos
+## note the 'length' is after extended
+sub refpos_mergeExt{
+    my $refseg = shift;
+    my %parm = @_;
+    my $seqID = $parm{seqID} || 'orig';
+    my $length = $parm{length} || $refseg->length(seqID=>$seqID);
+    my $extLen = $parm{extLen} || $refseg->extLen;
+    my $refposHf = $parm{refposHf}; # may be other refpos hash
+       $refposHf = $refseg->{refpos}->{$seqID} if !defined $refposHf; # internal refpos hash
+
+    for my $shift (1 .. $extLen){
+        my $donor_pos = $shift + $length - $extLen;
+        # merge info
+        my $accept_refpos_OB = $refposHf->{$shift};
+        my $donor_refpos_OB  = $refposHf->{$donor_pos};
+        print "$shift\n$donor_pos\n" unless defined $accept_refpos_OB;
+        $accept_refpos_OB->merge(donor=>$donor_refpos_OB) if defined $donor_refpos_OB;
+        # sweep
+        delete $refposHf->{$donor_pos};
+    }
+}
+
+#--- deal with the floating InDel ---
+## similar to vcf norm
+sub normInDelMut{
+    my $refseg = shift;
+    my %parm = @_;
+    my $seqID = $parm{seqID} || 'orig';
+    my $refposHf = $parm{refposHf}; # may be other refpos hash
+       $refposHf = $refseg->{refpos}->{$seqID} if !defined $refposHf; # internal refpos hash
+
+    my $norm_again = 1;
+    while($norm_again){
+        $norm_again = 0; # set 1 when norm happens
+        for my $pos (sort {$a<=>$b} keys %$refposHf){
+            my $refpos_OB = $refposHf->{$pos};
+            next unless $refpos_OB->has_mutation;
+            for my $mut_id (@{$refpos_OB->mutList}){
+                my ($mut_type,$mut_seq) = (split /,/,$mut_id)[0,1];
+                next if $mut_type eq 'snp'; # only for ins or del
+                # find match tail-part between mut_seq and fore_refseq
+                my $pos_shift = $mut_type eq 'ins' ? 1 : 0;
+                my $match_len = 0;
+                for my $i (1 .. CORE::length($mut_seq)){
+                    my $mut_base = substr($mut_seq, -1*$i, 1);
+                    my $fore_pos = $pos - $i + $pos_shift;
+                    my $for_refpos_OB = $refposHf->{$fore_pos};
+                    last unless defined $for_refpos_OB;
+                    if($for_refpos_OB->refAllele =~ /^$mut_base$/i){ # match
+                        $match_len = $i;
+                    }
+                    else{
+                        last;
+                    }
+                }
+                # norm: move mutation
+                if($match_len){
+                    my $accept_pos = $pos - $match_len + $pos_shift;
+                    my $accept_refpos_OB = $refposHf->{$accept_pos};
+                    my $new_mut_seq = substr($mut_seq, -1*$match_len)
+                                     .substr($mut_seq, 0, CORE::length($mut_seq)-$match_len);
+                    my $new_mut_id = "$mut_type,$new_mut_seq";
+                    # mut depth merge
+                    my $mutWhSup = $refpos_OB->mutDepth(mut_id=>$mut_id, type=>'S');
+                    my $mutFwSup = $refpos_OB->mutDepth(mut_id=>$mut_id, type=>'F');
+                    my $mutRvSup = $refpos_OB->mutDepth(mut_id=>$mut_id, type=>'R');
+                    $accept_refpos_OB->addMutDepth(mut_id=>$new_mut_id, add_fw=>$mutFwSup, add_rv=>$mutRvSup, add_cp => -1*$mutWhSup);
+                    # deletion
+                    if($mut_type eq 'del'){
+                        # decrease accepter's ref allele depth
+                        $accept_refpos_OB->addRefDepth(add_fw => -1*$mutFwSup, add_rv => -1*$mutRvSup);
+                        # increase deleted part's depth
+                        for my $j (1 .. $match_len){
+                            my $del_refpos_OB = $refposHf->{$pos+$j-1};
+                            next unless defined $del_refpos_OB;
+                            $del_refpos_OB->addDepth(add=>$mutWhSup);
+                            $del_refpos_OB->addRefDepth(add_fw=>$mutFwSup, add_rv=>$mutRvSup);
+                        }
+                    }
+                    # sweep original mutation
+                    $refpos_OB->delete_mut(mut_id=>$mut_id);
+                    # mark
+                    $norm_again = 1; # check whole refpos and try norm again
+                    # inform
+                    stout_and_sterr "[INFO]\tnorm mutation: 'pos=$pos;mut_id=$mut_id' to 'pos=$accept_pos;mut_id=$new_mut_id'.\n";
+                }
+            }
+        }
+    }
+}
+
+#--- filter pos info and get bestMut ---
+## note 'find_bestMut' func has deleted the mutation fails basic filtration
+sub filter_refpos{
+    my $refseg = shift;
+    my %parm = @_;
+    my $seqID = $parm{seqID} || 'orig';
+    my $minDepth = $parm{minDepth} || 10; # min whole depth of the position
+    my $minAltRc = $parm{minAltRc} || 3; # min altation-supportting reads count
+    my $biStrdRC = $parm{biStrdRC} || 0; # min altation-supportting reads count on both stand
+    my $minIDist = $parm{minIDist} || 0; # min distance between adjacent InDels
+    my $skipDELp = $parm{skipDELp} || 0; # do not deal with pos in the DEL
+    my $method   = $parm{method} || 'Bwa-SAMtools-VCF'; # for tag
+    my $onlyMUTp = $parm{onlyMUTp} || 0; # only keep pos with bestMut
+    my $refposHf = $parm{refposHf}; # may be other refpos hash
+       $refposHf = $refseg->{refpos}->{$seqID} if !defined $refposHf; # internal refpos hash
+
+    # filter mutations
+    ## basic criterion; adjacent indel exclusion
+    my $last_ID_refpos_OB;
+    my $minPos = 1;
+    for my $pos (sort {$a<=>$b} keys %$refposHf){
+        my $refpos_OB = $refposHf->{$pos};
+        # obtain the best mutation
+        if(   $refpos_OB->depth < $minDepth   # depth filtration
+           || $refpos_OB->refAllele =~ /^N$/i # do not allow mutation at 'N' locus
+           || ($skipDELp && $pos < $minPos)   # skip pos when skipDELp
+          ){
+            $refpos_OB->sweep_mutation; # delete it anyway
+        }
+        elsif( $refpos_OB->has_mutation ){ # has mutation(s), so check whether it is good enough
+            # try to find the best qualified mutation
+            $refpos_OB->find_bestMut(minAltRc=>$minAltRc, biStrdRC=>$biStrdRC, method=>$method);
+            # no qualified mutation!
+            unless($refpos_OB->has_bestMut){
+                next;
+            }
+            # compare adjacent indel supports
+            if($refpos_OB->bestMut_type =~ /ins|del/){
+                if(   defined $last_ID_refpos_OB
+                   && $pos - $last_ID_refpos_OB->pos < $minIDist # too close!
+                ){
+                    if($last_ID_refpos_OB->bestMut_sumSup <= $refpos_OB->bestMut_sumSup){
+                        # print "D3\n".Dumper($last_ID_refpos_OB) if $refpos_OB->has_mutation && $method eq 'Blast';
+                        $last_ID_refpos_OB->remove_bestMut;
+                        $last_ID_refpos_OB = $refpos_OB; # update
+                    }
+                    else{
+                        $refpos_OB->remove_bestMut;
+                    }
+                }
+                else{
+                    $last_ID_refpos_OB = $refpos_OB; # update
+                }
+            }
+            # skipDELp, update pos filteration
+            if($skipDELp && $refpos_OB->bestMut_type eq 'del'){
+                $minPos = $pos + CORE::length($refpos_OB->bestMut_seq);
+            }
+        }
+    }
+    # sweep pos without bestMut
+    if($onlyMUTp){
+        delete $refposHf->{$_} for grep !$refposHf->{$_}->has_bestMut, keys %$refposHf;
+    }
 }
 
 #--- record given mut ---
@@ -502,7 +676,7 @@ sub regMapPos{
         my $rmpHf = first {    $_->{hSt}<=$hapPos
                             && $_->{hEd}>=$hapPos
                           } @$regMapAf;
-        cluck_and_exit "<ERROR>\tcannot map hapPos ($hapPos) to haplotype.\n" unless(defined $rmpHf);
+        cluck_and_exit "<ERROR>\tcannot map hapPos ($hapPos) to original reference.\n" unless(defined $rmpHf);
         return $rmpHf->{oSt} + $hapPos - $rmpHf->{hSt};
     }
 }
