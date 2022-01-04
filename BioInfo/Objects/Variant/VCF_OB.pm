@@ -4,8 +4,10 @@ use strict;
 use warnings;
 use Cwd qw/ abs_path /;
 use Data::Dumper;
+use List::Util qw/ sum /;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
+use BioFuse::Util::Sys qw/ trible_run_for_success /;
 use BioFuse::BioInfo::VCF qw/ check_I16_alt /;
 
 require Exporter;
