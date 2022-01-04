@@ -30,7 +30,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
 $VERSION = "0.22";
-$DATE = '2021-12-20';
+$DATE = '2021-12-28';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -197,7 +197,7 @@ sub reheader{
     if(defined $headerAf){
         $headerSAM = $reheaderBam->filepath.'.reheader.temp.header.sam';
         open (HS,Try_GZ_Write($headerSAM)) || die "fail write $headerSAM: $!\n";
-        print HS for @$headerSAM;
+        print HS for @$headerAf;
         close HS;
     }
 
@@ -210,7 +210,7 @@ sub reheader{
 sub isNsort{
     my $bam = shift;
     my $HDline = first {/^\@HD/} @{$bam->header_Af};
-    return $HDline =~ /SO:queryname/;
+    return (defined $HDline && $HDline =~ /SO:queryname/);
 }
 
 #--- output N-sort bam ---
@@ -242,7 +242,7 @@ sub toNsort{
 sub isCsort{
     my $bam = shift;
     my $HDline = first {/^\@HD/} @{$bam->header_Af};
-    return $HDline =~ /SO:coordinate/;
+    return (defined $HDline && $HDline =~ /SO:coordinate/);
 }
 
 #--- output C-sort bam ---
@@ -598,11 +598,11 @@ sub reads_count{
 
     # read bam
     my $reads_count = 0;
-    my $viewOpt  = "-q $minMQ";
-       $viewOpt .= "-f 0x2" if $onlyPropMap;
-       $viewOpt .= "-F 0x900" if $skipSuppMap; # -F 0x800 + 0x100
-       $viewOpt .= "-F 0x400" if $skipDupRead;
-    my $viewReg  = $region ? $region : (-e $bed ? "-L $bed" : "");
+    my $viewOpt  = "-q $minMQ ";
+       $viewOpt .= "-f 0x2 " if $onlyPropMap;
+       $viewOpt .= "-F 0x900 " if $skipSuppMap; # -F 0x800 + 0x100
+       $viewOpt .= "-F 0x400 " if $skipDupRead;
+    my $viewReg  = defined $region ? $region : (defined $bed ? "-L $bed" : "");
     my $fh = $bam->start_read(samtools=>$samtools, viewOpt=>$viewOpt, viewReg=>$viewReg);
     while(<$fh>){
         my $reads_OB = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new(ReadsLineText => $_);
@@ -1045,7 +1045,7 @@ sub get_cigarIDSC{
                 $mut_pos = $mPos + $i; # assign deletion to the first pos of the deleted part
                 $i += $len;
                 $mut_type = 'del';
-                $mut_seq = 'N'; # assign the seq later
+                $mut_seq = 'D' x $len; # assign the seq later
                 next if( $i < $min_mTD || length($ReadSeq) < $min_mTD); # located at tail of this read
             }
             elsif($type eq 'S'){
@@ -1056,8 +1056,8 @@ sub get_cigarIDSC{
                 else{ # right prime of read
                     $mut_pos = $mPos + $i - 1;
                     $mut_type = 'softclip3';
+                    $i += $len;
                 }
-                $i += $len;
                 $ReadSeq = substr($ReadSeq, $len);
             }
             # filter this site if it already has mutation
@@ -1073,8 +1073,8 @@ sub get_cigarIDSC{
                 # only primer3 impact depth
                 if($mut_type eq 'softclip3'){
                     $cigarSC_Hf->{$mseg}->{$mut_pos}->{$mut_type}->[0] ++;
-                    $cigarSC_Hf->{$mseg}->{$mut_pos}->{$mut_type}->[1] += 1 if $rOB->is_fw_map; # forward support
-                    $cigarSC_Hf->{$mseg}->{$mut_pos}->{$mut_type}->[2] += 1 if $rOB->is_rv_map; # reverse complemented support
+                    $cigarSC_Hf->{$mseg}->{$mut_pos}->{$mut_type}->[1] += ($rOB->is_fw_map ? 1 : 0); # forward support
+                    $cigarSC_Hf->{$mseg}->{$mut_pos}->{$mut_type}->[2] += ($rOB->is_rv_map ? 1 : 0); # reverse complemented support
                 }
                 next; # do not record softclip as mutation
             }
@@ -1123,7 +1123,7 @@ sub reads2fasta{
         my $mlen = $rOB->mRefLen;
         # covPos if given
         if($onlyCP){
-            pop @covPos while (@covPos && $covPos[0] < $mpos); # rOB surpasses
+            shift @covPos while (@covPos && $covPos[0] < $mpos); # rOB surpasses
             last unless @covPos; # no pos need
             next if $covPos[0] > $mpos+$mlen-1; # rOB falls behind
         }
