@@ -361,10 +361,14 @@ sub merge{
     cluck_and_exit "<ERROR>\tonly one bam to merge.\n".Dumper($bamAf) if @$bamAf <= 1;
     # should be sorted by the same index (N or C)
     if($bamAf->[0]->isNsort){
-        cluck_and_exit "<ERROR>\tnot N-sorted bam.\n".Dumper($_) for grep {my $bm=$_; !$bm->isNsort} map {$_} @$bamAf;
+        for my $source_bam (@$bamAf){
+            cluck_and_exit "<ERROR>\tnot N-sorted bam.\n".Dumper($source_bam) unless $source_bam->isNsort;
+        }
     }
     elsif($bamAf->[0]->isCsort){
-        cluck_and_exit "<ERROR>\tnot C-sorted bam.\n".Dumper($_) for grep {my $bm=$_; !$bm->isCsort} map {$_} @$bamAf;
+        for my $source_bam (@$bamAf){
+            cluck_and_exit "<ERROR>\tnot C-sorted bam.\n".Dumper($source_bam) unless $source_bam->isCsort;
+        }
     }
     else{
         cluck_and_exit "<ERROR>\tnot sorted bam.\n".Dumper($bamAf->[0]);
