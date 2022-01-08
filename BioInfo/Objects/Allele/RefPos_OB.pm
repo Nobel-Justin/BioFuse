@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Data::Dumper;
 use List::Util qw/ max /;
-use BioFuse::Util::Log qw/ cluck_and_exit /;
+use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 require Exporter;
 
 #----- systemic variables -----
@@ -271,8 +271,9 @@ sub find_bestMut{
     my $minAltRc = $parm{minAltRc} || 3; # min altation-supportting reads count
     my $biStrdRC = $parm{biStrdRC} || 0; # min altation-supportting reads count on both stand
     my $method   = $parm{method} || 'Bwa-SAMtools-VCF'; # for tag
+    my $debug    = $parm{debug};
 
-    for my $mut_id (sort keys %{$refpos_OB->{mutation}}){
+    for my $mut_id (@{$refpos_OB->mutList}){
         my ($mut_type, $mut_seq) = split /,/, $mut_id;
         my ($sumSup, $fwSup, $rvSup, $refSup_toCmp) = @{$refpos_OB->{mutation}->{$mut_id}};
         # filter the mutation
@@ -281,6 +282,8 @@ sub find_bestMut{
             || ( $biStrdRC && ($fwSup < $biStrdRC || $rvSup < $biStrdRC) )
         ){
             $refpos_OB->delete_mut(mut_id=>$mut_id);
+            # inform
+            stout_and_sterr "[INFO]\tdiscard mut ($mut_id, $method) at pos ".$refpos_OB->pos.", due to mutation filtration.\n" if $debug;
             next;
         }
         elsif( # must be dominant against ref-allel

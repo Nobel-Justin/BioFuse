@@ -390,6 +390,7 @@ sub filter_refpos{
     my $onlyMUTp = $parm{onlyMUTp} || 0; # only keep pos with bestMut
     my $refposHf = $parm{refposHf}; # may be other refpos hash
        $refposHf = $refseg->{refpos}->{$seqID} if !defined $refposHf; # internal refpos hash
+    my $debug    = $parm{debug};
 
     # filter mutations
     ## basic criterion; adjacent indel exclusion
@@ -402,12 +403,14 @@ sub filter_refpos{
            || $refpos_OB->refAllele =~ /^N$/i # do not allow mutation at 'N' locus
            || ($skipDELp && $pos < $minPos)   # skip pos when skipDELp
           ){
-            # die Dumper($refpos_OB) if $method eq 'finalMod';
-            $refpos_OB->sweep_mutation; # delete it anyway
+            # inform
+            stout_and_sterr "[INFO]\tdiscard allMut ($method) at pos ".$refpos_OB->pos.", due to basic filtration.\n" if $debug && $refpos_OB->has_mutation;
+            # delete it anyway
+            $refpos_OB->sweep_mutation;
         }
         elsif( $refpos_OB->has_mutation ){ # has mutation(s), so check whether it is good enough
             # try to find the best qualified mutation
-            $refpos_OB->find_bestMut(minAltRc=>$minAltRc, biStrdRC=>$biStrdRC, method=>$method);
+            $refpos_OB->find_bestMut(minAltRc=>$minAltRc, biStrdRC=>$biStrdRC, method=>$method, debug=>$debug);
             # no qualified mutation!
             unless($refpos_OB->has_bestMut){
                 next;
@@ -418,12 +421,15 @@ sub filter_refpos{
                    && $pos - $last_ID_refpos_OB->pos < $minIDist # too close!
                 ){
                     if($last_ID_refpos_OB->bestMut_sumSup <= $refpos_OB->bestMut_sumSup){
-                        # print "D3\n".Dumper($last_ID_refpos_OB) if $refpos_OB->has_mutation && $method eq 'Blast';
                         $last_ID_refpos_OB->remove_bestMut;
                         $last_ID_refpos_OB = $refpos_OB; # update
+                        # inform
+                        stout_and_sterr "[INFO]\tdiscard bestMut ($method) at pos ".$last_ID_refpos_OB->pos.", due to adjacent indel comparison.\n" if $debug;
                     }
                     else{
                         $refpos_OB->remove_bestMut;
+                        # inform
+                        stout_and_sterr "[INFO]\tdiscard bestMut ($method) at pos ".$refpos_OB->pos.", due to adjacent indel comparison.\n" if $debug;
                     }
                 }
                 else{
