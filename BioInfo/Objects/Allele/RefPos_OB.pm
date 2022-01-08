@@ -214,7 +214,7 @@ sub merge{
     $refpos_OB->addRefDepth(add_fw=>$donor_OB->RefDepth(type=>'F'));
     $refpos_OB->addRefDepth(add_rv=>$donor_OB->RefDepth(type=>'R'));
     # mutation
-    $refpos_OB->addMut(mut_id=>$_, depthAf=>$donor_OB->mutDepth(mut_id=>$_,type=>'A')) for @{$donor_OB->mutList};
+    $refpos_OB->addMut(mut_id=>$_, depthAf=>[@{$donor_OB->mutDepth(mut_id=>$_,type=>'A')}]) for @{$donor_OB->mutList};
 }
 
 #--- has mutations ---
