@@ -340,7 +340,7 @@ sub normInDelMut{
                 }
                 # norm: move mutation
                 if($match_len){
-                    my $accept_pos = $pos - $match_len + $pos_shift;
+                    my $accept_pos = $pos - $match_len;
                     my $accept_refpos_OB = $refposHf->{$accept_pos};
                     my $new_mut_seq = substr($mut_seq, -1*$match_len)
                                      .substr($mut_seq, 0, CORE::length($mut_seq)-$match_len);
@@ -350,6 +350,7 @@ sub normInDelMut{
                     my $mutFwSup = $refpos_OB->mutDepth(mut_id=>$mut_id, type=>'F');
                     my $mutRvSup = $refpos_OB->mutDepth(mut_id=>$mut_id, type=>'R');
                     $accept_refpos_OB->addMutDepth(mut_id=>$new_mut_id, add_fw=>$mutFwSup, add_rv=>$mutRvSup, add_cp => -1*$mutWhSup);
+                    $accept_refpos_OB->setRefDepth(refdepthAf=>[@{$refpos_OB->RefDepth(type=>'A')}]);
                     # deletion
                     if($mut_type eq 'del'){
                         # decrease accepter's ref allele depth
@@ -401,6 +402,7 @@ sub filter_refpos{
            || $refpos_OB->refAllele =~ /^N$/i # do not allow mutation at 'N' locus
            || ($skipDELp && $pos < $minPos)   # skip pos when skipDELp
           ){
+            # die Dumper($refpos_OB) if $method eq 'finalMod';
             $refpos_OB->sweep_mutation; # delete it anyway
         }
         elsif( $refpos_OB->has_mutation ){ # has mutation(s), so check whether it is good enough
