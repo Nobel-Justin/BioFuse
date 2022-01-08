@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
-$VERSION = "0.02";
-$DATE = '2021-12-13';
+$VERSION = "0.03";
+$DATE = '2022-01-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -130,7 +130,13 @@ sub SelectRefsegForReads{
                 my %end2mseg;
                 $end2mseg{1}{$_->mseg} = 1 for @{$map_rOB{1}};
                 $end2mseg{2}{$_->mseg} = 1 for @{$map_rOB{2}};
+                ## sort by AS
                 my @msegBiEnd = sort {$refseg2AS{$b}<=>$refseg2AS{$a}} grep exists $end2mseg{2}{$_}, keys %{$end2mseg{1}};
+                # if keepRefsegID is set
+                if(defined $keepRefsegID){
+                    @msegBiEnd = grep $_ eq $keepRefsegID, @msegBiEnd;
+                }
+                # take msegBiEnd with most AS
                 if(@msegBiEnd != 0){
                     $outBam->write(content=>$_->printSAM."\n")
                         for grep {$_->mseg eq $msegBiEnd[0] || $_->p_mseg eq $msegBiEnd[0]}
