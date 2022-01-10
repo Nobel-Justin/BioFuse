@@ -3,6 +3,7 @@ package BioFuse::BioInfo::Alignment::Blast;
 use strict;
 use warnings;
 use Data::Dumper;
+use List::Util qw/ min /;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::Util::Sys qw/ trible_run_for_success file_exist /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
@@ -26,8 +27,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Alignment::Blast';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2021-12-26';
+$VERSION = "0.02";
+$DATE = '2022-01-09';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -122,7 +123,7 @@ sub BlastM0ToRefPos{
                 sjSeq_Hf => \%sbjct_seq,   qyFAfh => $qyFAfh,
                 firstMap => $firstMap,   skipGapF => $skipGapF  );
     # load m0 file
-    my $last_query_id = undef;
+    my $last_query_id = '_fs_init_undef_fs_';
     open (my $m0fh,Try_GZ_Read($blast_m0)) || die "fail read $blast_m0: $!\n";
     while (<$m0fh>){
         if(!/^Query=/){
@@ -135,7 +136,7 @@ sub BlastM0ToRefPos{
             next if defined $qyIDlist && !exists $qyID{$query_id};
             # deal the last query_id
             if(    !exists $mapIF{$query_id}
-                && defined $last_query_id
+                &&  exists $mapIF{$last_query_id}
             ){
                 # deal map info of last query_id
                 &dealOneQueryMapIF(query_id=>$last_query_id, @opt);
@@ -150,7 +151,7 @@ sub BlastM0ToRefPos{
     }
     close $m0fh;
     # deal map info of last query_id
-    &dealOneQueryMapIF(query_id=>$last_query_id, @opt) if defined $last_query_id;
+    &dealOneQueryMapIF(query_id=>$last_query_id, @opt) if exists $mapIF{$last_query_id};
     close $qyFAfh;
 
     # inform
@@ -189,6 +190,7 @@ sub dealOneQueryMapIF{
 }
 
 #--- one mapping block in m0 format ---
+## donot record in mapIF_Hf when 'No hits found'
 sub digest_m0MapBlock{
     shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
@@ -209,7 +211,7 @@ sub digest_m0MapBlock{
         my $line_info = <$m0fh>;
         if($line_info !~ /^\s+Score\s+=/){
             # no hits, just skip
-            if( $line_info =~ /No\s+hits\s+found/ ){
+            if( $line_info =~ /No\s+hits\s+found/i ){
                 last;
             }
             # mapped subject id
