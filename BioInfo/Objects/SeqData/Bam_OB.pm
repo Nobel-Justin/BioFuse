@@ -30,7 +30,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
 $VERSION = "0.22";
-$DATE = '2021-12-28';
+$DATE = '2022-01-09';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -716,9 +716,9 @@ sub get_regionCovStat{
         $statHf->{accuDepPt}->{$depth} = sprintf "%0.4f", min($statHf->{accuDepPt}->{$depth}, $basicPosCount) / $basicPosCount;
     }
     # coverage
-    $statHf->{coverage}  = sprintf "%0.4f", sum(values %depthCount) / $basicPosCount;
+    $statHf->{coverage}  = sprintf "%0.4f", (sum(values %depthCount) || 0) / $basicPosCount;
     # mean depth
-    $statHf->{meanDepth} = sprintf "%0.2f", sum(map {$_*$depthCount{$_}} keys %depthCount) / $basicPosCount;
+    $statHf->{meanDepth} = sprintf "%0.2f", (sum(map {$_*$depthCount{$_}} keys %depthCount) || 0) / $basicPosCount;
 
     return $statHf;
 }
