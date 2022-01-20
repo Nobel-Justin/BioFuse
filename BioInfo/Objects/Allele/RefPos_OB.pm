@@ -17,8 +17,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Allele::RefPos_OB';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2021-12-29';
+$VERSION = "0.02";
+$DATE = '2022-01-15';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -49,6 +49,7 @@ my @functoion_list = qw/
                         remove_bestMut
                         reset_bestMut_seq
                         bestMut_id
+                        bestMut_update
                         bestMut_infoStr
                         bestMut_type
                         bestMut_seq
@@ -65,7 +66,7 @@ my @functoion_list = qw/
 # refpos_OB -> depth = $depth
 # refpos_OB -> refDepth = [$whole, $Forward, $Reverse]
 # refpos_OB -> mutation = {mut_id=>[$mut_wholeDepth, $mut_ForwardDepth, $mut_ReverseDepth, $ref_wholeDepth]}
-#   mut_id format: 'TYPE,SEQ', e.g., 'snv,A'; 'ins,TC'; 'del,AGC'
+#   mut_id format: 'type,SEQ', e.g., 'snv,A'; 'ins,TC'; 'del,AGC'
 # refpos_OB -> bestMut = {sumSup=>S, fwSup=>S, rvSup=>S, mutType=>S, mutSeq=>S, method=>S}
 
 #--- construction of object ---
@@ -232,7 +233,7 @@ sub has_mutation{
         return 1;
     }
     else{
-        $refpos_OB->sweep_mutation; # try anyway
+        # $refpos_OB->sweep_mutation if !defined $mut_id; # try anyway
         return 0;
     }
 }
@@ -268,22 +269,34 @@ sub delete_mut{
 sub find_bestMut{
     my $refpos_OB = shift;
     my %parm = @_;
-    my $minAltRc = $parm{minAltRc} || 3; # min altation-supportting reads count
+    my $minAltRC = $parm{minAltRC} || 3; # min altation-supportting reads count
     my $biStrdRC = $parm{biStrdRC} || 0; # min altation-supportting reads count on both stand
     my $method   = $parm{method} || 'Bwa-SAMtools-VCF'; # for tag
+    my $refEnd   = $parm{refEnd} || 0; # minAltRC times for linear refEnd or N-region shore
     my $debug    = $parm{debug};
 
     for my $mut_id (@{$refpos_OB->mutList}){
         my ($mut_type, $mut_seq) = split /,/, $mut_id;
         my ($sumSup, $fwSup, $rvSup, $refSup_toCmp) = @{$refpos_OB->{mutation}->{$mut_id}};
         # filter the mutation
-        if(    ( $sumSup < $minAltRc ) # at least so many supported reads
+        if(    ( $sumSup < $minAltRC ) # at least so many supported reads
                # if required, both strand supported
-            || ( $biStrdRC && ($fwSup < $biStrdRC || $rvSup < $biStrdRC) )
+            || (    !$refEnd
+                 && $biStrdRC
+                 && ($fwSup < $biStrdRC || $rvSup < $biStrdRC)
+               )
+               # if mut at ref end
+            || (     $refEnd
+                 && !(   ($fwSup >= $minAltRC*$refEnd || $rvSup >= $minAltRC*$refEnd)
+                      || (   $biStrdRC
+                          && ($fwSup >= $biStrdRC && $rvSup >= $biStrdRC)
+                         )
+                     )
+               )
         ){
-            $refpos_OB->delete_mut(mut_id=>$mut_id);
             # inform
-            stout_and_sterr "[INFO]\tdiscard mut ($mut_id, $method) at pos ".$refpos_OB->pos.", due to mutation filtration.\n" if $debug;
+            stout_and_sterr "[INFO]\tdiscard mut ($mut_id, $method, refEnd=$refEnd) at pos ".$refpos_OB->pos.", due to mutation filtration.\n".Dumper($refpos_OB) if $debug;
+            $refpos_OB->delete_mut(mut_id=>$mut_id);
             next;
         }
         elsif( # must be dominant against ref-allel
@@ -343,13 +356,36 @@ sub reset_bestMut_seq{
 #--- return type of the best mutation ---
 sub bestMut_id{
     my $refpos_OB = shift;
-    return join(',', map {("$refpos_OB->{bestMut}->{$_}")} qw/ mutType mutSeq/);
+    return join(',', map {("$refpos_OB->{bestMut}->{$_}")} qw/ mutType mutSeq /);
+}
+
+#--- update info of the best mutation ---
+sub bestMut_update{
+    my $refpos_OB = shift;
+    my %parm = @_;
+    my $mut_id = $parm{mut_id};
+    my $method = $parm{method};
+
+    if(defined $mut_id){
+        my ($mutType, $mutSeq) = (split /,/, $mut_id)[0,1];
+        $refpos_OB->{bestMut}->{mutType} = $mutType;
+        $refpos_OB->{bestMut}->{mutSeq}  = $mutSeq;
+    }
+    else{
+        $mut_id = $refpos_OB->bestMut_id;
+    }
+    $refpos_OB->{bestMut}->{sumSup} = $refpos_OB->mutDepth(mut_id=>$mut_id, type=>'S');
+    $refpos_OB->{bestMut}->{fwSup}  = $refpos_OB->mutDepth(mut_id=>$mut_id, type=>'F');
+    $refpos_OB->{bestMut}->{rvSup}  = $refpos_OB->mutDepth(mut_id=>$mut_id, type=>'R');
+    if(defined $method){
+        $refpos_OB->{bestMut}->{method} = $method;
+    }
 }
 
 #--- return type of the best mutation ---
 sub bestMut_infoStr{
     my $refpos_OB = shift;
-    return join(';', map {("$_=$refpos_OB->{bestMut}->{$_}")} qw/ mutType mutSeq sumSup fwSup rvSup method/);
+    return join(';', map {("$_=$refpos_OB->{bestMut}->{$_}")} qw/ mutType mutSeq sumSup fwSup rvSup method /);
 }
 
 #--- return type of the best mutation ---
