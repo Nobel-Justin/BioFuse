@@ -13,6 +13,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
               getStrRepUnit
               getStrUnitRepeatTime
               getRegexRegion
+              mapSeqWithMM
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
@@ -20,8 +21,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::String';
 #----- version --------
-$VERSION = "0.33";
-$DATE = '2018-11-28';
+$VERSION = "0.34";
+$DATE = '2022-01-19';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -32,6 +33,7 @@ my @functoion_list = qw/
                         getStrRepUnit
                         getStrUnitRepeatTime
                         getRegexRegion
+                        mapSeqWithMM
                      /;
 
 #--- find given string's given-mode tandem-repeat unit and repeat-time ---
@@ -183,6 +185,44 @@ sub getRegexRegion{
         push @{$RegionAref}, [$lastIdx+$offset, $lastIdx+length($StrTest)];
     }
     return $RegionAref;
+}
+
+#--- map two strings only MisMatch allowed ---
+## left-aligned search with mismatches
+sub mapSeqWithMM{
+    shift @_ if(@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $str_a = $parm{str_a};
+    my $str_b = $parm{str_b};
+    my $gapOP = $parm{gapOP} || 3; # gap Open Penalty
+
+    my ($str_Q, $str_S) =   length($str_a) <= length($str_b)
+                          ? ($str_a, $str_b)
+                          : ($str_b, $str_a);
+    my @str_Q = split //, uc $str_Q; # query string
+    my @str_S = split //, uc $str_S; # subject string
+    my ($min_MMct, $map_Si, $map_details) = ($#str_Q+2, undef, undef);
+    my $max_i_S = $#str_S-$#str_Q;
+    my @i_S_itv = $#str_Q+1 <= $gapOP ? (0, $max_i_S) : (0 .. $max_i_S);
+    for my $i_S (@i_S_itv){
+        my $MMct = ($i_S==0 || $i_S==$max_i_S) ? 0 : $gapOP;
+        my $details = '';
+        # compare one to one
+        for my $i_Q (0 .. $#str_Q){
+            if($str_Q[$i_Q] ne $str_S[$i_S+$i_Q]){
+                $MMct++;
+                $details .= ' ';
+            }
+            else{
+                $details .= '|';
+            }
+            last if $MMct >= $min_MMct;
+        }
+        # update
+        ($min_MMct, $map_Si, $map_details) = ($MMct, $i_S, $details) if $MMct < $min_MMct;
+        last if $MMct == 0;
+    }
+    return ($min_MMct, $map_Si, $map_details);
 }
 
 1; ## tell the perl script the successful access of this module.
