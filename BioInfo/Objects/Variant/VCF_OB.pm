@@ -22,8 +22,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Variant::VCF_OB';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2021-12-17';
+$VERSION = "0.02";
+$DATE = '2022-01-16';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -117,11 +117,12 @@ sub load2refpos{
             # only consider the non-indel line
             $refpos_OB->addDepth(add=>sum(@Dwh)) if !$is_indel;
 
-            # ref-allel
+            # ref-allel, consider the non-indel line firstly
+            ## following, 'ins' and 'del' will operate in different ways
             my $refWdepth = shift @Dwh;
             my $refFdepth = shift @Dfw;
             my $refRdepth = shift @Drv;
-            $refpos_OB->setRefDepth(refdepthAf=>[$refWdepth||0,$refFdepth||0,$refRdepth||0]);
+            $refpos_OB->setRefDepth(refdepthAf=>[$refWdepth||0,$refFdepth||0,$refRdepth||0]) if !$is_indel;
 
             # mutations
             my @alt = split /,/, $alt;
@@ -179,10 +180,25 @@ sub load2refpos{
                             my $ins_refpos_OB = $refposHf->{$ins_refpos}; # BioFuse::BioInfo::Objects::Allele::RefPos_OB
                             cluck_and_exit "<ERROR>\tcannot find refpos_OB (pos=$ins_refpos).\n".Dumper($vcf) if !defined $ins_refpos_OB;
                             # record
-                            my $depthAf =   $use_IDV_bool
-                                          ? [ $IDV_value, int($IDV_value/2), int($IDV_value/2), $refWdepth ] # use IDV to pretend
-                                          : [ $Dwh[$i], $Dfw[$i], $Drv[$i], $refWdepth ];
-                            $ins_refpos_OB->addMut(mut_id=>'ins,'.uc($insert_seq), depthAf=>$depthAf);
+                            my $depthAf;
+                            if($use_IDV_bool){ # use IDV to pretend
+                                my $IDV_fw_value = int(($IDV_value+$Dfw[$i]-$Drv[$i])/2);
+                                my $IDV_rv_value = $IDV_value - $IDV_fw_value;
+                                $depthAf = [ $IDV_value, $IDV_fw_value, $IDV_rv_value, $refWdepth ];
+                            }
+                            else{
+                                $depthAf = [ $Dwh[$i], $Dfw[$i], $Drv[$i], $refWdepth ];
+                            }
+                            my $mut_id = 'ins,'.uc($insert_seq);
+                            $ins_refpos_OB->addMut(mut_id=>$mut_id, depthAf=>$depthAf);
+                            #    remove this insertion supports from refAllele depth
+                            # or use refAllele depth from this line
+                            if($ins_refpos_OB->RefDepth(type=>'S') - $depthAf->[0] > $refWdepth){
+                                $ins_refpos_OB->addRefDepth(add_fw=>(-1*$depthAf->[1]), add_rv=>(-1*$depthAf->[2]));
+                            }
+                            else{
+                                $refpos_OB->setRefDepth(refdepthAf=>[$refWdepth||0,$refFdepth||0,$refRdepth||0]);
+                            }
                         }
                         elsif(length($ref_allel) > length($alt_allel)){ # deletion
                             my @ref_bases = split //, $ref_allel;
@@ -215,10 +231,19 @@ sub load2refpos{
                             # count the deleted part into depth also
                             $del_refpos_OB->addDepth(add=>$Dwh[$i]);
                             # record, last element is for the aimPos, not this one
-                            my $depthAf =   $use_IDV_bool
-                                          ? [ $IDV_value, int($IDV_value/2), int($IDV_value/2), 0 ] # use IDV to pretend
-                                          : [ $Dwh[$i], $Dfw[$i], $Drv[$i], 0 ];
-                            $del_refpos_OB->addMut(mut_id=>'del,'.uc($delete_seq), depthAf=>$depthAf);
+                            my $depthAf;
+                            if($use_IDV_bool){ # use IDV to pretend
+                                my $IDV_fw_value = int(($IDV_value+$Dfw[$i]-$Drv[$i])/2);
+                                my $IDV_rv_value = $IDV_value - $IDV_fw_value;
+                                $depthAf = [ $IDV_value, $IDV_fw_value, $IDV_rv_value, 0 ];
+                            }
+                            else{
+                                $depthAf = [ $Dwh[$i], $Dfw[$i], $Drv[$i], 0 ];
+                            }
+                            my $mut_id = 'del,'.uc($delete_seq);
+                            $del_refpos_OB->addMut(mut_id=>$mut_id, depthAf=>$depthAf);
+                            # set ref-allele depth
+                            $del_refpos_OB->setRefDepth(refdepthAf=>[$refWdepth||0,$refFdepth||0,$refRdepth||0]);
                         }
                     }
                 }
