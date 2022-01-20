@@ -3,7 +3,7 @@ package BioFuse::BioInfo::Objects::Segment::RefSeg_OB;
 use strict;
 use warnings;
 use Data::Dumper;
-use List::Util qw/ first /;
+use List::Util qw/ first any /;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
 use BioFuse::Util::Interval qw/ Get_Two_Seg_Olen /;
@@ -21,8 +21,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Segment::RefSeg_OB';
 #----- version --------
-$VERSION = "0.06";
-$DATE = '2021-12-31';
+$VERSION = "0.07";
+$DATE = '2022-01-15';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -34,6 +34,9 @@ my @functoion_list = qw/
                         id
                         set_length
                         length
+                        foreNlen
+                        tailNlen
+                        is_inNregion
                         set_note
                         note
                         set_circular
@@ -62,6 +65,9 @@ my @functoion_list = qw/
 #--- structure of object
 # refseg -> id = $id
 # refseg -> length = $length, this is the original length
+# refseg -> foreNlen = $foreNlen, this is length of the fore N part in original seq
+# refseg -> tailNlen = $foreNlen, this is length of the tail N part in original seq
+# refseg -> N_region = [[stp1,edp1],[stp2,edp2],..], this is N part in original seq
 # refseg -> note = $note
 # refseg -> circular = 0(no)/1(yes)
 # refseg -> extLen = $extLen, this is just the extended path length
@@ -110,6 +116,49 @@ sub length{
     else{
         return $refseg->{length};
     }
+}
+
+#--- get refseg's foreNlen ---
+sub foreNlen{
+    my $refseg = shift;
+    my %parm = @_;
+    my $seqID = $parm{seqID};
+
+    if(    defined $seqID
+        && defined $refseg->{seq}->{$seqID}
+    ){
+        my ($foreNstr) = ($refseg->{seq}->{$seqID} =~ /^(N*)/i);
+        return CORE::length($foreNstr);
+    }
+    else{
+        return $refseg->{foreNlen};
+    }
+}
+
+#--- get refseg's tailNlen ---
+sub tailNlen{
+    my $refseg = shift;
+    my %parm = @_;
+    my $seqID = $parm{seqID};
+
+    if(    defined $seqID
+        && defined $refseg->{seq}->{$seqID}
+    ){
+        my ($tailNstr) = ($refseg->{seq}->{$seqID} =~ /(N*)$/i);
+        return CORE::length($tailNstr);
+    }
+    else{
+        return $refseg->{tailNlen};
+    }
+}
+
+#--- check whether given pos is in N-region ---
+sub is_inNregion{
+    my $refseg = shift;
+    my %parm = @_;
+    my $pos = $parm{pos};
+    my $flk = $parm{flk} || 0;
+    return any {$pos>=$_->[0]-$flk && $pos<=$_->[1]+$flk} @{$refseg->{N_region}};
 }
 
 #--- set refseg's notes ---
@@ -329,14 +378,20 @@ sub normInDelMut{
                 for my $i (1 .. CORE::length($mut_seq)){
                     my $mut_base = substr($mut_seq, -1*$i, 1);
                     my $fore_pos = $pos - $i + $pos_shift;
-                    my $for_refpos_OB = $refposHf->{$fore_pos};
-                    last unless defined $for_refpos_OB;
-                    if($for_refpos_OB->refAllele =~ /^$mut_base$/i){ # match
+                    my $fore_refpos_OB = $refposHf->{$fore_pos};
+                    print "$i\n" if($pos == 32324);
+                    print Dumper($fore_refpos_OB) if($pos == 32324);
+                    last unless defined $fore_refpos_OB;
+                    last if $fore_refpos_OB->has_mutation && $fore_pos != $pos; # donot cross mutation
+                    if($fore_refpos_OB->refAllele =~ /^$mut_base$/i){ # match
                         $match_len = $i;
                     }
                     else{
                         last;
                     }
+                }
+                if($pos == 32324){
+                    print "normInDelMut\t$mut_id\t$match_len\n";
                 }
                 # norm: move mutation
                 if($match_len){
@@ -382,7 +437,7 @@ sub filter_refpos{
     my %parm = @_;
     my $seqID = $parm{seqID} || 'orig';
     my $minDepth = $parm{minDepth} || 10; # min whole depth of the position
-    my $minAltRc = $parm{minAltRc} || 3; # min altation-supportting reads count
+    my $minAltRC = $parm{minAltRC} || 3; # min altation-supportting reads count
     my $biStrdRC = $parm{biStrdRC} || 0; # min altation-supportting reads count on both stand
     my $minIDist = $parm{minIDist} || 0; # min distance between adjacent InDels
     my $skipDELp = $parm{skipDELp} || 0; # do not deal with pos in the DEL
@@ -390,7 +445,14 @@ sub filter_refpos{
     my $onlyMUTp = $parm{onlyMUTp} || 0; # only keep pos with bestMut
     my $refposHf = $parm{refposHf}; # may be other refpos hash
        $refposHf = $refseg->{refpos}->{$seqID} if !defined $refposHf; # internal refpos hash
+    my $max_rlen = $parm{max_rlen} || 100; # to judge linear ref bilateral ends
+    my $refEndTm = $parm{refEndTm} || 3; # times of min supporting count required for linear ref ends mut or N-region shore
     my $debug    = $parm{debug};
+
+    # refend region for linear ref
+    my ($foreRefEnd,$tailRefEnd) =   $refseg->is_circular
+                                   ? (0, 0)
+                                   : ($refseg->foreNlen+$max_rlen*2, $refseg->length-$refseg->tailNlen-$max_rlen*2);
 
     # filter mutations
     ## basic criterion; adjacent indel exclusion
@@ -404,13 +466,16 @@ sub filter_refpos{
            || ($skipDELp && $pos < $minPos)   # skip pos when skipDELp
           ){
             # inform
-            stout_and_sterr "[INFO]\tdiscard allMut ($method) at pos ".$refpos_OB->pos.", due to basic filtration.\n" if $debug && $refpos_OB->has_mutation;
+            stout_and_sterr "[INFO]\tdiscard allMut ($method) at pos ".$refpos_OB->pos.", due to basic filtration.\n".Dumper($refpos_OB) if $debug && $refpos_OB->has_mutation;
             # delete it anyway
             $refpos_OB->sweep_mutation;
         }
         elsif( $refpos_OB->has_mutation ){ # has mutation(s), so check whether it is good enough
             # try to find the best qualified mutation
-            $refpos_OB->find_bestMut(minAltRc=>$minAltRc, biStrdRC=>$biStrdRC, method=>$method, debug=>$debug);
+            my $refEnd = (   (!$refseg->is_circular && ($pos<=$foreRefEnd || $pos>=$tailRefEnd)) # linear reference bilateral end
+                          || $refseg->is_inNregion(pos=>$pos, flk=>$max_rlen*2) # N-region shore
+                         ) ? $refEndTm : 0; # for mut at end of linear ref
+            $refpos_OB->find_bestMut(minAltRC=>$minAltRC, biStrdRC=>$biStrdRC, method=>$method, debug=>$debug, refEnd=>$refEnd);
             # no qualified mutation!
             unless($refpos_OB->has_bestMut){
                 next;
