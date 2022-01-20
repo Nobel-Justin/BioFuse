@@ -1071,7 +1071,8 @@ sub get_cigarIDSC{
             if(!exists $cigarIDSC_Hf->{$mseg}->{$mut_pos}){
                 $cigarIDSC_Hf->{$mseg}->{$mut_pos} = BioFuse::BioInfo::Objects::Allele::RefPos_OB->new(pos=>$mut_pos, refAllele=>$refposHf->{$mut_pos}->refAllele);
             }
-            $cigarIDSC_Hf->{$mseg}->{$mut_pos}->addDepth(add=>1); # pretend to be mut_whole_depth
+            my $cigarIDSC_refpos_OB = $cigarIDSC_Hf->{$mseg}->{$mut_pos};
+            $cigarIDSC_refpos_OB->addDepth(add=>1); # pretend to be mut_whole_depth
             # store supporting of soft-clip for later subtraction from ref_allele_depth
             if($type eq 'S'){
                 # only primer3 impact depth
@@ -1084,9 +1085,9 @@ sub get_cigarIDSC{
             }
             # store insertion and deletion info
             my $mut_id = "$mut_type,$mut_seq";
-            $cigarIDSC_Hf->{$mseg}->{$mut_pos}->addMut(mut_id=>$mut_id, depthAf=>[0,0,0,0]) if !$cigarIDSC_Hf->{$mseg}->{$mut_pos}->has_mutation(mut_id=>$mut_id);
-            $cigarIDSC_Hf->{$mseg}->{$mut_pos}->addMutDepth(mut_id=>$mut_id, add_fw=>1) if $rOB->is_fw_map; # forward support
-            $cigarIDSC_Hf->{$mseg}->{$mut_pos}->addMutDepth(mut_id=>$mut_id, add_rv=>1) if $rOB->is_rv_map; # reverse complemented support
+            $cigarIDSC_refpos_OB->addMut(mut_id=>$mut_id, depthAf=>[0,0,0,0]) if !$cigarIDSC_refpos_OB->has_mutation(mut_id=>$mut_id);
+            $cigarIDSC_refpos_OB->addMutDepth(mut_id=>$mut_id, add_fw=>1) if $rOB->is_fw_map; # forward support
+            $cigarIDSC_refpos_OB->addMutDepth(mut_id=>$mut_id, add_rv=>1) if $rOB->is_rv_map; # reverse complemented support
         }
     }
     close $fh;
