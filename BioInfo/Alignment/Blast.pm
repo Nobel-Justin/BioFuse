@@ -7,6 +7,7 @@ use List::Util qw/ min /;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 use BioFuse::Util::Sys qw/ trible_run_for_success file_exist /;
 use BioFuse::Util::GZfile qw/ Try_GZ_Read Try_GZ_Write /;
+use BioFuse::Util::String qw/ mapSeqWithMM /;
 use BioFuse::BioInfo::FASTA qw/ FAfhFindSeq read_fasta_file /;
 use BioFuse::BioInfo::Objects::Allele::RefPos_OB;
 
@@ -27,8 +28,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Alignment::Blast';
 #----- version --------
-$VERSION = "0.02";
-$DATE = '2022-01-09';
+$VERSION = "0.03";
+$DATE = '2022-01-19';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -382,15 +383,15 @@ sub adjust_INSbehMM{
             $update_sign = 1;
             ## infrom this exchange in debug mode
             if( $debug ){
-                warn `date`."Adjust insertion [idx:$i] after mismatch from Blast result.\n"
-                           ." From:\n"
-                           ."\tquerySeq: >$thisReg_querySeq<\n"
-                           ."\tmap_info: >$thisReg_map_Info<\n"
-                           ."\tsbjctSeq: >$thisReg_sbjctSeq<\n"
-                           ." To:\n"
-                           ."\tquerySeq: >$thisReg_querySeq<\n"
-                           ."\tmap_info: >$thisReg_map_Info<\n"
-                           ."\tsbjctSeq: >$thisReg_new_sbjctSeq<\n";
+                stout_and_sterr  "Adjust insertion [idx:$i] after mismatch from Blast result.\n"
+                                ." From:\n"
+                                ."\tquerySeq: >$thisReg_querySeq<\n"
+                                ."\tmap_info: >$thisReg_map_Info<\n"
+                                ."\tsbjctSeq: >$thisReg_sbjctSeq<\n"
+                                ." To:\n"
+                                ."\tquerySeq: >$thisReg_querySeq<\n"
+                                ."\tmap_info: >$thisReg_map_Info<\n"
+                                ."\tsbjctSeq: >$thisReg_new_sbjctSeq<\n";
             }
             # update the $i
             $i += $ins_len;
@@ -456,81 +457,82 @@ sub fillGapForLargeInDel{
                     next;
                 }
                 # the two segment must be continuous at position
+                my $map_Qdist = abs($cand_map_QstP - $fore_map_QedP);
+                my $map_Sdist = abs($cand_map_SstP - $fore_map_SedP);
                 ## large DEL: 'none' OR 'slight' gap on query_seq, and 'large' gap on sbjct_seq
                 ## large INS: 'none' OR 'slight' gap on sbjct_seq, and 'large' gap on query_seq
                 ## large INS is from 'unkown source', Here
                 if(    $fore_map_Qstrd * $fore_map_QedP < $cand_map_Qstrd * $cand_map_QstP
                     && $fore_map_Sstrd * $fore_map_SedP < $cand_map_Sstrd * $cand_map_SstP
                     && (  # query_seq has large deletion
-                          (   abs($cand_map_QstP - $fore_map_QedP) <= 10 # empirical distance in practise
-                           && abs($cand_map_SstP - $fore_map_SedP) >= 10
+                          (   $map_Qdist <= 30 # empirical distance in practise
+                           && $map_Sdist >= $map_Qdist
+                           && $map_Sdist <= $map_Qdist + 100 # maximum two 50bp deletions allowed
                           )
                         || # query_seq has large insertion (unkown source)
-                          (   abs($cand_map_QstP - $fore_map_QedP) >= 10
-                           && abs($cand_map_SstP - $fore_map_SedP) <= 10
+                          (   $map_Qdist >= $map_Sdist
+                           && $map_Sdist <= 30
+                           && $map_Qdist <= $map_Sdist + 100 # maximum two 50bp insertions allowed
                           )
                        )
                 ){
                     # prepare makeup seq for query_seq gap
                     my $makeup_Qidx = min($fore_map_QedP, $cand_map_QstP);
-                    my $makeup_Qlen = abs($cand_map_QstP - $fore_map_QedP) - 1;
+                    my $makeup_Qlen = $map_Qdist - 1;
                     my $makeup_Qseq = uc( substr($qySeq_Hf->{$query_id}, $makeup_Qidx, $makeup_Qlen) );
                     if( $fore_map_Qstrd == -1 && $makeup_Qlen > 0 ){
                         ($makeup_Qseq = reverse uc($makeup_Qseq)) =~ tr/ACGT/TGCA/;
                     }
                     # prepare makeup seq for sbjct_seq gap
                     my $makeup_Sidx = min($fore_map_SedP, $cand_map_SstP);
-                    my $makeup_Slen = abs($cand_map_SstP - $fore_map_SedP) - 1;
+                    my $makeup_Slen = $map_Sdist - 1;
                     my $makeup_Sseq = uc( substr($sjSeq_Hf->{$fore_map_sbjct}, $makeup_Sidx, $makeup_Slen) );
                     if( $fore_map_Sstrd == -1 && $makeup_Slen > 0 ){
                         ($makeup_Sseq = reverse uc($makeup_Sseq)) =~ tr/ACGT/TGCA/;
                     }
                     # compare and makeup map-info
-                    my $diff_len = $makeup_Slen - $makeup_Qlen;
-                    my $makeup_MapI = join('', (' ' x abs($diff_len)));
+                    ## remained part, maybe mismatch(s)
+                    my ($remPartMMct, $remPartMidx, $remPartMdet) = mapSeqWithMM(str_a=>$makeup_Qseq, str_b=>$makeup_Sseq);
+                    my $headGapLen = $remPartMidx;
+                    my $tailGapLen = abs($makeup_Slen - $makeup_Qlen) - $headGapLen;
+                    my $makeup_MapI = (' ' x $headGapLen) . $remPartMdet . (' ' x $tailGapLen);
                     # gap part
-                    ## query_seq has large deletion
-                    if( $diff_len > 0 ){
-                        $makeup_Qseq = join('', ('-' x abs($diff_len))) . $makeup_Qseq;
+                    if( $makeup_Slen > $makeup_Qlen ){ # query_seq has large deletion
+                        $makeup_Qseq = ('-' x $headGapLen) . $makeup_Qseq . ('-' x $tailGapLen);
                     }
-                    ## query_seq has large insertion
-                    else{
-                        $makeup_Sseq = join('', ('-' x abs($diff_len))) . $makeup_Sseq;
-                    }
-                    # remained part, maybe mismatch(s)
-                    for my $i ( reverse ( 1 .. min($makeup_Qlen, $makeup_Slen) ) ){
-                        my $Q_allele = uc( substr($makeup_Qseq, -1*$i, 1) );
-                        my $S_allele = uc( substr($makeup_Sseq, -1*$i, 1) );
-                        $makeup_MapI .= (($Q_allele eq $S_allele)?'|':' ');
+                    else{ # query_seq has large insertion
+                        $makeup_Sseq = ('-' x $headGapLen) . $makeup_Sseq . ('-' x $tailGapLen);
                     }
                     # concatenate 'makeup'+'cand' to 'fore'
                     ## still record in 'fore_mapInfo_Href'
                     $fore_mapInfo_Href->{score} += $cand_mapInfo_Href->{score};
-                    $fore_mapInfo_Href->{ident} = ($fore_mapInfo_Href->{ident}+$cand_mapInfo_Href->{ident}) / 2;
+                    $fore_mapInfo_Href->{ident} = (   $fore_mapInfo_Href->{ident}*$fore_map_SpanL
+                                                    + $cand_mapInfo_Href->{ident}*$cand_map_SpanL
+                                                  ) / ($fore_map_SpanL+$cand_map_SpanL);
                     $fore_mapInfo_Href->{map_info} .= ($makeup_MapI . $cand_mapInfo_Href->{map_info});
                     $fore_mapInfo_Href->{query_info}->[1] .= lc($makeup_Qseq . $cand_mapInfo_Href->{query_info}->[1]);
                     $fore_mapInfo_Href->{query_info}->[2] = $cand_mapInfo_Href->{query_info}->[2];
                     $fore_mapInfo_Href->{sbjct_info}->[1] .= lc($makeup_Sseq . $cand_mapInfo_Href->{sbjct_info}->[1]);
                     $fore_mapInfo_Href->{sbjct_info}->[2] = $cand_mapInfo_Href->{sbjct_info}->[2];
                     # inform
-                    stout_and_sterr `date`."[INFO]:\tConnect two blast mapping blocks (large DEL/uks-INS) of query_id($query_id):\n"
-                                          ."\tfore_mapping interval, idx=$fore_map_idx:\n"
-                                          ."\t Qst:$fore_mapInfo_Href->{query_info}->[0]; Qed:$fore_map_QedP;"
-                                          .  " Sst:$fore_mapInfo_Href->{sbjct_info}->[0]; Sed:$fore_map_SedP\n"
-                                          ."\ttail_mapping interval, idx=$cand_map_idx:\n"
-                                          ."\t Qst:$cand_map_QstP; Qed:$cand_mapInfo_Href->{query_info}->[2];"
-                                          .  " Sst:$cand_map_SstP; Sed:$cand_mapInfo_Href->{sbjct_info}->[2]\n"
-                                          ."\tnew_mapping interval, idx=$fore_map_idx:\n"
-                                          ."\t Qst:$fore_mapInfo_Href->{query_info}->[0]; Qed:$fore_mapInfo_Href->{query_info}->[2];"
-                                          .  " Sst:$fore_mapInfo_Href->{sbjct_info}->[0]; Sed:$fore_mapInfo_Href->{sbjct_info}->[2]\n"
-                                          # debug, show the new connected mapping block
-                                          # ."\t '$fore_mapInfo_Href->{query_info}->[1]'\n"
-                                          # ."\t '$fore_mapInfo_Href->{map_info}'\n"
-                                          # ."\t '$fore_mapInfo_Href->{sbjct_info}->[1]'\n"
-                                          ."\tmakeup_mapInfo:\n"
-                                          ."\t Q: '$makeup_Qseq'\n"
-                                          ."\t M: '$makeup_MapI'\n"
-                                          ."\t S: '$makeup_Sseq'\n";
+                    stout_and_sterr  "[INFO]:\tConnect two blast mapping blocks (large DEL/uks-INS) of query_id($query_id):\n"
+                                    ."\tfore_mapping interval, idx=$fore_map_idx:\n"
+                                    ."\t Qst:$fore_mapInfo_Href->{query_info}->[0]; Qed:$fore_map_QedP;"
+                                    .  " Sst:$fore_mapInfo_Href->{sbjct_info}->[0]; Sed:$fore_map_SedP\n"
+                                    ."\ttail_mapping interval, idx=$cand_map_idx:\n"
+                                    ."\t Qst:$cand_map_QstP; Qed:$cand_mapInfo_Href->{query_info}->[2];"
+                                    .  " Sst:$cand_map_SstP; Sed:$cand_mapInfo_Href->{sbjct_info}->[2]\n"
+                                    ."\tnew_mapping interval, idx=$fore_map_idx:\n"
+                                    ."\t Qst:$fore_mapInfo_Href->{query_info}->[0]; Qed:$fore_mapInfo_Href->{query_info}->[2];"
+                                    .  " Sst:$fore_mapInfo_Href->{sbjct_info}->[0]; Sed:$fore_mapInfo_Href->{sbjct_info}->[2]\n"
+                                    # debug, show the new connected mapping block
+                                    # ."\t '$fore_mapInfo_Href->{query_info}->[1]'\n"
+                                    # ."\t '$fore_mapInfo_Href->{map_info}'\n"
+                                    # ."\t '$fore_mapInfo_Href->{sbjct_info}->[1]'\n"
+                                    ."\tmakeup_mapInfo:\n"
+                                    ."\t Q: '$makeup_Qseq'\n"
+                                    ."\t M: '$makeup_MapI'\n"
+                                    ."\t S: '$makeup_Sseq'\n";
                     # record cand_map_idx as old_discarded
                     $discard_idx{$cand_map_idx} = 1;
                     # reocrd update sign
@@ -543,11 +545,11 @@ sub fillGapForLargeInDel{
                 elsif(    $fore_map_Qstrd * $fore_map_QedP >= $cand_map_Qstrd * $cand_map_QstP - 1
                        && $fore_map_Sstrd * $fore_map_SedP >  $cand_map_Sstrd * $cand_map_SstP
                        &&  # query_seq has large insertion (tandem duplicated)
-                          (   abs($cand_map_QstP - $fore_map_QedP) <= 10 # empirical distance in practise
-                           && abs($cand_map_SstP - $fore_map_SedP) >= 10
-                           && abs($cand_map_SstP - $fore_map_SedP) <= 50 # it is the max ins-size detected from traditional PE seq
-                           && abs($cand_map_SstP - $fore_map_SedP) <= $fore_map_SpanL / 5 # fore maps long enough, empirical value
-                           && abs($cand_map_SstP - $fore_map_SedP) <= $cand_map_SpanL / 5 # cand maps long enough, empirical value
+                          (   $map_Qdist <= 10 # empirical distance in practise
+                           && $map_Sdist >= 10 # $map_Qdist
+                           && $map_Sdist <= 50 # it is the max ins-size detected from traditional PE seq
+                           && $map_Sdist <= $fore_map_SpanL / 5 # fore maps long enough, empirical value
+                           && $map_Sdist <= $cand_map_SpanL / 5 # cand maps long enough, empirical value
                           )
                 ){
                     # 1st, discard possible extended end of cand query_seq to make it continuous
@@ -600,20 +602,20 @@ sub fillGapForLargeInDel{
                     $fore_mapInfo_Href->{sbjct_info}->[1] .= $cand_mapInfo_Href->{sbjct_info}->[1];
                     $fore_mapInfo_Href->{sbjct_info}->[2]  = $cand_mapInfo_Href->{sbjct_info}->[2];
                     # inform
-                    stout_and_sterr `date`."[INFO]:\tConnect two blast mapping blocks (large tdp-INS) of query_id($query_id):\n"
-                                          ."\tfore_mapping interval, idx=$fore_map_idx:\n"
-                                          ."\t Qst:$fore_mapInfo_Href->{query_info}->[0]; Qed:$fore_map_QedP;"
-                                          .  " Sst:$fore_mapInfo_Href->{sbjct_info}->[0]; Sed:$fore_map_SedP\n"
-                                          ."\ttail_mapping interval, idx=$cand_map_idx:\n"
-                                          ."\t Qst:$cand_mapInfo_Href->{query_info}->[0]; Qed:$cand_mapInfo_Href->{query_info}->[2];"
-                                          .  " Sst:$cand_mapInfo_Href->{sbjct_info}->[0]; Sed:$cand_mapInfo_Href->{sbjct_info}->[2]\n"
-                                          ."\tnew_mapping interval, idx=$fore_map_idx:\n"
-                                          ."\t Qst:$fore_mapInfo_Href->{query_info}->[0]; Qed:$fore_mapInfo_Href->{query_info}->[2];"
-                                          .  " Sst:$fore_mapInfo_Href->{sbjct_info}->[0]; Sed:$fore_mapInfo_Href->{sbjct_info}->[2]\n";
-                                          # debug, show the new connected mapping block
-                                          # ."\t '$fore_mapInfo_Href->{query_info}->[1]'\n"
-                                          # ."\t '$fore_mapInfo_Href->{map_info}'\n"
-                                          # ."\t '$fore_mapInfo_Href->{sbjct_info}->[1]'\n"
+                    stout_and_sterr  "[INFO]:\tConnect two blast mapping blocks (large tdp-INS) of query_id($query_id):\n"
+                                    ."\tfore_mapping interval, idx=$fore_map_idx:\n"
+                                    ."\t Qst:$fore_mapInfo_Href->{query_info}->[0]; Qed:$fore_map_QedP;"
+                                    .  " Sst:$fore_mapInfo_Href->{sbjct_info}->[0]; Sed:$fore_map_SedP\n"
+                                    ."\ttail_mapping interval, idx=$cand_map_idx:\n"
+                                    ."\t Qst:$cand_mapInfo_Href->{query_info}->[0]; Qed:$cand_mapInfo_Href->{query_info}->[2];"
+                                    .  " Sst:$cand_mapInfo_Href->{sbjct_info}->[0]; Sed:$cand_mapInfo_Href->{sbjct_info}->[2]\n"
+                                    ."\tnew_mapping interval, idx=$fore_map_idx:\n"
+                                    ."\t Qst:$fore_mapInfo_Href->{query_info}->[0]; Qed:$fore_mapInfo_Href->{query_info}->[2];"
+                                    .  " Sst:$fore_mapInfo_Href->{sbjct_info}->[0]; Sed:$fore_mapInfo_Href->{sbjct_info}->[2]\n";
+                                    # debug, show the new connected mapping block
+                                    # ."\t '$fore_mapInfo_Href->{query_info}->[1]'\n"
+                                    # ."\t '$fore_mapInfo_Href->{map_info}'\n"
+                                    # ."\t '$fore_mapInfo_Href->{sbjct_info}->[1]'\n"
                     # record cand_map_idx as old_discarded
                     $discard_idx{$cand_map_idx} = 1;
                     # reocrd update sign
