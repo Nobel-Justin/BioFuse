@@ -736,20 +736,35 @@ sub regMapPos{
     my $seqID = $parm{seqID};
     my $origPos = $parm{origPos} || undef;
     my $hapPos  = $parm{hapPos}  || undef;
+    my $noAlert = $parm{noAlert} || 0;
 
     my $regMapAf = $refseg->regMapAf(seqID=>$seqID);
     if(defined $origPos){
         my $rmpHf = first {    $_->{oSt}<=$origPos
                             && $_->{oEd}>=$origPos
                           } @$regMapAf;
-        cluck_and_exit "<ERROR>\tcannot map origPos ($origPos) to haplotype.\n" unless(defined $rmpHf);
+        if(!defined $rmpHf){
+            if($noAlert){
+                return undef;
+            }
+            else{
+                cluck_and_exit "<ERROR>\tcannot map origPos ($origPos) to haplotype.\n";
+            }
+        }
         return $rmpHf->{hSt} + $origPos - $rmpHf->{oSt};
     }
     elsif(defined $hapPos){
         my $rmpHf = first {    $_->{hSt}<=$hapPos
                             && $_->{hEd}>=$hapPos
                           } @$regMapAf;
-        cluck_and_exit "<ERROR>\tcannot map hapPos ($hapPos) to original reference.\n" unless(defined $rmpHf);
+        if(!defined $rmpHf){
+            if($noAlert){
+                return undef;
+            }
+            else{
+                cluck_and_exit "<ERROR>\tcannot map hapPos ($hapPos) to original reference.\n";
+            }
+        }
         return $rmpHf->{oSt} + $hapPos - $rmpHf->{hSt};
     }
 }
