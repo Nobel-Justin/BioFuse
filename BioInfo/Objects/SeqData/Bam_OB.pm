@@ -634,6 +634,7 @@ sub get_regionCovStat{
     my $circExtl = $parm{circExtl} || 0; # for such as circular virus
     my $availLen = $parm{availLen} || 0; # for such as non-N region of virus
     my $minDepth = $parm{minDepth} || 1; # pos less than such depth will be skipped
+    my $onlyDepStat = $parm{onlyDepStat} || 0; # return hash of each pos depth
 
     # check existence
     $bam->verify_bam;
@@ -659,12 +660,14 @@ sub get_regionCovStat{
     # pos depth
     my %depthCount;
     my $basicPosCount = 0;
-    my %pos2depth; # for circExtl
+    my %pos2depth; # for circExtl or just_return_depth_stats
     open (DEPTH, "$samtools depth $depthOpt $bam->{filepath} |") || die "fail samtools depth: $!\n";
     while (<DEPTH>){
         my ($pos, $depth) = (split)[1,2];
-        if(    $circExtl
-            && ($pos > $origLen || $pos <= $circExtl)
+        if(    $onlyDepStat
+            || (   $circExtl
+                && ($pos > $origLen || $pos <= $circExtl)
+               )
         ){
             $pos2depth{$pos} = $depth;
         }
@@ -679,9 +682,11 @@ sub get_regionCovStat{
         }
     }
     close DEPTH;
+
     # sometimes, no depth info obtained
     ## e.g., all alignments in the bam are duplicated
     return $statHf unless (keys %pos2depth || keys %depthCount);
+
     # do for circular extend part
     if($circExtl){
         for my $i (1 .. $circExtl){
@@ -693,8 +698,12 @@ sub get_regionCovStat{
         }
         # into depthCount
         $depthCount{$pos2depth{$_}}++ for keys %pos2depth;
-        undef %pos2depth;
     }
+
+    # if just want depth stats
+    return \%pos2depth if $onlyDepStat;
+    undef %pos2depth;
+
     # filter pos and 
     my @accuDepth = sort {$b<=>$a} keys %{$statHf->{accuDepPt}};
     for my $depth (keys %depthCount){
@@ -719,7 +728,7 @@ sub get_regionCovStat{
     $statHf->{coverage}  = sprintf "%0.4f", (sum(values %depthCount) || 0) / $basicPosCount;
     # mean depth
     $statHf->{meanDepth} = sprintf "%0.2f", (sum(map {$_*$depthCount{$_}} keys %depthCount) || 0) / $basicPosCount;
-
+    # ordinary return
     return $statHf;
 }
 
