@@ -419,9 +419,13 @@ sub toMarkdup{
     my $bam = shift;
     my %parm = @_;
     my $markdupBam = $parm{markdupBam};
+    my $max_rlen = $parm{max_rlen};
+    my $markDupSupp = $parm{markDupSupp} || 0;
     my $samtools = $parm{samtools} || $bam->{tools}->{samtools};
 
-    my $cmd = "$samtools markdup $bam->{filepath} $markdupBam->{filepath}";
+    my $opt =  (defined $max_rlen ? "-l $max_rlen " : '')
+              .($markDupSupp      ? '-S '           : '');
+    my $cmd = "$samtools markdup $opt $bam->{filepath} $markdupBam->{filepath}";
     trible_run_for_success($cmd, 'markdupBam', {esdo_Nvb=>1});
     # inform
     stout_and_sterr "[INFO]\tSamTools markdup bam ok.\n"
