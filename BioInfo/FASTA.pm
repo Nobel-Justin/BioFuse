@@ -220,7 +220,8 @@ sub read_Fai{
     }
     close FAI;
     # inform
-    stout_and_sterr "[INFO]\tload fai to refseg objects ok.\n";
+    stout_and_sterr "[INFO]\tload fai to refseg objects.\n"
+                         ."\t$fai\n";
 }
 
 1; ## tell the perl script the successful access of this module.
