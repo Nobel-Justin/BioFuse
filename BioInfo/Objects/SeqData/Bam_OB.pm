@@ -633,7 +633,7 @@ sub get_regionCovStat{
     my $minMQ = $parm{minMQ} || 0;
     my $minBQ = $parm{minBQ} || 0;
     my $maxDP = defined $parm{maxDP} ? $parm{maxDP} : 8000;
-    my $accuDepAf = $parm{accuDepAf} || [10,30,50,100];
+    my $accuDepAf = $parm{accuDepAf} || [1,50,100,500,1000];
     my $origLen = $parm{origLen};
     my $circExtl = $parm{circExtl} || 0; # for such as circular virus
     my $availLen = $parm{availLen} || 0; # for such as non-N region of virus
