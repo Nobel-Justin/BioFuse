@@ -32,7 +32,7 @@ $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         load_regResolForWindowlize
                         get_pos_windowNO
                         windowNO_to_posInterval

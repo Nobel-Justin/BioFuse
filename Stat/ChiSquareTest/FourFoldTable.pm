@@ -28,7 +28,7 @@ $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         new
                         get_odds_ratio
                         get_risk_ratio

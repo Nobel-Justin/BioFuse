@@ -33,7 +33,7 @@ our $PI = asin(1) * 2; # 3.14159265358979
 our $deg2rad = $PI / 180;
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         get_coordinate_on_circle
                         normalize_radian
                         draw_an_arc

@@ -26,7 +26,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         new
                         load_exon_region
                         load_CDS_region

@@ -26,7 +26,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         baseQ_char2score
                      /;
 

@@ -30,7 +30,7 @@ $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         Try_GZ_Read
                         is_idx_bgz
                         Try_GZ_Write

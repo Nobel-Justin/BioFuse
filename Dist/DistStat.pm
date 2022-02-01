@@ -29,7 +29,7 @@ $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         get_value_mean
                         get_trimmed_mean
                         engineer_Ntimes_SD_evaluation

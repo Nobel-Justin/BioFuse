@@ -31,7 +31,7 @@ $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         get_Tcell_GMpart
                         get_Tcell_GMratio
                         get_Ncell_GMpart

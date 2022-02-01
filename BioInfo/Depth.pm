@@ -33,7 +33,7 @@ $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         get_windowSmoDepth
                         deal_window_depth_info
                         get_ctrl_copyR

@@ -38,7 +38,7 @@ $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         load_transInfo_from_tpsl
                         add_user_region_to_gene_info
                         allocate_genes_and_draw

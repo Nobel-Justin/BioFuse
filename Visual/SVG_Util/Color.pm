@@ -34,7 +34,7 @@ our %COLOR_DB=(
              );
 
 #--------- functions in this pm --------#
-my @functoion_list = qw//;
+my @function_list = qw//;
 
 
 1; ## tell the perl script the successful access of this module.

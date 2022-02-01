@@ -35,7 +35,7 @@ $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         show_Y_axis
                         set_Y_axis_Resol_LabStep
                         show_X_axis

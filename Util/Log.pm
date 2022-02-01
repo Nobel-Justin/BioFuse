@@ -31,7 +31,7 @@ $AUTHOR = 'Wenlong Jia';
 $EMAIL = 'wenlongkxm@gmail.com';
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         warn_and_exit
                         cluck_and_exit
                         stout_and_sterr

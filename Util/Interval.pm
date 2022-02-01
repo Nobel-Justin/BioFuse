@@ -35,7 +35,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         Get_Two_Seg_Olen
                         merge
                         intersect

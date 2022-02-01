@@ -28,7 +28,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         new
                         load_gtf_info
                         add_cytoband_info

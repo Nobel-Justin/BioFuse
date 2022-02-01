@@ -30,7 +30,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 
 
 #--------- functions in this pm --------#
-my @functoion_list = qw/
+my @function_list = qw/
                         load_region_for_randPos
                         get_random_pos
                      /;
