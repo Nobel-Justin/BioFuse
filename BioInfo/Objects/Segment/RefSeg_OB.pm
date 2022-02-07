@@ -21,8 +21,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Segment::RefSeg_OB';
 #----- version --------
-$VERSION = "0.07";
-$DATE = '2022-01-15';
+$VERSION = "0.08";
+$DATE = '2022-02-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -737,6 +737,9 @@ sub regMapPos{
     my $origPos = $parm{origPos} || undef;
     my $hapPos  = $parm{hapPos}  || undef;
     my $noAlert = $parm{noAlert} || 0;
+
+    # orig?
+    return $origPos || $hapPos if $seqID eq 'orig';
 
     my $regMapAf = $refseg->regMapAf(seqID=>$seqID);
     if(defined $origPos){
