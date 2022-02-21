@@ -17,6 +17,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
               check_java_version
               reset_folder
               remove_folder
+              transform_memory
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
@@ -24,8 +25,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::Util::Sys';
 #----- version --------
-$VERSION = "0.37";
-$DATE = '2021-12-07';
+$VERSION = "0.39";
+$DATE = '2022-02-11';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -38,6 +39,7 @@ my @function_list = qw/
                         check_java_version
                         reset_folder
                         remove_folder
+                        transform_memory
                      /;
 
 #--- verify existence of file/softlink
@@ -77,7 +79,7 @@ sub file_exist{
 }
 
 #--- run shell command trible times ---
-# verbose_Href->{cmd_Nvb, esdo_Nvb, log_vb}
+# verbose_Href->{cmd_Nvb, esdo_Nvb, log_vb, failNoExit}
 sub trible_run_for_success{
     shift if(@_ && $_[0] =~ /$MODULE_NAME/);
     my ($command,$type,$verbose_Href) = @_;
@@ -109,8 +111,15 @@ sub trible_run_for_success{
     }
 
     # if reach here, fail
-    cluck_and_exit "<ERROR>\t$type command fails three times.\n"
-                        ."\t$command\n";
+    my $warns = "<ERROR>\t$type command fails three times.\n"
+                      ."\t$command\n";
+    if($verbose_Href->{failNoExit}||0){
+        warn $warns;
+        return 0;
+    }
+    else{
+        cluck_and_exit $warns;
+    }
 }
 
 #--- check java version ---
@@ -126,7 +135,9 @@ sub check_java_version{
     }
 }
 
-#--- try to `rm -rf` and then `mkdir -p` given folder path ---
+#--- reset given folder path ---
+## first try to `rm -rf`
+## then `mkdir -p`
 sub reset_folder{
     shift @_ if(@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
@@ -141,6 +152,23 @@ sub remove_folder{
     my %parm = @_;
     my $folder = $parm{folder};
     `rm -rf $folder` if -e $folder;
+}
+
+#--- transform memory among units ---
+sub transform_memory{
+    shift @_ if(@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $memory = lc $parm{memory};
+    my $toUnit = lc $parm{toUnit};
+    my $base = $parm{base} || 1000; # 1024
+
+    my %unit = (k=>1, m=>2, g=>3, t=>4, p=>5);
+    my ($value, $unit) = ($memory =~ /^([\d\.]+)([kmgtp])$/i);
+    cluck_and_exit "<ERROR>\tcannot recognize $memory.\n" unless defined $unit;
+    cluck_and_exit "<ERROR>\tillegal toUnit: $toUnit.\n" unless exists $unit{$toUnit};
+    $value *= $base**($unit{$unit}-$unit{$toUnit});
+
+    return "$value$parm{toUnit}";
 }
 
 1; ## tell the perl script the successful access of this module.
