@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Alignment::BWA';
 #----- version --------
-$VERSION = "0.01";
-$DATE = '2019-06-03';
+$VERSION = "0.02";
+$DATE = '2022-03-04';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -31,6 +31,7 @@ $EMAIL = 'wenlongkxm@gmail.com';
 #--------- functions in this pm --------#
 my @function_list = qw/
                         PEfqToSortBam
+                        FilterPE
                      /;
 
 #--- BWA+samtools pipeline from fq to sort.bam ---
@@ -51,6 +52,7 @@ sub PEfqToSortBam{
     my $discBuPair = $parm{discBuPair} || 0; # discard both unmaped PE-reads
     my $sort_mode = lc($parm{sort_mode} || 'c'); # [c]oordinates or reads-[n]ame
     my $onlyRawBam = $parm{onlyRawBam} || 0; # only get raw bam
+    my $maxClipRatio = $parm{maxClipRatio} || undef; # Soft/Hart-clip part ratio
 
     # check
     for my $key (qw/ ref bwa samtools /){
@@ -106,7 +108,8 @@ sub PEfqToSortBam{
     }
 
     # toNsort
-    my $nSort_bam = BioFuse::BioInfo::Objects::SeqData::Bam_OB->new(filepath => $bamPath.'.nSort.bam', tag => "nSortBam");
+    my $nSort_bamPath = "$bamPath.nSort.bam";
+    my $nSort_bam = BioFuse::BioInfo::Objects::SeqData::Bam_OB->new(filepath => $nSort_bamPath, tag => "nSortBam");
     $nSort_bam->addTool(samtools => $samtools);
     $raw_bam->toNsort(nSortBam => $nSort_bam);
     $raw_bam->delete_file; # sweep
@@ -114,17 +117,35 @@ sub PEfqToSortBam{
     stout_and_sterr "[INFO]\tSamTools nSort finished.\n";
 
     # fixmate
-    my $fixmate_bam = BioFuse::BioInfo::Objects::SeqData::Bam_OB->new(filepath => $bamPath.'.fixmate.bam', tag => 'fixmateBam');
+    my $fixmate_bamPath = "$bamPath.fixmate.bam";
+    my $fixmate_bam = BioFuse::BioInfo::Objects::SeqData::Bam_OB->new(filepath => $fixmate_bamPath, tag => 'fixmateBam');
     $fixmate_bam->addTool(samtools => $samtools);
     $nSort_bam->toFixmate(fixmateBam => $fixmate_bam);
     $nSort_bam->delete_file; # sweep
     # inform
     stout_and_sterr "[INFO]\tSamTools fixmate finished.\n";
 
+    # additional filter
+    if(defined $maxClipRatio){
+        my $filter_bamPath = "$bamPath.fixmate.filter.bam";
+        my $filter_bam = BioFuse::BioInfo::Objects::SeqData::Bam_OB->new(filepath => $filter_bamPath, tag => 'filterBam');
+        $filter_bam->addTool(samtools => $samtools);
+        # start writing
+        $filter_bam->start_write;
+        # header
+        $filter_bam->write(content=>$_) for @{$fixmate_bam->header_Af};
+        # filter reads
+        my @Parm = (filterBam=>$filter_bam, maxClipRatio=>$maxClipRatio);
+        $fixmate_bam->smartBam_PEread(deal_peOB_pool => 1, subrtRef => \&FilterPE, subrtParmAref => \@Parm, quiet => 1);
+        # stop writing
+        $filter_bam->stop_write;
+        # rename to fixmate_bam
+        `mv -f $filter_bamPath $fixmate_bamPath`;
+    }
+
     # want nSort
     if($sort_mode eq 'n'){
-        my $fixmate_bamPath = $fixmate_bam->filepath;
-        `mv -f $fixmate_bam $bamPath`;
+        `mv -f $fixmate_bamPath $bamPath`;
         return;
     }
 
@@ -136,6 +157,37 @@ sub PEfqToSortBam{
     $fixmate_bam->delete_file; # sweep
     # inform
     stout_and_sterr "[INFO]\tSamTools cSort finished.\n";
+}
+
+#--- addtional pe filter ---
+sub FilterPE{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $pe_OB_poolAf = $parm{pe_OB_poolAf};
+    my $filterBam = $parm{filterBam}; # bam object
+    my $maxClipRatio = $parm{maxClipRatio};
+       $maxClipRatio = 1 unless defined $maxClipRatio;
+
+    for my $pe_OB (@$pe_OB_poolAf){
+        my $r1_OB = $pe_OB->rOB_Af(reads_end=>1)->[0];
+        my $r2_OB = $pe_OB->rOB_Af(reads_end=>2)->[0];
+        my $r1_unmap = $r1_OB->is_unmap;
+        my $r2_unmap = $r2_OB->is_unmap;
+        my $r1_beydClip = ($r1_OB->biClipLen / $r1_OB->rlen > $maxClipRatio);
+        my $r2_beydClip = ($r2_OB->biClipLen / $r2_OB->rlen > $maxClipRatio);
+        if(    (!$r1_unmap && !$r2_unmap && $r1_beydClip && $r2_beydClip)
+            || (!$r1_unmap &&  $r2_unmap && $r1_beydClip                )
+            || ( $r1_unmap && !$r2_unmap                 && $r2_beydClip)
+        ){
+            next;
+        }
+        else{
+            for my $end (1,2){
+                $filterBam->write(content=>$_->printSAM."\n") for @{$pe_OB->rOB_Af(reads_end=>$end)};
+            }
+        }
+    }
 }
 
 1; ## tell the perl script the successful access of this module.
