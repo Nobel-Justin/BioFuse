@@ -60,7 +60,7 @@ my @function_list = qw/
 # rg -> tissue = $tissue
 # rg -> rID_prefix = $rID_prefix
 # rg -> maxRlen = {1=>,2=>}
-# rg -> affix = {};
+# rg -> affix = {Cand_nSortBam=>bam_OB, Cand_smartFqGz=>fq_OB};
 
 #--- construction of object ---
 sub new{
