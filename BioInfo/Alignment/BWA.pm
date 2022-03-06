@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Alignment::BWA';
 #----- version --------
-$VERSION = "0.02";
-$DATE = '2022-03-04';
+$VERSION = "0.03";
+$DATE = '2022-03-06';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -52,7 +52,8 @@ sub PEfqToSortBam{
     my $discBuPair = $parm{discBuPair} || 0; # discard both unmaped PE-reads
     my $sort_mode = lc($parm{sort_mode} || 'c'); # [c]oordinates or reads-[n]ame
     my $onlyRawBam = $parm{onlyRawBam} || 0; # only get raw bam
-    my $maxClipRatio = $parm{maxClipRatio} || undef; # Soft/Hart-clip part ratio
+    my $maxBiClipRatio = $parm{maxBiClipRatio} || undef; # Soft/Hart-clip part ratio
+    my $whClipRatioTimes = $parm{whClipRatioTimes} || 2.5;
 
     # check
     for my $key (qw/ ref bwa samtools /){
@@ -126,7 +127,7 @@ sub PEfqToSortBam{
     stout_and_sterr "[INFO]\tSamTools fixmate finished.\n";
 
     # additional filter
-    if(defined $maxClipRatio){
+    if(defined $maxBiClipRatio){
         my $filter_bamPath = "$bamPath.fixmate.filter.bam";
         my $filter_bam = BioFuse::BioInfo::Objects::SeqData::Bam_OB->new(filepath => $filter_bamPath, tag => 'filterBam');
         $filter_bam->addTool(samtools => $samtools);
@@ -135,7 +136,7 @@ sub PEfqToSortBam{
         # header
         $filter_bam->write(content=>$_) for @{$fixmate_bam->header_Af};
         # filter reads
-        my @Parm = (filterBam=>$filter_bam, maxClipRatio=>$maxClipRatio);
+        my @Parm = (filterBam=>$filter_bam, maxBiClipRatio=>$maxBiClipRatio, whClipRatioTimes=>$whClipRatioTimes);
         $fixmate_bam->smartBam_PEread(deal_peOB_pool => 1, subrtRef => \&FilterPE, subrtParmAref => \@Parm, quiet => 1);
         # stop writing
         $filter_bam->stop_write;
@@ -166,16 +167,34 @@ sub FilterPE{
     my %parm = @_;
     my $pe_OB_poolAf = $parm{pe_OB_poolAf};
     my $filterBam = $parm{filterBam}; # bam object
-    my $maxClipRatio = $parm{maxClipRatio};
-       $maxClipRatio = 1 unless defined $maxClipRatio;
+    my $maxBiClipRatio = $parm{maxBiClipRatio};
+       $maxBiClipRatio = 1 unless defined $maxBiClipRatio;
+    my $whClipRatioTimes = $parm{whClipRatioTimes} || 2.5;
 
     for my $pe_OB (@$pe_OB_poolAf){
         my $r1_OB = $pe_OB->rOB_Af(reads_end=>1)->[0];
         my $r2_OB = $pe_OB->rOB_Af(reads_end=>2)->[0];
         my $r1_unmap = $r1_OB->is_unmap;
         my $r2_unmap = $r2_OB->is_unmap;
-        my $r1_beydClip = ($r1_OB->biClipLen / $r1_OB->rlen > $maxClipRatio);
-        my $r2_beydClip = ($r2_OB->biClipLen / $r2_OB->rlen > $maxClipRatio);
+        # r1 clip
+        my $r1_beydClip = 0;
+        if(!$r1_unmap){
+            my $r1_foreClipLen = $r1_OB->foreClipLen;
+            my $r1_hindClipLen = $r1_OB->hindClipLen;
+            my $r1_mxCPL = $r1_OB->rlen * $maxBiClipRatio;
+               $r1_beydClip   = ($r1_foreClipLen > $r1_mxCPL) && ($r1_hindClipLen > $r1_mxCPL);
+               $r1_beydClip ||= ($r1_foreClipLen + $r1_hindClipLen > $r1_mxCPL * $whClipRatioTimes);
+        }
+        # r2 clip
+        my $r2_beydClip = 0;
+        if(!$r2_unmap){
+            my $r2_foreClipLen = $r2_OB->foreClipLen;
+            my $r2_hindClipLen = $r2_OB->hindClipLen;
+            my $r2_mxCPL = $r2_OB->rlen * $maxBiClipRatio;
+               $r2_beydClip   = ($r2_foreClipLen > $r2_mxCPL) && ($r2_hindClipLen > $r2_mxCPL);
+               $r2_beydClip ||= ($r2_foreClipLen + $r2_hindClipLen > $r2_mxCPL * $whClipRatioTimes);
+        }
+        # clip filter
         if(    (!$r1_unmap && !$r2_unmap && $r1_beydClip && $r2_beydClip)
             || (!$r1_unmap &&  $r2_unmap && $r1_beydClip                )
             || ( $r1_unmap && !$r2_unmap                 && $r2_beydClip)
