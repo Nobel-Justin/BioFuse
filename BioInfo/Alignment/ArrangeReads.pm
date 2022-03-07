@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
-$VERSION = "0.03";
-$DATE = '2022-01-07';
+$VERSION = "0.04";
+$DATE = '2022-03-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -53,6 +53,10 @@ sub ArrangeReadsAmongRefseg{
     my $swapAlignEnds = $parm{swapAlignEnds} || 0;
     # !! effective when keepRefsegID is not provided
        $swapAlignEnds = 0 if defined $keepRefsegID;
+    # for one end, if has multiple alignment, save remains to supplementary
+    my $moreMapToSupp = $parm{moreMapToSupp} || 0;
+    # !! effective when keepRefsegID is not provided
+       $moreMapToSupp = 0 if defined $keepRefsegID;
 
     # start writing
     $outBam->start_write;
@@ -89,6 +93,10 @@ sub SelectRefsegForReads{
     my $swapAlignEnds = $parm{swapAlignEnds} || 0;
     # !! effective when keepRefsegID is not provided
        $swapAlignEnds = 0 if defined $keepRefsegID;
+    # for one end, if has multiple alignment, save remains to supplementary
+    my $moreMapToSupp = $parm{moreMapToSupp} || 0;
+    # !! effective when keepRefsegID is not provided
+       $moreMapToSupp = 0 if defined $keepRefsegID;
 
     for my $pe_OB (@$pe_OB_poolAf){
         my %rOB_Af = map{ ($_, $pe_OB->rOB_Af(reads_end=>$_)) } (1,2);
@@ -103,6 +111,7 @@ sub SelectRefsegForReads{
             }
         }
         else{
+            my %output;
             # alignment score of each refseg
             my %refseg2AS;
             $refseg2AS{$_->mseg} += $_->alignScore for map {@{$rOB_Af{$_}}} (1,2);
@@ -121,7 +130,9 @@ sub SelectRefsegForReads{
             }
             # go on: different scenarios
             if( $endsMap{1} xor $endsMap{2} ){ # _1/_2, one has map (may have unmap simultaneously), another are all unmap
-                $outBam->write(content=>$_->printSAM."\n")
+                # choose the paired r_OBs of the first refseg with max AS
+                # $outBam->write(content=>$_->printSAM."\n")
+                push @{$output{$_->endNO}}, $_
                     for grep {$_->mseg eq $max_AS_refseg[0] || $_->p_mseg eq $max_AS_refseg[0]}
                         map {@{$rOB_Af{$_}}} (1,2);
             }
@@ -138,13 +149,15 @@ sub SelectRefsegForReads{
                 }
                 # take msegBiEnd with most AS
                 if(@msegBiEnd != 0){
-                    $outBam->write(content=>$_->printSAM."\n")
+                    # $outBam->write(content=>$_->printSAM."\n")
+                    push @{$output{$_->endNO}}, $_
                         for grep {$_->mseg eq $msegBiEnd[0] || $_->p_mseg eq $msegBiEnd[0]}
                             map {@{$rOB_Af{$_}}} (1,2);
                 }
                 else{ # each refseg has just one end map, swap ends?
                     if(defined $keepRefsegID || !$swapAlignEnds){ # not allowed when keepRefsegID is set, or disabled
-                        $outBam->write(content=>$_->printSAM."\n")
+                        # $outBam->write(content=>$_->printSAM."\n")
+                        push @{$output{$_->endNO}}, $_
                             for grep {$_->mseg eq $max_AS_refseg[0] || $_->p_mseg eq $max_AS_refseg[0]}
                                 map {@{$rOB_Af{$_}}} (1,2);
                     }
@@ -158,28 +171,64 @@ sub SelectRefsegForReads{
                         }
                         # swap: update rOB attributes, and output
                         for my $tEnd (1,2){ # [t]his end
-                            my $mEnd = $tEnd % 2 + 1; # [m]ate end
+                            my $pEnd = $tEnd % 2 + 1; # [p]air end
                             my $t_rOB = $maxAS_rOB{$tEnd};
-                            my $m_rOB = $maxAS_rOB{$mEnd};
+                            my $p_rOB = $maxAS_rOB{$pEnd};
                             # update
-                            ## mated end mapped refseg and position
-                            $t_rOB->update_attr(attr_id=>'p_mseg', value=>$m_rOB->mseg);
-                            $t_rOB->update_attr(attr_id=>'p_mpos', value=>$m_rOB->mpos);
+                            ## paired end mapped refseg and position
+                            my $p_mseg = $t_rOB->mseg eq $p_rOB->mseg ? '=' : $p_rOB->mseg;
+                            $t_rOB->update_attr(attr_id=>'p_mseg', value=>$p_mseg);
+                            $t_rOB->update_attr(attr_id=>'p_mpos', value=>$p_rOB->mpos);
                             ## set Tlen as zero
                             $t_rOB->update_attr(attr_id=>'tlen', value=>0);
                             ## flags
                             $t_rOB->  set_flag(flag=>0x1 );
-                            $t_rOB->  set_flag(flag=>0x20) if $m_rOB->is_rv_map;
-                            $t_rOB->unset_flag(flag=>0x20) if $m_rOB->is_fw_map;
-                            $t_rOB->unset_flag(flag_Af=>[0x2,0x4,0x8,0x200,0x400]);
-                            ## mate-end MQ
-                            $t_rOB->update_optfd(tag=>'MQ:i:', value=>$m_rOB->mapQ);
+                            $t_rOB->  set_flag(flag=>0x20) if $p_rOB->is_rv_map;
+                            $t_rOB->unset_flag(flag=>0x20) if $p_rOB->is_fw_map;
+                            $t_rOB->unset_flag(flag_Af=>[0x2,0x4,0x8,0x200,0x400,0x800]);
+                            ## optfd
+                            $t_rOB->update_optfd(tag=>'MQ:i:', value=>$p_rOB->mapQ);  # pair-end MQ
+                            $t_rOB->update_optfd(tag=>'MC:Z:', value=>$p_rOB->cigar); # pair-end cigar
                             # output
-                            $outBam->write(content=>$t_rOB->printSAM."\n");
+                            # $outBam->write(content=>$t_rOB->printSAM."\n");
+                            push @{$output{$tEnd}}, $t_rOB;
                         }
                     }
                 }
             }
+            # r_OB mapped to the other refseg (if has), to supplementary?
+            if($moreMapToSupp){
+                for my $tEnd (1,2){ # [t]his end
+                    my $pEnd = $tEnd % 2 + 1; # [p]air end
+                    my $p_rOB = first {!$_->is_suppmap} @{$output{$pEnd}}; # selected [m]ain alignment of [p]air end, maybe unmap
+                    my $m_rOB = first {!$_->is_suppmap} @{$output{$tEnd}}; # selected [m]ain alignment of [t]his end
+                    for my $t_rOB (@{$map_rOB{$tEnd}}){ # mapped
+                        next if $t_rOB->mseg eq $m_rOB->mseg; # not same refseg of [m]ain alignment
+                        # update
+                        ## paired end mapped refseg and position
+                        my $p_mseg = $t_rOB->mseg eq $p_rOB->mseg ? '=' : $p_rOB->mseg;
+                        $t_rOB->update_attr(attr_id=>'p_mseg', value=>$p_mseg);
+                        $t_rOB->update_attr(attr_id=>'p_mpos', value=>$p_rOB->mpos);
+                        ## set Tlen as zero
+                        $t_rOB->update_attr(attr_id=>'tlen', value=>0);
+                        ## flags
+                        $t_rOB->  set_flag(flag=>0x800); # set as supplementary
+                        $t_rOB->  set_flag(flag=>0x1 );
+                        $t_rOB->  set_flag(flag=>0x20) if  $p_rOB->is_rv_map;
+                        $t_rOB->unset_flag(flag=>0x20) if  $p_rOB->is_fw_map;
+                        $t_rOB->  set_flag(flag=>0x8 ) if  $p_rOB->is_unmap;
+                        $t_rOB->unset_flag(flag=>0x8 ) if !$p_rOB->is_unmap;
+                        $t_rOB->unset_flag(flag_Af=>[0x2,0x4,0x200,0x400]);
+                        ## optfd
+                        $t_rOB->update_optfd(tag=>'MQ:i:', value=>$p_rOB->mapQ);  # pair-end MQ
+                        $t_rOB->update_optfd(tag=>'MC:Z:', value=>$p_rOB->cigar); # pair-end cigar
+                        # output
+                        push @{$output{$tEnd}}, $t_rOB;
+                    }
+                }
+            }
+            # output
+            $outBam->write(content=>$_->printSAM."\n") for map {@{$output{$_}}} (1,2);
         }
     }
 }
