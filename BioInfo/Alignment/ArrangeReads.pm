@@ -213,12 +213,14 @@ sub SelectRefsegForReads{
                         $t_rOB->update_attr(attr_id=>'tlen', value=>0);
                         ## flags
                         $t_rOB->  set_flag(flag=>0x800); # set as supplementary
-                        $t_rOB->  set_flag(flag=>0x1 );
-                        $t_rOB->  set_flag(flag=>0x20) if  $p_rOB->is_rv_map;
-                        $t_rOB->unset_flag(flag=>0x20) if  $p_rOB->is_fw_map;
-                        $t_rOB->  set_flag(flag=>0x8 ) if  $p_rOB->is_unmap;
-                        $t_rOB->unset_flag(flag=>0x8 ) if !$p_rOB->is_unmap;
-                        $t_rOB->unset_flag(flag_Af=>[0x2,0x4,0x200,0x400]);
+                        $t_rOB->  set_flag(flag=>0x1  );
+                        $t_rOB->  set_flag(flag=>0x20 ) if  $p_rOB->is_rv_map;
+                        $t_rOB->unset_flag(flag=>0x20 ) if  $p_rOB->is_fw_map;
+                        $t_rOB->  set_flag(flag=>0x8  ) if  $p_rOB->is_unmap;
+                        $t_rOB->unset_flag(flag=>0x8  ) if !$p_rOB->is_unmap;
+                        $t_rOB->  set_flag(flag=>0x400) if  $m_rOB->is_dup; # copy dup status of [m]ain alignment
+                        $t_rOB->unset_flag(flag=>0x400) if !$m_rOB->is_dup;
+                        $t_rOB->unset_flag(flag_Af=>[0x2,0x4,0x200]);
                         ## optfd
                         $t_rOB->update_optfd(tag=>'MQ:i:', value=>$p_rOB->mapQ);  # pair-end MQ
                         $t_rOB->update_optfd(tag=>'MC:Z:', value=>$p_rOB->cigar); # pair-end cigar
