@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
-$VERSION = "0.20";
-$DATE = '2021-12-18';
+$VERSION = "0.21";
+$DATE = '2022-03-07';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -378,13 +378,19 @@ sub optfd_has_regex{
 }
 
 #--- update optfd ---
-## !! note: Z, Printable string, including space (\S cannot fix this, so far)
+## !! note: Z, Printable string, including space ([\S ]+)
 sub update_optfd{
     my $reads_OB = shift;
     my %parm = @_;
     my $tag = $parm{tag};
     my $value = $parm{value};
-    $reads_OB->{optfd} =~ s/\b$tag\S+\b/$tag$value/;
+    if($reads_OB->{optfd} =~ /\b($tag[^\t]*)/){ # /\b($tag[\S ]+)\b/
+        my $aim = quotemeta $1;
+        $reads_OB->{optfd} =~ s/\b$aim/$tag$value/;
+    }
+    else{
+        $reads_OB->{optfd} .= "\t$tag$value";
+    }
 }
 
 #--- return mismatch count ---
