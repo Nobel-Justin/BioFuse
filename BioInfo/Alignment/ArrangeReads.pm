@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
-$VERSION = "0.04";
-$DATE = '2022-03-07';
+$VERSION = "0.05";
+$DATE = '2022-03-08';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -57,6 +57,10 @@ sub ArrangeReadsAmongRefseg{
     my $moreMapToSupp = $parm{moreMapToSupp} || 0;
     # !! effective when keepRefsegID is not provided
        $moreMapToSupp = 0 if defined $keepRefsegID;
+    my $toSuppMinMapQ = $parm{toSuppMinMapQ};
+       $toSuppMinMapQ = 30 if !defined $toSuppMinMapQ;
+    my $toSuppMAminCL = $parm{toSuppMAminCL}; # minimum clipped length of main alignment to have supp
+       $toSuppMAminCL = 15 if !defined $toSuppMAminCL;
 
     # start writing
     $outBam->start_write;
@@ -97,6 +101,10 @@ sub SelectRefsegForReads{
     my $moreMapToSupp = $parm{moreMapToSupp} || 0;
     # !! effective when keepRefsegID is not provided
        $moreMapToSupp = 0 if defined $keepRefsegID;
+    my $toSuppMinMapQ = $parm{toSuppMinMapQ};
+       $toSuppMinMapQ = 30 if !defined $toSuppMinMapQ;
+    my $toSuppMAminCL = $parm{toSuppMAminCL}; # minimum clipped length of main alignment to have supp
+       $toSuppMAminCL = 15 if !defined $toSuppMAminCL;
 
     for my $pe_OB (@$pe_OB_poolAf){
         my %rOB_Af = map{ ($_, $pe_OB->rOB_Af(reads_end=>$_)) } (1,2);
@@ -199,11 +207,17 @@ sub SelectRefsegForReads{
             # r_OB mapped to the other refseg (if has), to supplementary?
             if($moreMapToSupp){
                 for my $tEnd (1,2){ # [t]his end
+                    my $m_rOB = first {!$_->is_suppmap} @{$output{$tEnd}}; # selected [m]ain alignment of [t]his end
+                    next if $m_rOB->biClipLen <= $toSuppMAminCL; # clipped len of [m]ain alignment
                     my $pEnd = $tEnd % 2 + 1; # [p]air end
                     my $p_rOB = first {!$_->is_suppmap} @{$output{$pEnd}}; # selected [m]ain alignment of [p]air end, maybe unmap
-                    my $m_rOB = first {!$_->is_suppmap} @{$output{$tEnd}}; # selected [m]ain alignment of [t]his end
                     for my $t_rOB (@{$map_rOB{$tEnd}}){ # mapped
-                        next if $t_rOB->mseg eq $m_rOB->mseg; # not same refseg of [m]ain alignment
+                        # should diff refseg of [m]ain alignment
+                        next if $t_rOB->mseg eq $m_rOB->mseg;
+                        # should same refseg of [p]air alignment when [p]air and [m]ain diff refseg
+                        next if $m_rOB->mseg ne $p_rOB->mseg && $t_rOB->mseg ne $p_rOB->mseg;
+                        # map qual
+                        next if $t_rOB->mapQ != 255 && $t_rOB->mapQ < $toSuppMinMapQ;
                         # update
                         ## paired end mapped refseg and position
                         my $p_mseg = $t_rOB->mseg eq $p_rOB->mseg ? '=' : $p_rOB->mseg;
