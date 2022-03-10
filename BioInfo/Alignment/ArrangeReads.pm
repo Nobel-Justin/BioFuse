@@ -2,7 +2,7 @@ package BioFuse::BioInfo::Alignment::ArrangeReads;
 
 use strict;
 use warnings;
-use List::Util qw/ max first /;
+use List::Util qw/ max first any /;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
 
 require Exporter;
@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
-$VERSION = "0.05";
-$DATE = '2022-03-08';
+$VERSION = "0.07";
+$DATE = '2022-03-10';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -30,6 +30,8 @@ $EMAIL = 'wenlongkxm@gmail.com';
 #--------- functions in this pm --------#
 my @function_list = qw/
                         ArrangeReadsAmongRefseg
+                        SelectRefsegForReads
+                        MxasKeepRef_clipMatch
                      /;
 
 #--- arrange reads among multiple refseg ---
@@ -49,6 +51,8 @@ sub ArrangeReadsAmongRefseg{
     my $keepRefsegID = $parm{keepRefsegID} || undef;
     # to allow the keepRefsegID is not the only refseg with max AS
     my $keepRefNsolo = $parm{keepRefNsolo} || 0;
+    # keep the keepRefsegID as long as its AS satisfies this [m]in [r]atio [d]ifference from the max-AS
+    my $keepRefASmrd = $parm{keepRefASmrd} || 0;
     # swap when PE ends map to diff-refseg respectively
     my $swapAlignEnds = $parm{swapAlignEnds} || 0;
     # !! effective when keepRefsegID is not provided
@@ -93,6 +97,8 @@ sub SelectRefsegForReads{
     my $keepRefsegID = $parm{keepRefsegID} || undef;
     # to allow the keepRefsegID is not the only refseg with max AS
     my $keepRefNsolo = $parm{keepRefNsolo} || 0;
+    # keep the keepRefsegID as long as its AS satisfies this [m]in [r]atio [d]ifference from the max-AS
+    my $keepRefASmrd = $parm{keepRefASmrd} || 0;
     # swap when PE ends map to diff-refseg respectively
     my $swapAlignEnds = $parm{swapAlignEnds} || 0;
     # !! effective when keepRefsegID is not provided
@@ -128,13 +134,31 @@ sub SelectRefsegForReads{
             my @max_AS_refseg = grep $refseg2AS{$_} == $max_AS, keys %refseg2AS;
             # if keepRefsegID is set
             if(defined $keepRefsegID){
-                if($keepRefNsolo){ # allow the keepRefsegID is not the only refseg with max AS
-                    @max_AS_refseg = grep $_ eq $keepRefsegID, @max_AS_refseg;
-                    next if @max_AS_refseg == 0;
+                next if !exists $refseg2AS{$keepRefsegID} || $refseg2AS{$keepRefsegID} == 0; # no alignments on keepRefsegID
+                my $skip = 0;
+                # judge keepRefsegID
+                if($keepRefNsolo){
+                    # allow the keepRefsegID is not the only refseg with max AS
+                    $skip = 1 if !(any {$_ eq $keepRefsegID}, @max_AS_refseg);
                 }
-                else{ # the keepRefsegID must be the only refseg with max AS
-                    next if @max_AS_refseg != 1 || $max_AS_refseg[0] ne $keepRefsegID;
+                else{
+                    # the keepRefsegID must be the only refseg with max AS
+                    $skip = 1 if @max_AS_refseg != 1 || $max_AS_refseg[0] ne $keepRefsegID;
                 }
+                # try to SAVE keepRefsegID
+                if(    $skip
+                    && (   # arbitrarily SAVE keepRefsegID according to the keepRefASmrd
+                           ($keepRefASmrd != 0 && $refseg2AS{$keepRefsegID} >= $max_AS * (1-$keepRefASmrd))
+                        || # arbitrarily SAVE keepRefsegID if clipped part matches to that on refseg with max AS
+                           &MxasKeepRef_clipMatch(map_rOB_Hf=>\%map_rOB, max_AS_refseg=>$max_AS_refseg[0], keepRefsegID=>$keepRefsegID)
+                       )
+                ){
+                    $skip = 0;
+                }
+                # skip?
+                next if $skip;
+                # only keep keepRefsegID
+                @max_AS_refseg = ($keepRefsegID);
             }
             # go on: different scenarios
             if( $endsMap{1} xor $endsMap{2} ){ # _1/_2, one has map (may have unmap simultaneously), another are all unmap
@@ -247,6 +271,27 @@ sub SelectRefsegForReads{
             $outBam->write(content=>$_->printSAM."\n") for map {@{$output{$_}}} (1,2);
         }
     }
+}
+
+#--- check whether the clipped part of keepRefsegID matches with that of max_AS refseg ---
+sub MxasKeepRef_clipMatch{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $map_rOB_Hf = $parm{map_rOB_Hf};
+    my $max_AS_refseg = $parm{max_AS_refseg};
+    my $keepRefsegID = $parm{keepRefsegID};
+    my $CLsumMinRatio = $parm{CLsumMinRatio} || 0.8;
+
+    for my $end (1,2){
+        next if scalar(@{$map_rOB_Hf->{$end}}) == 0;
+        my $mxasRef_rOB = first {$_->mseg eq $max_AS_refseg} @{$map_rOB_Hf->{$end}};
+        my $keepRef_rOB = first {$_->mseg eq $keepRefsegID } @{$map_rOB_Hf->{$end}};
+        next if !defined $mxasRef_rOB || !defined $keepRef_rOB;
+        return 1 if $mxasRef_rOB->clipMatch(other_rOB=>$keepRef_rOB, CLsumMinRatio=>$CLsumMinRatio);
+    }
+    # last, not match
+    return 0;
 }
 
 1; ## tell the perl script the successful access of this module.
