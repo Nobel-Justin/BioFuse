@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
-$VERSION = "0.21";
-$DATE = '2022-03-07';
+$VERSION = "0.22";
+$DATE = '2022-03-10';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -76,6 +76,8 @@ my @function_list = qw/
                         foreClipLen
                         hindClipLen
                         biClipLen
+                        clipMatch
+                        maxClipLen
                         tlen_FixTlen_with_S
                         digestMDtag
                         mDetailAf
@@ -571,7 +573,6 @@ sub has_MDtag{
 
 #--- test whether two read_OB are close alingment ---
 sub is_closeAlign{
-
     my $reads_OB = shift;
     my %parm = @_;
     my $test_rOB = $parm{test_rOB};
@@ -669,6 +670,34 @@ sub biClipLen{
     my $clipType = $parm{clipType} || 'S';
     return (  $reads_OB->foreClipLen( clipType => $clipType )
             + $reads_OB->hindClipLen( clipType => $clipType ) );
+}
+
+#--- check whether other_rOB has clipped part matched to this reads ---
+## theoretically， this should be the same reads aligned to different positions/refsegs
+##                 e.g., split-reads of rearrangement
+## compare rlen with sum of selected unilateral clipped parts of two rOB
+sub clipMatch{
+    my $reads_OB = shift;
+    my %parm = @_;
+    my $other_rOB = $parm{other_rOB};
+    my $CLsumMinRatio = $parm{CLsumMinRatio} || 0.8; # consider inner-insertion
+
+    # both must be clipped aligned
+    return 0 unless $reads_OB->is_clip && $other_rOB->is_clip;
+    # whether clipped parts match with each other
+    my $CLsumMin = $reads_OB->rlen * $CLsumMinRatio;
+    if(   ($reads_OB->is_fw_map && $other_rOB->is_fw_map)
+       || ($reads_OB->is_rv_map && $other_rOB->is_rv_map)
+    ){
+        return 1 if   $reads_OB->foreClipLen + $other_rOB->hindClipLen >= $CLsumMin
+                   || $reads_OB->hindClipLen + $other_rOB->foreClipLen >= $CLsumMin;
+    }
+    else{
+        return 1 if   $reads_OB->foreClipLen + $other_rOB->foreClipLen >= $CLsumMin
+                   || $reads_OB->hindClipLen + $other_rOB->hindClipLen >= $CLsumMin;
+    }
+    # last, not match
+    return 0;
 }
 
 #--- return max clip length of given type ---
