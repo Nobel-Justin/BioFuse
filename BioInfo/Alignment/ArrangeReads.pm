@@ -21,7 +21,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
 $VERSION = "0.07";
-$DATE = '2022-03-11';
+$DATE = '2022-03-12';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -147,8 +147,8 @@ sub SelectRefsegForReads{
                 }
                 # try to SAVE keepRefsegID
                 if(    $skip
-                    && (   # arbitrarily SAVE keepRefsegID according to the keepRefASmrd
-                           ($keepRefASmrd != 0 && $refseg2AS{$keepRefsegID} >= $max_AS * (1-$keepRefASmrd))
+                    && (   # arbitrarily SAVE keepRefsegID according to the keepRefASmrd, and consider the rlen mapped of mapped end
+                           ($keepRefASmrd != 0 && $refseg2AS{$keepRefsegID} >= max($max_AS*(1-$keepRefASmrd), $pe_OB->maxRlen(onlyMap=>1)/2))
                         || # arbitrarily SAVE keepRefsegID if clipped part matches to that on refseg with max AS
                            &MxasKeepRef_clipMatch(map_rOB_Hf=>\%map_rOB, max_AS_refseg=>$max_AS_refseg[0], keepRefsegID=>$keepRefsegID)
                        )
