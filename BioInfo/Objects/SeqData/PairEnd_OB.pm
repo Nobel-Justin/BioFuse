@@ -20,8 +20,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::PairEnd_OB';
 #----- version --------
-$VERSION = "0.12";
-$DATE = '2021-11-30';
+$VERSION = "0.13";
+$DATE = '2022-03-12';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -39,6 +39,7 @@ my @function_list = qw/
                         sorted_rOB_Af
                         arranged_rOB_Af
                         maxClipLen
+                        maxRlen
                         tryDiscardAlign
                         test_need_RefSeg
                         test_pair_RefSeg
@@ -118,6 +119,7 @@ sub sorted_rOB_Af{
     my $onlyMap  = $parm{onlyMap} || 0;
     my $chrSortHref = $parm{chrSortHref} || undef;
     my $chrSortKey  = $parm{chrSortKey} || undef;
+    my $skipSort = $parm{skipSort} || 0;
 
     # get rOB of required rEnd
     ## if set, only select mapped
@@ -132,7 +134,7 @@ sub sorted_rOB_Af{
                         SortHref => $chrSortHref,
                         SortKey  => $chrSortKey
                     )
-                } @reads_OB;
+                } @reads_OB unless $skipSort;
     # return Aref
     return \@reads_OB;
 }
@@ -176,7 +178,17 @@ sub maxClipLen{
     my $clipType = $parm{clipType} || 'S';
     return max
            map{ $_->maxClipLen(clipType=>$clipType) }
-           @{$pe_OB->sorted_rOB_Af(onlyMap=>1)};
+           @{$pe_OB->sorted_rOB_Af(onlyMap=>1,skipSort=>1)}; # no need sort
+}
+
+#--- return the max read length of all rOB (or mapped)
+sub maxRlen{
+    my $pe_OB = shift;
+    my %parm = @_;
+    my $onlyMap = $parm{onlyMap} || 0;
+    return max
+           map{ $_->rlen }
+           @{$pe_OB->sorted_rOB_Af(onlyMap=>$onlyMap,skipSort=>1)}; # no need sort
 }
 
 #--- try to dicard alignment of certain scenario ---
