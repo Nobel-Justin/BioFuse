@@ -20,7 +20,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
 $VERSION = "0.22";
-$DATE = '2022-03-10';
+$DATE = '2022-03-11';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -676,25 +676,26 @@ sub biClipLen{
 ## theoretically， this should be the same reads aligned to different positions/refsegs
 ##                 e.g., split-reads of rearrangement
 ## compare rlen with sum of selected unilateral clipped parts of two rOB
+## consider inner-insertion (1+r) and micro-homology (1-r)
 sub clipMatch{
     my $reads_OB = shift;
     my %parm = @_;
     my $other_rOB = $parm{other_rOB};
-    my $CLsumMinRatio = $parm{CLsumMinRatio} || 0.8; # consider inner-insertion
+    my $CLsumRLthreR = $parm{CLsumRLthreR} || 0.2; # [1-r,1+r]
 
     # both must be clipped aligned
     return 0 unless $reads_OB->is_clip && $other_rOB->is_clip;
     # whether clipped parts match with each other
-    my $CLsumMin = $reads_OB->rlen * $CLsumMinRatio;
+    my $CLsumMaxDiff = $reads_OB->rlen * $CLsumRLthreR;
     if(   ($reads_OB->is_fw_map && $other_rOB->is_fw_map)
        || ($reads_OB->is_rv_map && $other_rOB->is_rv_map)
     ){
-        return 1 if   $reads_OB->foreClipLen + $other_rOB->hindClipLen >= $CLsumMin
-                   || $reads_OB->hindClipLen + $other_rOB->foreClipLen >= $CLsumMin;
+        return 1 if   abs($reads_OB->foreClipLen + $other_rOB->hindClipLen - $reads_OB->rlen) <= $CLsumMaxDiff
+                   || abs($reads_OB->hindClipLen + $other_rOB->foreClipLen - $reads_OB->rlen) <= $CLsumMaxDiff;
     }
     else{
-        return 1 if   $reads_OB->foreClipLen + $other_rOB->foreClipLen >= $CLsumMin
-                   || $reads_OB->hindClipLen + $other_rOB->hindClipLen >= $CLsumMin;
+        return 1 if   abs($reads_OB->foreClipLen + $other_rOB->foreClipLen - $reads_OB->rlen) <= $CLsumMaxDiff
+                   || abs($reads_OB->hindClipLen + $other_rOB->hindClipLen - $reads_OB->rlen) <= $CLsumMaxDiff;
     }
     # last, not match
     return 0;

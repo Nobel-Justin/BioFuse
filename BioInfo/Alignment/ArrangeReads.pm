@@ -21,7 +21,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
 $VERSION = "0.07";
-$DATE = '2022-03-10';
+$DATE = '2022-03-11';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -281,14 +281,14 @@ sub MxasKeepRef_clipMatch{
     my $map_rOB_Hf = $parm{map_rOB_Hf};
     my $max_AS_refseg = $parm{max_AS_refseg};
     my $keepRefsegID = $parm{keepRefsegID};
-    my $CLsumMinRatio = $parm{CLsumMinRatio} || 0.8;
+    my $CLsumRLthreR = $parm{CLsumRLthreR} || 0.2; # [1-r,1+r]
 
     for my $end (1,2){
         next if scalar(@{$map_rOB_Hf->{$end}}) == 0;
         my $mxasRef_rOB = first {$_->mseg eq $max_AS_refseg} @{$map_rOB_Hf->{$end}};
         my $keepRef_rOB = first {$_->mseg eq $keepRefsegID } @{$map_rOB_Hf->{$end}};
         next if !defined $mxasRef_rOB || !defined $keepRef_rOB;
-        return 1 if $mxasRef_rOB->clipMatch(other_rOB=>$keepRef_rOB, CLsumMinRatio=>$CLsumMinRatio);
+        return 1 if $mxasRef_rOB->clipMatch(other_rOB=>$keepRef_rOB, CLsumRLthreR=>$CLsumRLthreR);
     }
     # last, not match
     return 0;
