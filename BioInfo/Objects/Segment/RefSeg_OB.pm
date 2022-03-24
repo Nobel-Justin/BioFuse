@@ -21,8 +21,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Segment::RefSeg_OB';
 #----- version --------
-$VERSION = "0.08";
-$DATE = '2022-02-07';
+$VERSION = "0.09";
+$DATE = '2022-03-24';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -379,8 +379,6 @@ sub normInDelMut{
                     my $mut_base = substr($mut_seq, -1*$i, 1);
                     my $fore_pos = $pos - $i + $pos_shift;
                     my $fore_refpos_OB = $refposHf->{$fore_pos};
-                    print "$i\n" if($pos == 32324);
-                    print Dumper($fore_refpos_OB) if($pos == 32324);
                     last unless defined $fore_refpos_OB;
                     last if $fore_refpos_OB->has_mutation && $fore_pos != $pos; # donot cross mutation
                     if($fore_refpos_OB->refAllele =~ /^$mut_base$/i){ # match
@@ -390,13 +388,11 @@ sub normInDelMut{
                         last;
                     }
                 }
-                if($pos == 32324){
-                    print "normInDelMut\t$mut_id\t$match_len\n";
-                }
                 # norm: move mutation
                 if($match_len){
                     my $accept_pos = $pos - $match_len;
                     my $accept_refpos_OB = $refposHf->{$accept_pos};
+                    next if $accept_refpos_OB->has_mutation; # donot have mutation
                     my $new_mut_seq = substr($mut_seq, -1*$match_len)
                                      .substr($mut_seq, 0, CORE::length($mut_seq)-$match_len);
                     my $new_mut_id = "$mut_type,$new_mut_seq";
