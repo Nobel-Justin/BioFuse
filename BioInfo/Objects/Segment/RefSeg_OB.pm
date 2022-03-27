@@ -22,7 +22,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::Segment::RefSeg_OB';
 #----- version --------
 $VERSION = "0.09";
-$DATE = '2022-03-24';
+$DATE = '2022-03-26';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -375,14 +375,29 @@ sub normInDelMut{
                 # find match tail-part between mut_seq and fore_refseq
                 my $pos_shift = $mut_type eq 'ins' ? 1 : 0;
                 my $match_len = 0;
+                my @matchInfo;
                 for my $i (1 .. CORE::length($mut_seq)){
                     my $mut_base = substr($mut_seq, -1*$i, 1);
                     my $fore_pos = $pos - $i + $pos_shift;
                     my $fore_refpos_OB = $refposHf->{$fore_pos};
                     last unless defined $fore_refpos_OB;
-                    last if $fore_refpos_OB->has_mutation && $fore_pos != $pos; # donot cross mutation
+                    # last if $fore_refpos_OB->has_mutation && $fore_pos != $pos; # donot cross mutation
                     if($fore_refpos_OB->refAllele =~ /^$mut_base$/i){ # match
-                        $match_len = $i;
+                        # accept?
+                        my $accept_pos = $pos - $i;
+                        my $accept_refpos_OB = $refposHf->{$accept_pos};
+                        last unless defined $accept_refpos_OB;
+                        my $new_mut_seq = substr($mut_seq, -1*$i)
+                                         .substr($mut_seq, 0, CORE::length($mut_seq)-$i);
+                        my $new_mut_id = "$mut_type,$new_mut_seq";
+                        # cannot have other mutation
+                        if(any {$_ ne $new_mut_id} @{$accept_refpos_OB->mutList}){
+                            last;
+                        }
+                        else{
+                            $match_len = $i;
+                            @matchInfo = ($accept_pos,$new_mut_id);
+                        }
                     }
                     else{
                         last;
@@ -390,12 +405,13 @@ sub normInDelMut{
                 }
                 # norm: move mutation
                 if($match_len){
-                    my $accept_pos = $pos - $match_len;
+                    my ($accept_pos,$new_mut_id) = @matchInfo;
+                    # my $accept_pos = $pos - $match_len;
                     my $accept_refpos_OB = $refposHf->{$accept_pos};
-                    next if $accept_refpos_OB->has_mutation; # donot have mutation
-                    my $new_mut_seq = substr($mut_seq, -1*$match_len)
-                                     .substr($mut_seq, 0, CORE::length($mut_seq)-$match_len);
-                    my $new_mut_id = "$mut_type,$new_mut_seq";
+                    # next if $accept_refpos_OB->has_mutation; # donot have mutation
+                    # my $new_mut_seq = substr($mut_seq, -1*$match_len)
+                    #                  .substr($mut_seq, 0, CORE::length($mut_seq)-$match_len);
+                    # my $new_mut_id = "$mut_type,$new_mut_seq";
                     # mut depth merge
                     my $mutWhSup = $refpos_OB->mutDepth(mut_id=>$mut_id, type=>'S');
                     my $mutFwSup = $refpos_OB->mutDepth(mut_id=>$mut_id, type=>'F');
