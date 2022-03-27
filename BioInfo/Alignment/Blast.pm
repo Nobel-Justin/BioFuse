@@ -28,8 +28,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Alignment::Blast';
 #----- version --------
-$VERSION = "0.03";
-$DATE = '2022-01-19';
+$VERSION = "0.04";
+$DATE = '2022-03-27';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -93,6 +93,7 @@ sub BlastM0ToRefPos{
     my $qyIDlist = $parm{qyIDlist}; # only deal with query id in this list
     my $skipGapF = $parm{skipGapF} || 0; # not fill gap for large InDel
     my $firstMap = $parm{firstMap} || 0; # only use the first map of each query_id
+    my $gomeWalk = $parm{gomeWalk} || 0; # genome walking: for whole-to-whole alignment: forward+smallJump(value)
     my $debug    = $parm{debug};
 
     # load query id list if given
@@ -145,7 +146,7 @@ sub BlastM0ToRefPos{
                 delete $mapIF{$last_query_id};
             }
             # deal with this maping block
-            &digest_m0MapBlock(m0fh=>$m0fh, query_id=>$query_id, mapIF_Hf=>\%mapIF, debug=>$debug);
+            &digest_m0MapBlock(m0fh=>$m0fh, query_id=>$query_id, mapIF_Hf=>\%mapIF, gomeWalk=>$gomeWalk, debug=>$debug);
             # update
             $last_query_id = $query_id;
         }
@@ -198,6 +199,7 @@ sub digest_m0MapBlock{
     my $m0fh = $parm{m0fh};
     my $query_id = $parm{query_id};
     my $mapIF_Hf = $parm{mapIF_Hf}; # ref of mapinfo hash
+    my $gomeWalk = $parm{gomeWalk} || 0; # genome walking: for whole-to-whole alignment: forward+smallJump(value)
     my $debug = $parm{debug};
 
     # my $IUPAC_code = 'acgtryswkmndhvn'; # \., -, use later
@@ -298,6 +300,18 @@ sub digest_m0MapBlock{
                 # check the map_info length, and trigger breaking
                 last if length($cat_map_info) == $mapped_length;
             }
+        }
+        # genome walking?
+        if(   $gomeWalk
+           && (   $query_strd < 0 || $sbjct_strd < 0 # must be forward to forward
+               || abs($cat_query_info[0]-$cat_sbjct_info[0]) > $gomeWalk # excessive position distance
+               || abs($cat_query_info[2]-$cat_sbjct_info[2]) > $gomeWalk # excessive position distance
+              )
+        ){
+            print "<WARN>\tgenome walking filter:\n"
+                       ."\tquery: $cat_query_info[0]-$cat_query_info[2]\n"
+                       ."\tsbjct: $cat_sbjct_info[0]-$cat_sbjct_info[2]\n" if $debug;
+            next;
         }
         # specifically, adjust the map-info for 'insertion' after 'mismatch' position
         # only change 'sbjct_seq'
@@ -459,11 +473,68 @@ sub fillGapForLargeInDel{
                 # the two segment must be continuous at position
                 my $map_Qdist = abs($cand_map_QstP - $fore_map_QedP);
                 my $map_Sdist = abs($cand_map_SstP - $fore_map_SedP);
+                my $fore_map_QedP_std = $fore_map_Qstrd * $fore_map_QedP;
+                my $fore_map_SedP_std = $fore_map_Sstrd * $fore_map_SedP;
+                my $cand_map_QstP_std = $cand_map_Qstrd * $cand_map_QstP;
+                my $cand_map_SstP_std = $cand_map_Sstrd * $cand_map_SstP;
+                ## pos-interval overlap due to micro-homo (MM) bases at boundary of InDel
+                ## DEL: 'overlap' (MM-length) on query_seq, and gap on sbjct_seq
+                ## INS: 'overlap' (MM-length) on sbjct_seq, and gap on query_seq
+                if(   $map_Qdist <= 10 # empirical MM-len in practise
+                   || $map_Sdist <= 10 # empirical MM-len in practise
+                ){
+                    my $ovpLen = 0;
+                    # DEL: 'overlap' (MM-length) on query_seq, and gap on sbjct_seq
+                    if(    $map_Qdist <= 10 # empirical MM-len in practise
+                        && $fore_map_QedP_std >= $cand_map_QstP_std
+                        && $fore_map_SedP_std <  $cand_map_SstP_std
+                        && $fore_map_SedP_std >= $cand_map_SstP_std - 50 # maximum 50bp deletion allowed
+                    ){
+                        $ovpLen = $fore_map_QedP_std - $cand_map_QstP_std + 1;
+                        my $fore_map_ovpStr = lc substr($fore_mapInfo_Href->{query_info}->[1],-1*$ovpLen);
+                        my $cand_map_ovpStr = lc substr($cand_mapInfo_Href->{query_info}->[1], 0,$ovpLen);
+                        $ovpLen = 0 if $fore_map_ovpStr ne $cand_map_ovpStr; # not MM!
+                    }
+                    # INS: 'overlap' (MM-length) on sbjct_seq, and gap on query_seq
+                    elsif( $map_Sdist <= 10 # empirical MM-len in practise
+                        && $fore_map_SedP_std >= $cand_map_SstP_std
+                        && $fore_map_QedP_std <  $cand_map_QstP_std
+                        && $fore_map_QedP_std >= $cand_map_QstP_std - 50 # maximum 50bp insertion allowed
+                    ){
+                        $ovpLen = $fore_map_SedP_std - $cand_map_SstP_std + 1;
+                        my $fore_map_ovpStr = lc substr($fore_mapInfo_Href->{sbjct_info}->[1],-1*$ovpLen);
+                        my $cand_map_ovpStr = lc substr($cand_mapInfo_Href->{sbjct_info}->[1], 0,$ovpLen);
+                        $ovpLen = 0 if $fore_map_ovpStr ne $cand_map_ovpStr; # not MM!
+                    }
+                    # update 'cand_mapInfo' if find MM-induced overlap
+                    if($ovpLen){
+                        $cand_mapInfo_Href->{query_info}->[0] += $cand_map_Qstrd * $ovpLen;
+                        $cand_mapInfo_Href->{sbjct_info}->[0] += $cand_map_Sstrd * $ovpLen;
+                        $cand_mapInfo_Href->{query_info}->[1] = substr($cand_mapInfo_Href->{query_info}->[1],$ovpLen);
+                        $cand_mapInfo_Href->{sbjct_info}->[1] = substr($cand_mapInfo_Href->{sbjct_info}->[1],$ovpLen);
+                        $cand_mapInfo_Href->{map_info}        = substr($cand_mapInfo_Href->{map_info},       $ovpLen);
+                        # inform
+                        stout_and_sterr  "[INFO]:\ttrim tail_mapping blocks (MM-overlap by InDel) of query_id($query_id):\n"
+                                        ."\tfore_mapping interval, idx=$fore_map_idx:\n"
+                                        ."\t Qst:$fore_mapInfo_Href->{query_info}->[0]; Qed:$fore_map_QedP;"
+                                        .  " Sst:$fore_mapInfo_Href->{sbjct_info}->[0]; Sed:$fore_map_SedP\n"
+                                        ."\ttail_mapping interval, idx=$cand_map_idx:\n"
+                                        ."\t Qst:$cand_map_QstP; Qed:$cand_mapInfo_Href->{query_info}->[2];"
+                                        .  " Sst:$cand_map_SstP; Sed:$cand_mapInfo_Href->{sbjct_info}->[2]\n"
+                                        ."\tnew tail_mapping interval, idx=$cand_map_idx:\n"
+                                        ."\t Qst:$cand_mapInfo_Href->{query_info}->[0]; Qed:$cand_mapInfo_Href->{query_info}->[2];"
+                                        .  " Sst:$cand_mapInfo_Href->{sbjct_info}->[0]; Sed:$cand_mapInfo_Href->{sbjct_info}->[2]\n";
+                        # reocrd update sign
+                        $update_sign = 1;
+                        # stop to start the whole new detection loop
+                        last;
+                    }
+                }
                 ## large DEL: 'none' OR 'slight' gap on query_seq, and 'large' gap on sbjct_seq
                 ## large INS: 'none' OR 'slight' gap on sbjct_seq, and 'large' gap on query_seq
                 ## large INS is from 'unkown source', Here
-                if(    $fore_map_Qstrd * $fore_map_QedP < $cand_map_Qstrd * $cand_map_QstP
-                    && $fore_map_Sstrd * $fore_map_SedP < $cand_map_Sstrd * $cand_map_SstP
+                if(    $fore_map_QedP_std < $cand_map_QstP_std
+                    && $fore_map_SedP_std < $cand_map_SstP_std
                     && (  # query_seq has large deletion
                           (   $map_Qdist <= 30 # empirical distance in practise
                            && $map_Sdist >= $map_Qdist
@@ -542,8 +613,8 @@ sub fillGapForLargeInDel{
                 }
                 ## large INS: 'none' OR 'slight' overlap on query_seq, and 'large' overlap on sbjct_seq
                 ## large INS is tandem duplicated, Here
-                elsif(    $fore_map_Qstrd * $fore_map_QedP >= $cand_map_Qstrd * $cand_map_QstP - 1
-                       && $fore_map_Sstrd * $fore_map_SedP >  $cand_map_Sstrd * $cand_map_SstP
+                elsif(    $fore_map_QedP_std >= $cand_map_QstP_std - 1
+                       && $fore_map_SedP_std >  $cand_map_SstP_std
                        &&  # query_seq has large insertion (tandem duplicated)
                           (   $map_Qdist <= 10 # empirical distance in practise
                            && $map_Sdist >= 10 # $map_Qdist

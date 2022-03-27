@@ -6,9 +6,9 @@ Util PERL module of general functions and objects applied in bioinformatics soft
 - Email:  wenlongkxm@gmail.com
 
 ## Version
-0.15
+0.16
 
-`2022-03-10`
+`2022-03-27`
 
 ## Installation
 
