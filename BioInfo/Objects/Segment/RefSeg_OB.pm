@@ -362,6 +362,7 @@ sub normInDelMut{
     my $seqID = $parm{seqID} || 'orig';
     my $refposHf = $parm{refposHf}; # may be other refpos hash
        $refposHf = $refseg->{refpos}->{$seqID} if !defined $refposHf; # internal refpos hash
+    my $soloMut = $parm{soloMut} || 0; # do not allow the accept_pos has other mut
 
     my $norm_again = 1;
     while($norm_again){
@@ -391,7 +392,9 @@ sub normInDelMut{
                                          .substr($mut_seq, 0, CORE::length($mut_seq)-$i);
                         my $new_mut_id = "$mut_type,$new_mut_seq";
                         # cannot have other mutation
-                        if(any {$_ ne $new_mut_id} @{$accept_refpos_OB->mutList}){
+                        if(    $soloMut
+                            && (any {$_ ne $new_mut_id} @{$accept_refpos_OB->mutList})
+                        ){
                             last;
                         }
                         else{
