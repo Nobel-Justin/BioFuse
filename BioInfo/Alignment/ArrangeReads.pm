@@ -21,7 +21,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
 $VERSION = "0.07";
-$DATE = '2022-03-12';
+$DATE = '2022-03-30';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -49,6 +49,8 @@ sub ArrangeReadsAmongRefseg{
     # refseg need to keep SQ of bam header
     ## for mapped reads, only keep alignment on this refseg
     my $keepRefsegID = $parm{keepRefsegID} || undef;
+    # to multiply this score ratio for keepRefseg alignment
+    my $keepRefsegASr= $parm{keepRefsegASr} || 1;
     # to allow the keepRefsegID is not the only refseg with max AS
     my $keepRefNsolo = $parm{keepRefNsolo} || 0;
     # keep the keepRefsegID as long as its AS satisfies this [m]in [r]atio [d]ifference from the max-AS
@@ -95,6 +97,8 @@ sub SelectRefsegForReads{
     my $skipPEunmap = $parm{skipPEunmap} || 0; # skip PE-reads that both unmap
     # for mapped reads, only keep alignment on this refseg
     my $keepRefsegID = $parm{keepRefsegID} || undef;
+    # to multiply this score ratio for keepRefseg alignment
+    my $keepRefsegASr= $parm{keepRefsegASr} || 1;
     # to allow the keepRefsegID is not the only refseg with max AS
     my $keepRefNsolo = $parm{keepRefNsolo} || 0;
     # keep the keepRefsegID as long as its AS satisfies this [m]in [r]atio [d]ifference from the max-AS
@@ -129,6 +133,7 @@ sub SelectRefsegForReads{
             # alignment score of each refseg
             my %refseg2AS;
             $refseg2AS{$_->mseg} += $_->alignScore for map {@{$rOB_Af{$_}}} (1,2);
+            $refseg2AS{$keepRefsegID} *= $keepRefsegASr if defined $keepRefsegID && exists $refseg2AS{$keepRefsegID};
             # avail refseg with max alignment score
             my $max_AS = max(values %refseg2AS);
             my @max_AS_refseg = grep $refseg2AS{$_} == $max_AS, keys %refseg2AS;
