@@ -290,12 +290,32 @@ sub MxasKeepRef_clipMatch{
 
     for my $end (1,2){
         next if scalar(@{$map_rOB_Hf->{$end}}) == 0;
-        my $mxasRef_rOB = first {$_->mseg eq $max_AS_refseg} @{$map_rOB_Hf->{$end}};
-        my $keepRef_rOB = first {$_->mseg eq $keepRefsegID } @{$map_rOB_Hf->{$end}};
-        next if !defined $mxasRef_rOB || !defined $keepRef_rOB;
-        return 1 if $mxasRef_rOB->clipMatch(other_rOB=>$keepRef_rOB, CLsumRLthreR=>$CLsumRLthreR);
+        my @mxasRef_rOB = grep $_->mseg eq $max_AS_refseg, @{$map_rOB_Hf->{$end}};
+        my @keepRef_rOB = grep $_->mseg eq $keepRefsegID,  @{$map_rOB_Hf->{$end}};
+        next if @mxasRef_rOB==0 || @keepRef_rOB==0;
+        # self-match?
+        next if @mxasRef_rOB>1 && &self_clipMath(map_rOB_Af=>\@mxasRef_rOB, CLsumRLthreR=>$CLsumRLthreR);
+        next if @keepRef_rOB>1 && &self_clipMath(map_rOB_Af=>\@keepRef_rOB, CLsumRLthreR=>$CLsumRLthreR);
+        # match (keepRefsegID vs. max_AS refseg), just check the first rOB
+        return 1 if $mxasRef_rOB[0]->clipMatch(other_rOB=>$keepRef_rOB[0], CLsumRLthreR=>$CLsumRLthreR);
     }
     # last, not match
+    return 0;
+}
+
+#--- check whether the clipped part of matches in alignments of one refseg ---
+sub self_clipMath{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $map_rOB_Af = $parm{map_rOB_Af};
+    my $CLsumRLthreR = $parm{CLsumRLthreR} || 0.2; # [1-r,1+r]
+    for my $i (0 .. scalar(@$map_rOB_Af)-2){
+        for my $j ($i+1 .. scalar(@$map_rOB_Af)-1){
+            return 1 if $map_rOB_Af->[$i]->clipMatch(other_rOB=>$map_rOB_Af->[$j], CLsumRLthreR=>$CLsumRLthreR);
+        }
+    }
+    # last, not self-match
     return 0;
 }
 
