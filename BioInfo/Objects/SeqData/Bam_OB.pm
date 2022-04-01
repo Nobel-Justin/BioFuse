@@ -614,7 +614,7 @@ sub reads_count{
     my $viewReg  = defined $region ? $region : (defined $bed ? "-L $bed" : "");
     my $fh = $bam->start_read(samtools=>$samtools, viewOpt=>$viewOpt, viewReg=>$viewReg);
     while(<$fh>){
-        my $reads_OB = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new(ReadsLineText => $_);
+        my $reads_OB = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new(ReadsLineText => $_, _rc_optfd => 1);
         next if $maxClipRatio == 0 && $reads_OB->is_clip;
         if( ($reads_OB->biClipLen / $reads_OB->rlen) <= $maxClipRatio ){
             if($AS_weighted){
