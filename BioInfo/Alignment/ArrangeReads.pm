@@ -332,7 +332,8 @@ sub nSortBamPidFilter{
     $outBam->write(content=>$_) for @{$nSortBam->header_Af};
     # arrange reads
     open (my $pidListFH,Try_GZ_Read($pidList)) || die "fail read pid list: $!\n";
-    chomp(my $lastPid = <$pidListFH>);
+    my $lastPid = <$pidListFH>;
+    chomp($lastPid) if defined $lastPid;
     my @opt = (outBam=>$outBam, pidListFH=>$pidListFH, lastPidSf=>\$lastPid);
     $nSortBam->smartBam_PEread(deal_peOB_pool => 1, notSweepPEpool => 1, subrtRef => \&pePoolFilterPid, subrtParmAref => \@opt, quiet => 1, simpleLoad => 1);
     close $pidListFH;
