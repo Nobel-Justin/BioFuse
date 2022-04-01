@@ -3,7 +3,9 @@ package BioFuse::BioInfo::Alignment::ArrangeReads;
 use strict;
 use warnings;
 use List::Util qw/ max first any /;
+use Data::Dumper;
 use BioFuse::Util::Log qw/ cluck_and_exit stout_and_sterr /;
+use BioFuse::Util::GZfile qw/ Try_GZ_Read /;
 
 require Exporter;
 
@@ -13,6 +15,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 @ISA = qw(Exporter);
 @EXPORT = qw/
               ArrangeReadsAmongRefseg
+              nSortBamPidFilter
             /;
 @EXPORT_OK = qw();
 %EXPORT_TAGS = ( DEFAULT => [qw()],
@@ -21,7 +24,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
 $VERSION = "0.07";
-$DATE = '2022-03-30';
+$DATE = '2022-03-31';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -32,6 +35,9 @@ my @function_list = qw/
                         ArrangeReadsAmongRefseg
                         SelectRefsegForReads
                         MxasKeepRef_clipMatch
+                        self_clipMath
+                        nSortBamPidFilter
+                        pePoolFilterPid
                      /;
 
 #--- arrange reads among multiple refseg ---
@@ -140,16 +146,10 @@ sub SelectRefsegForReads{
             # if keepRefsegID is set
             if(defined $keepRefsegID){
                 next if !exists $refseg2AS{$keepRefsegID} || $refseg2AS{$keepRefsegID} == 0; # no alignments on keepRefsegID
-                my $skip = 0;
                 # judge keepRefsegID
-                if($keepRefNsolo){
-                    # allow the keepRefsegID is not the only refseg with max AS
-                    $skip = 1 if !(any {$_ eq $keepRefsegID}, @max_AS_refseg);
-                }
-                else{
-                    # the keepRefsegID must be the only refseg with max AS
-                    $skip = 1 if @max_AS_refseg != 1 || $max_AS_refseg[0] ne $keepRefsegID;
-                }
+                my $skip = $refseg2AS{$keepRefsegID} == $max_AS ? 0 : 1;
+                # keepRefsegID must be the only refseg with max AS?
+                   $skip = 1 if @max_AS_refseg != 1 && !$keepRefNsolo;
                 # try to SAVE keepRefsegID
                 if(    $skip
                     && (   # arbitrarily SAVE keepRefsegID according to the keepRefASmrd, and consider the rlen mapped of mapped end
@@ -280,8 +280,6 @@ sub SelectRefsegForReads{
 
 #--- check whether the clipped part of keepRefsegID matches with that of max_AS refseg ---
 sub MxasKeepRef_clipMatch{
-    # options
-    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
     my $map_rOB_Hf = $parm{map_rOB_Hf};
     my $max_AS_refseg = $parm{max_AS_refseg};
@@ -305,8 +303,6 @@ sub MxasKeepRef_clipMatch{
 
 #--- check whether the clipped part of matches in alignments of one refseg ---
 sub self_clipMath{
-    # options
-    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
     my %parm = @_;
     my $map_rOB_Af = $parm{map_rOB_Af};
     my $CLsumRLthreR = $parm{CLsumRLthreR} || 0.2; # [1-r,1+r]
@@ -317,6 +313,78 @@ sub self_clipMath{
     }
     # last, not self-match
     return 0;
+}
+
+#--- filter reads with given pid list ---
+# !!! the source bam should be Nsort
+# !!! the pidList should also from Nsort bam
+sub nSortBamPidFilter{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $nSortBam = $parm{nSortBam}; # bam object
+    my $outBam = $parm{outBam}; # bam object
+    my $pidList = $parm{pidList};
+
+    # start writing
+    $outBam->start_write;
+    # header
+    $outBam->write(content=>$_) for @{$nSortBam->header_Af};
+    # arrange reads
+    open (my $pidListFH,Try_GZ_Read($pidList)) || die "fail read pid list: $!\n";
+    chomp(my $lastPid = <$pidListFH>);
+    my @opt = (outBam=>$outBam, pidListFH=>$pidListFH, lastPidSf=>\$lastPid);
+    $nSortBam->smartBam_PEread(deal_peOB_pool => 1, notSweepPEpool => 1, subrtRef => \&pePoolFilterPid, subrtParmAref => \@opt, quiet => 1, simpleLoad => 1);
+    close $pidListFH;
+    # stop writing
+    $outBam->stop_write;
+}
+
+#--- filter pid ---
+sub pePoolFilterPid{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $pe_OB_poolAf = $parm{pe_OB_poolAf};
+    my $outBam = $parm{outBam}; # bam object
+    my $pidListFH = $parm{pidListFH};
+    my $lastPidSf = $parm{lastPidSf};
+    my $last_pool = $parm{last_pool};
+
+    my $pe_count = scalar @$pe_OB_poolAf;
+    my $last_i = 0;
+    for my $i (0 .. $pe_count-1){
+        # no more pid
+        if(!defined $$lastPidSf){
+            for my $j ($last_i .. $pe_count-1){
+                $outBam->write(content=>$_."\n") for @{$pe_OB_poolAf->[$j]->printSAM(keep_all=>1)};
+            }
+            # update
+            $last_i = $pe_count;
+            last;
+        }
+        # match?
+        if($pe_OB_poolAf->[$i]->pid eq $$lastPidSf){
+            for my $j ($last_i .. $i-1){
+                $outBam->write(content=>$_."\n") for @{$pe_OB_poolAf->[$j]->printSAM(keep_all=>1)};
+            }
+            # update
+            $last_i = $i+1;
+            $$lastPidSf = <$pidListFH>;
+            chomp($$lastPidSf) if defined $$lastPidSf;
+        }
+    }
+    # trim pe_OB_pool
+    splice(@$pe_OB_poolAf,0,$last_i);
+    # last pe_pool
+    if($last_pool){
+        while($$lastPidSf = <$pidListFH>){
+            chomp($$lastPidSf);
+            $parm{last_pool} = 0;
+            &pePoolFilterPid(%parm);
+        }
+        $outBam->write(content=>join("\n",@{$_->printSAM(keep_all=>1)})."\n") for @$pe_OB_poolAf;
+    }
 }
 
 1; ## tell the perl script the successful access of this module.
