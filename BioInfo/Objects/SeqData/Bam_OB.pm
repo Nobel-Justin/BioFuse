@@ -29,8 +29,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
-$VERSION = "0.22";
-$DATE = '2022-01-09';
+$VERSION = "0.23";
+$DATE = '2022-03-31';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -944,6 +944,7 @@ sub smartBam_PEread{
     my $deal_peOB_pool = $parm{deal_peOB_pool} || 0;
     my $quiet = $parm{quiet} || 0; # not inform PE Count
     my $simpleLoad = $parm{simpleLoad} || 0; # just record reads' basic information
+    my $notSweepPEpool = $parm{notSweepPEpool} || 0; # do not sweep pe_OB pool
 
     # objects modules
     my $rdObjSource = {norm => 'Reads_OB',   HiC => 'HicReads_OB'};
@@ -973,7 +974,7 @@ sub smartBam_PEread{
                     $subrt_signal = &{$subrtRef}(pe_OB => $_, @$subrtParmAref) for @peOB_pool;
                 }
                 # sweep
-                @peOB_pool = ();
+                @peOB_pool = () unless $notSweepPEpool;
                 # inform
                 if($pe_Count >= $pe_CountInform){
                     stout_and_sterr "[INFO]\t".`date`
@@ -1000,13 +1001,13 @@ sub smartBam_PEread{
     ){
         push @peOB_pool, $last_peOB;
         if($deal_peOB_pool){
-            &{$subrtRef}(pe_OB_poolAf => \@peOB_pool, @$subrtParmAref);
+            &{$subrtRef}(pe_OB_poolAf => \@peOB_pool, last_pool => 1, @$subrtParmAref);
         }
         else{
             &{$subrtRef}(pe_OB => $_, @$subrtParmAref) for @peOB_pool;
         }
         # sweep
-        @peOB_pool = ();
+        @peOB_pool = () unless $notSweepPEpool;
     }
     # inform
     stout_and_sterr "[INFO]\t".`date`
