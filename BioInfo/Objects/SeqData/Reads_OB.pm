@@ -19,8 +19,8 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Reads_OB';
 #----- version --------
-$VERSION = "0.22";
-$DATE = '2022-03-11';
+$VERSION = "0.23";
+$DATE = '2022-03-31';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -685,17 +685,33 @@ sub clipMatch{
 
     # both must be clipped aligned
     return 0 unless $reads_OB->is_clip && $other_rOB->is_clip;
+    # this rOB ClipLen & MapLen*
+    my $t_foreCL = $reads_OB->foreClipLen;
+    my $t_hindCL = $reads_OB->hindClipLen;
+    my $t_mapLen = $reads_OB->mReadLen;
+    my $t_foreML = $t_mapLen - $t_foreCL;
+    my $t_hindML = $t_mapLen - $t_hindCL;
+    # other rOB ClipLen & MapLen*
+    my $o_foreCL = $other_rOB->foreClipLen;
+    my $o_hindCL = $other_rOB->hindClipLen;
+    my $o_mapLen = $other_rOB->mReadLen;
+    my $o_foreML = $o_mapLen - $o_foreCL;
+    my $o_hindML = $o_mapLen - $o_hindCL;
     # whether clipped parts match with each other
-    my $CLsumMaxDiff = $reads_OB->rlen * $CLsumRLthreR;
+    my $CLsumMaxDiff = $reads_OB->rlen * $CLsumRLthreR * 2;
     if(   ($reads_OB->is_fw_map && $other_rOB->is_fw_map)
        || ($reads_OB->is_rv_map && $other_rOB->is_rv_map)
     ){
-        return 1 if   abs($reads_OB->foreClipLen + $other_rOB->hindClipLen - $reads_OB->rlen) <= $CLsumMaxDiff
-                   || abs($reads_OB->hindClipLen + $other_rOB->foreClipLen - $reads_OB->rlen) <= $CLsumMaxDiff;
+        # return 1 if   abs($reads_OB->foreClipLen + $other_rOB->hindClipLen - $reads_OB->rlen) <= $CLsumMaxDiff
+        #            || abs($reads_OB->hindClipLen + $other_rOB->foreClipLen - $reads_OB->rlen) <= $CLsumMaxDiff;
+        return 1 if   abs($t_foreML-$o_foreCL) + abs($t_hindCL-$o_hindML) <= $CLsumMaxDiff
+                   || abs($t_foreCL-$o_foreML) + abs($t_hindML-$o_hindCL) <= $CLsumMaxDiff;
     }
     else{
-        return 1 if   abs($reads_OB->foreClipLen + $other_rOB->foreClipLen - $reads_OB->rlen) <= $CLsumMaxDiff
-                   || abs($reads_OB->hindClipLen + $other_rOB->hindClipLen - $reads_OB->rlen) <= $CLsumMaxDiff;
+        # return 1 if   abs($reads_OB->foreClipLen + $other_rOB->foreClipLen - $reads_OB->rlen) <= $CLsumMaxDiff
+        #            || abs($reads_OB->hindClipLen + $other_rOB->hindClipLen - $reads_OB->rlen) <= $CLsumMaxDiff;
+        return 1 if   abs($t_foreML-$o_hindCL) + abs($t_hindCL-$o_foreML) <= $CLsumMaxDiff
+                   || abs($t_foreCL-$o_hindML) + abs($t_hindML-$o_foreCL) <= $CLsumMaxDiff;
     }
     # last, not match
     return 0;
