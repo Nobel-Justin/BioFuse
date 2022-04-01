@@ -30,7 +30,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'BioFuse::BioInfo::Objects::SeqData::Bam_OB';
 #----- version --------
 $VERSION = "0.23";
-$DATE = '2022-03-31';
+$DATE = '2022-04-01';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -600,6 +600,7 @@ sub reads_count{
     my $skipDupRead = $parm{skipDupRead} || 0; # skip PCR duplicated reads
     my $minMQ = defined $parm{minMQ} ? $parm{minMQ} : 30; # # mapping quality
     my $maxClipRatio = $parm{maxClipRatio} || 0; # Sofe/Hart-clip part ratio
+    my $AS_weighted = $parm{AS_weighted} || 0; # each reads weighted by AS/rLen
 
     # check existence
     $bam->verify_bam;
@@ -615,11 +616,18 @@ sub reads_count{
     while(<$fh>){
         my $reads_OB = BioFuse::BioInfo::Objects::SeqData::Reads_OB->new(ReadsLineText => $_);
         next if $maxClipRatio == 0 && $reads_OB->is_clip;
-        $reads_count++ if ($reads_OB->biClipLen / $reads_OB->rlen) <= $maxClipRatio;
+        if( ($reads_OB->biClipLen / $reads_OB->rlen) <= $maxClipRatio ){
+            if($AS_weighted){
+                $reads_count += $reads_OB->alignScore / $reads_OB->rlen;
+            }
+            else{
+                $reads_count++;
+            }
+        }
     }
     close $fh;
 
-    return $reads_count;
+    return int($reads_count);
 }
 
 #--- get coverage/depth stat of given region ---
