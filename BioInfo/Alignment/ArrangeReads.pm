@@ -24,7 +24,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
 $VERSION = "0.07";
-$DATE = '2022-04-02';
+$DATE = '2022-04-03';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -408,12 +408,9 @@ sub pePoolFilterPid{
     }
     # trim pe_OB_pool
     splice(@$pe_OB_poolAf,0,$last_i);
-    # update pid hash?
+    # remove preposed pid from filtPidHash
     if($last_mPidIdx != 0){
-        # remove preposed pid
         delete $filtPidHf->{$_} for grep $filtPidHf->{$_} <= $last_mPidIdx, keys %$filtPidHf;
-        # fill pid from pidList
-        $pidListEOF = &loadPid(pidListFH => $pidListFH, filtPidHf => $filtPidHf) unless $pidListEOF;
     }
     # last pe_pool
     if($last_pool){
