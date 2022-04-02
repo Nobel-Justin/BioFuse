@@ -24,7 +24,7 @@ our ($VERSION, $DATE, $AUTHOR, $EMAIL, $MODULE_NAME);
 $MODULE_NAME = 'ArrangeReads';
 #----- version --------
 $VERSION = "0.07";
-$DATE = '2022-03-31';
+$DATE = '2022-04-02';
 
 #----- author -----
 $AUTHOR = 'Wenlong Jia';
@@ -332,13 +332,39 @@ sub nSortBamPidFilter{
     $outBam->write(content=>$_) for @{$nSortBam->header_Af};
     # arrange reads
     open (my $pidListFH,Try_GZ_Read($pidList)) || die "fail read pid list: $!\n";
-    my $lastPid = <$pidListFH>;
-    chomp($lastPid) if defined $lastPid;
-    my @opt = (outBam=>$outBam, pidListFH=>$pidListFH, lastPidSf=>\$lastPid);
+    my %filtPid;
+    my @opt = (outBam=>$outBam, pidListFH=>$pidListFH, filtPidHf=>\%filtPid);
     $nSortBam->smartBam_PEread(deal_peOB_pool => 1, notSweepPEpool => 1, subrtRef => \&pePoolFilterPid, subrtParmAref => \@opt, quiet => 1, simpleLoad => 1);
     close $pidListFH;
     # stop writing
     $outBam->stop_write;
+}
+
+#--- load pid part by part ---
+# return 1, reach EOF
+# return 0, goon reading
+sub loadPid{
+    # options
+    shift if (@_ && $_[0] =~ /$MODULE_NAME/);
+    my %parm = @_;
+    my $pidListFH = $parm{pidListFH};
+    my $filtPidHf = $parm{filtPidHf};
+
+    my $maxPidCt = 1E5;
+    my $filtPidCt = scalar keys %$filtPidHf;
+    my $maxPidIdx = $filtPidCt ? max(values %$filtPidHf) : 0;
+    for my $i (1 .. $maxPidCt-$filtPidCt){
+        my $pid = <$pidListFH>;
+        if(defined $pid){
+            chomp($pid);
+            $filtPidHf->{$pid} = $maxPidIdx + $i;
+        }
+        else{ # pid list EOF
+            return 1;
+        }
+    }
+    # pid list not finish
+    return 0;
 }
 
 #--- filter pid ---
@@ -349,14 +375,19 @@ sub pePoolFilterPid{
     my $pe_OB_poolAf = $parm{pe_OB_poolAf};
     my $outBam = $parm{outBam}; # bam object
     my $pidListFH = $parm{pidListFH};
-    my $lastPidSf = $parm{lastPidSf};
+    my $filtPidHf = $parm{filtPidHf};
     my $last_pool = $parm{last_pool};
+
+    # fill pid from pidList
+    my $pidListEOF = &loadPid(pidListFH => $pidListFH, filtPidHf => $filtPidHf);
+    my $filtPidCt = scalar keys %$filtPidHf;
 
     my $pe_count = scalar @$pe_OB_poolAf;
     my $last_i = 0;
+    my $last_mPidIdx = 0;
     for my $i (0 .. $pe_count-1){
         # no more pid
-        if(!defined $$lastPidSf){
+        if($filtPidCt == 0){
             for my $j ($last_i .. $pe_count-1){
                 $outBam->write(content=>$_."\n") for @{$pe_OB_poolAf->[$j]->printSAM(keep_all=>1)};
             }
@@ -365,25 +396,36 @@ sub pePoolFilterPid{
             last;
         }
         # match?
-        if($pe_OB_poolAf->[$i]->pid eq $$lastPidSf){
+        my $pid = $pe_OB_poolAf->[$i]->pid;
+        if(exists $filtPidHf->{$pid}){
             for my $j ($last_i .. $i-1){
                 $outBam->write(content=>$_."\n") for @{$pe_OB_poolAf->[$j]->printSAM(keep_all=>1)};
             }
             # update
             $last_i = $i+1;
-            $$lastPidSf = <$pidListFH>;
-            chomp($$lastPidSf) if defined $$lastPidSf;
+            $last_mPidIdx = max($last_mPidIdx, $filtPidHf->{$pid});
         }
     }
     # trim pe_OB_pool
     splice(@$pe_OB_poolAf,0,$last_i);
+    # update pid hash?
+    if($last_mPidIdx != 0){
+        # remove preposed pid
+        delete $filtPidHf->{$_} for grep $filtPidHf->{$_} <= $last_mPidIdx, keys %$filtPidHf;
+        # fill pid from pidList
+        $pidListEOF = &loadPid(pidListFH => $pidListFH, filtPidHf => $filtPidHf) unless $pidListEOF;
+    }
     # last pe_pool
     if($last_pool){
-        while($$lastPidSf = <$pidListFH>){
-            chomp($$lastPidSf);
-            $parm{last_pool} = 0;
+        $parm{last_pool} = 0;
+        while(   !$pidListEOF # still has pid to filter
+              && scalar(@$pe_OB_poolAf) != 0 # still has pe to filter
+        ){
+            %$filtPidHf = (); # none of remained pids in hash will match, so empty it
+            $pidListEOF = &loadPid(pidListFH => $pidListFH, filtPidHf => $filtPidHf);
             &pePoolFilterPid(%parm);
         }
+        # output remains, if has
         $outBam->write(content=>join("\n",@{$_->printSAM(keep_all=>1)})."\n") for @$pe_OB_poolAf;
     }
 }
